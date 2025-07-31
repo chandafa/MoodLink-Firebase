@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import { Home, MessageSquare, User, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -11,9 +10,7 @@ const navItems = [
   { name: 'Settings', icon: Settings },
 ];
 
-export function BottomNav() {
-  const [activeTab, setActiveTab] = useState('Home');
-
+export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-sm border-t md:hidden z-20">
       <div className="flex justify-around items-center h-full max-w-md mx-auto">

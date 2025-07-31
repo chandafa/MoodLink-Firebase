@@ -5,6 +5,9 @@ import { JournalApp } from '@/components/journal-app';
 import { HelpChatbot } from '@/components/help-chatbot';
 import { BottomNav } from '@/components/bottom-nav';
 import { Icons } from '@/components/icons';
+import ChatPage from '@/components/chat-page';
+import ProfilePage from '@/components/profile-page';
+import SettingsPage from '@/components/settings-page';
 
 function SplashScreen() {
   return (
@@ -44,6 +47,7 @@ function SplashScreen() {
 
 export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
+  const [activeTab, setActiveTab] = useState('Home');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -51,6 +55,22 @@ export default function Home() {
     }, 2500);
     return () => clearTimeout(timer);
   }, []);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'Home':
+        return <JournalApp />;
+      case 'Chat':
+        return <ChatPage />;
+      case 'Profile':
+        return <ProfilePage />;
+      case 'Settings':
+        return <SettingsPage />;
+      default:
+        return <JournalApp />;
+    }
+  };
+
 
   return (
     <>
@@ -66,10 +86,10 @@ export default function Home() {
           className="flex flex-col h-screen"
         >
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
-            <JournalApp />
+            {renderContent()}
           </div>
-          <HelpChatbot />
-          <BottomNav />
+          {activeTab !== 'Chat' && <HelpChatbot />}
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}
       </AnimatePresence>
