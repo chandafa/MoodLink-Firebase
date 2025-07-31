@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Icons } from './icons';
@@ -8,6 +8,9 @@ import { Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GroupChatPage from './chat-page';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { useJournal } from '@/hooks/use-journal';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 
 export type Group = {
@@ -16,25 +19,49 @@ export type Group = {
   description: string;
   members: number;
   emoji: string;
+  joinedBy?: string[]; // Keep track of who joined
 };
 
+// This data could also be moved to Firestore
 const dummyGroups: Group[] = [
-  { id: 'semangat', name: 'Grup Semangat', description: 'Dapatkan dan bagikan motivasi setiap hari!', members: 235, emoji: '🔥' },
-  { id: 'overthinking', name: 'Grup Overthinking', description: 'Ruang aman untuk berbagi pikiran yang berlebihan.', members: 489, emoji: '🧠' },
-  { id: 'sedih', name: 'Grup Sedih', description: 'Tempat berbagi rasa sedih dan saling menguatkan.', members: 120, emoji: '😢' },
-  { id: 'seni', name: 'Klub Seni', description: 'Ekspresikan dirimu melalui seni dan kreativitas.', members: 88, emoji: '🎨' },
-  { id: 'baca', name: 'Klub Buku', description: 'Diskusikan buku favoritmu dengan para kutu buku lainnya.', members: 154, emoji: '📚' },
-  { id: 'musik', name: 'Pojok Musik', description: 'Bagikan dan temukan musik baru dari berbagai genre.', members: 201, emoji: '🎵' },
+  { id: 'semangat', name: 'Grup Semangat', description: 'Dapatkan dan bagikan motivasi setiap hari!', members: 235, emoji: '🔥', joinedBy: [] },
+  { id: 'overthinking', name: 'Grup Overthinking', description: 'Ruang aman untuk berbagi pikiran yang berlebihan.', members: 489, emoji: '🧠', joinedBy: [] },
+  { id: 'sedih', name: 'Grup Sedih', description: 'Tempat berbagi rasa sedih dan saling menguatkan.', members: 120, emoji: '😢', joinedBy: [] },
+  { id: 'seni', name: 'Klub Seni', description: 'Ekspresikan dirimu melalui seni dan kreativitas.', members: 88, emoji: '🎨', joinedBy: [] },
+  { id: 'baca', name: 'Klub Buku', description: 'Diskusikan buku favoritmu dengan para kutu buku lainnya.', members: 154, emoji: '📚', joinedBy: [] },
+  { id: 'musik', name: 'Pojok Musik', description: 'Bagikan dan temukan musik baru dari berbagai genre.', members: 201, emoji: '🎵', joinedBy: [] },
 ];
 
 export function GroupListPage() {
-    const [joinedGroups, setJoinedGroups] = useState<string[]>([]);
+    const [groups, setGroups] = useState<Group[]>(dummyGroups);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+    const { currentUser } = useJournal();
 
-    const toggleJoinGroup = (groupId: string) => {
-        setJoinedGroups(prev => 
-            prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
-        );
+    const toggleJoinGroup = async (groupId: string) => {
+        if (!currentUser) return;
+
+        setGroups(prevGroups => {
+            const newGroups = prevGroups.map(group => {
+                if (group.id === groupId) {
+                    const isJoined = group.joinedBy?.includes(currentUser.id);
+                    const newJoinedBy = isJoined
+                        ? group.joinedBy?.filter(id => id !== currentUser.id)
+                        : [...(group.joinedBy || []), currentUser.id];
+                    return { ...group, joinedBy: newJoinedBy };
+                }
+                return group;
+            });
+            return newGroups;
+        });
+
+        // In a real app with Firestore for groups:
+        /*
+        const groupRef = doc(db, 'groups', groupId);
+        const isJoined = groups.find(g => g.id === groupId)?.joinedBy?.includes(currentUser.id);
+        await updateDoc(groupRef, {
+            joinedBy: isJoined ? arrayRemove(currentUser.id) : arrayUnion(currentUser.id)
+        });
+        */
     }
 
     if (selectedGroup) {
@@ -63,8 +90,8 @@ export function GroupListPage() {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {dummyGroups.map(group => {
-            const isJoined = joinedGroups.includes(group.id);
+        {groups.map(group => {
+            const isJoined = currentUser ? group.joinedBy?.includes(currentUser.id) : false;
             return (
                 <Card key={group.id} className="flex flex-col">
                     <CardHeader className="flex-row items-center gap-4">
@@ -93,6 +120,7 @@ export function GroupListPage() {
                          <Button 
                             onClick={() => toggleJoinGroup(group.id)} 
                             variant={isJoined ? "secondary" : "outline"}
+                            disabled={!currentUser}
                           >
                             {isJoined ? 'Keluar Grup' : 'Gabung Grup'}
                          </Button>

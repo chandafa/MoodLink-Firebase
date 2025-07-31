@@ -1,25 +1,50 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
+import {
+  db,
+  auth,
+  storage,
+  getDoc,
+  doc,
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  onSnapshot,
+  runTransaction,
+  arrayUnion,
+  arrayRemove,
+  writeBatch,
+} from '@/lib/firebase';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
+// Types remain mostly the same, but createdAt/updatedAt will be handled by Firestore Timestamps
 export type Comment = {
   id: string;
-  author: string;
+  authorId: string;
+  authorName: string; // denormalized for easier display
+  authorAvatar: string; // denormalized
   content: string;
-  createdAt: string;
+  createdAt: any; // Firestore Timestamp
 };
 
 export type User = {
-    id: string;
-    displayName: string;
-    avatar: string;
-    bio: string;
-    followers: string[];
-    following: string[];
-    points: number;
-    level: number;
-}
+  id: string;
+  displayName: string;
+  avatar: string;
+  bio: string;
+  followers: string[];
+  following: string[];
+  points: number;
+  level: number;
+};
 
 export type PostType = 'journal' | 'voting';
 
@@ -32,88 +57,17 @@ export type JournalEntry = {
   id: string;
   ownerId: string;
   postType: PostType;
-  content: string; // For journal: content, for voting: question
-  createdAt: string;
-  updatedAt: string;
-  comments: Comment[];
+  content: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+  comments: Comment[]; // This will be a subcollection, so we might not store it directly here
   likes: number;
   likedBy: string[];
   bookmarkedBy: string[];
-  images: string[];
-  // Voting specific
+  images: string[]; // URLs from Firebase Storage
   options: VoteOption[];
   votedBy: string[];
 };
-
-const initialUsers: User[] = [
-    { id: 'user-123', displayName: 'Creator', avatar: '✍️', bio: 'The original author.', followers: ['another-user-456'], following: ['another-user-456'], points: 15, level: 1 },
-    { id: 'another-user-456', displayName: 'KindStranger', avatar: '😊', bio: 'Just a friendly stranger on the web.', followers: ['user-123'], following: ['user-123'], points: 5, level: 1 },
-];
-
-
-const initialEntries: JournalEntry[] = [
-    {
-      id: '1',
-      ownerId: 'user-123', // This entry belongs to the "current user"
-      postType: 'journal',
-      content: "This is my first journal entry. It's a beautiful day to start reflecting on my thoughts. I'm excited to see where this journey takes me.",
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      comments: [
-        { id: 'c1', author: 'KindStranger', content: 'What a wonderful start!', createdAt: new Date().toISOString() }
-      ],
-      likes: 10,
-      likedBy: ['another-user-456'],
-      bookmarkedBy: ['user-123'],
-      images: ['https://placehold.co/600x400.png?text=Reflection'],
-      options: [],
-      votedBy: [],
-    },
-    {
-      id: '2',
-      ownerId: 'another-user-456', // This entry belongs to another user
-      postType: 'journal',
-      content: 'I had a great idea today for a new project. It involves combining my passion for painting and technology. I need to flesh out the details, but the initial concept feels very promising.',
-      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      comments: [],
-      likes: 5,
-      likedBy: ['user-123'],
-      bookmarkedBy: [],
-      images: [],
-      options: [],
-      votedBy: [],
-    },
-     {
-      id: '3',
-      ownerId: 'user-123',
-      postType: 'voting',
-      content: 'What should I learn next?',
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      comments: [],
-      likes: 2,
-      likedBy: [],
-      bookmarkedBy: ['user-123'],
-      images: [],
-      options: [
-          { text: 'React Native', votes: 12 },
-          { text: 'Go (Golang)', votes: 8 },
-          { text: 'Rust', votes: 5 },
-      ],
-      votedBy: ['another-user-456'],
-    },
-];
-
-// Mock current user ID. In a real app, this would come from an auth context.
-export const getCurrentUserId = () => {
-    let userId = localStorage.getItem('moodlink-user-id');
-    if (!userId) {
-        userId = 'user-123'; // Default user for demo
-        localStorage.setItem('moodlink-user-id', userId);
-    }
-    return userId;
-}
 
 const POINTS_PER_LEVEL = 50;
 
@@ -121,318 +75,382 @@ export function useJournal() {
   const { toast } = useToast();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentAuthUser, setCurrentAuthUser] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-   const addPoints = useCallback((userId: string, amount: number) => {
-    setUsers(prevUsers => {
-      const newUsers = prevUsers.map(user => {
-        if (user.id === userId) {
-          const newPoints = user.points + amount;
-          const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
-          if (newLevel > user.level) {
-             toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
-          }
-          return { ...user, points: newPoints, level: newLevel };
+  // --- AUTHENTICATION ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in.
+        setCurrentAuthUser(user);
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = { id: userSnap.id, ...userSnap.data() } as User;
+          setCurrentUser(userData);
+        } else {
+          // New user, create a document for them.
+          const newUser: Omit<User, 'id'> = {
+            displayName: `Anonim${Math.floor(Math.random() * 1000)}`,
+            avatar: '👤',
+            bio: 'Pengguna baru MoodLink!',
+            followers: [],
+            following: [],
+            points: 0,
+            level: 1,
+          };
+          await runTransaction(db, async (transaction) => {
+            transaction.set(userRef, newUser);
+          });
+          setCurrentUser({ ...newUser, id: user.uid });
         }
-        return user;
-      });
-      return newUsers;
+      } else {
+        // User is signed out, sign them in anonymously.
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous sign-in failed:", error);
+          toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
+        });
+      }
     });
+
+    return () => unsubscribe();
   }, [toast]);
 
+  // --- DATA LOADING ---
   useEffect(() => {
-    // Load Users
-    try {
-        const storedUsers = localStorage.getItem('moodlink-users');
-        if (storedUsers) {
-            const parsedUsers = JSON.parse(storedUsers);
-            const migratedUsers = parsedUsers.map((u: Partial<User>) => ({
-              ...u,
-              points: u.points ?? 0,
-              level: u.level ?? 1,
-              followers: u.followers ?? [],
-              following: u.following ?? [],
-            }));
-            setUsers(migratedUsers);
-        } else {
-            setUsers(initialUsers);
-        }
-    } catch(error) {
-        console.error("Failed to load users", error);
-        setUsers(initialUsers);
-    }
+    if (!currentAuthUser) return;
+    
+    // Fetch all users
+    const usersUnsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
+        setUsers(usersData);
+    });
 
-    // Load Entries
-    try {
-      const storedEntries = localStorage.getItem('moodlink-entries');
-      if (storedEntries) {
-        const parsedEntries = JSON.parse(storedEntries);
-        // Ensure all entries have the new properties
-        const migratedEntries = parsedEntries.map((e: Partial<JournalEntry>): JournalEntry => ({
-          id: e.id || '',
-          ownerId: e.ownerId || '',
-          postType: e.postType ?? 'journal',
-          content: e.content || '',
-          createdAt: e.createdAt || new Date().toISOString(),
-          updatedAt: e.updatedAt || new Date().toISOString(),
-          likes: e.likes ?? 0,
-          likedBy: e.likedBy ?? [],
-          comments: e.comments ?? [],
-          bookmarkedBy: e.bookmarkedBy ?? [],
-          images: e.images ?? [],
-          options: e.options ?? [],
-          votedBy: e.votedBy ?? [],
-        }));
-        setEntries(migratedEntries);
-      } else {
-        setEntries(initialEntries);
-      }
-    } catch (error) {
-      console.error('Failed to load journal entries from localStorage', error);
-      setEntries(initialEntries);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem('moodlink-entries', JSON.stringify(entries));
-        localStorage.setItem('moodlink-users', JSON.stringify(users));
-      } catch (error) {
-        console.error('Failed to save data to localStorage', error);
-      }
-    }
-  }, [entries, users, isLoaded]);
-
-  const addEntry = useCallback((content: string, images: string[], postType: PostType, options: string[]) => {
-    if (!content.trim()) {
-        toast({
-            title: 'Konten Kosong',
-            description: "Konten postingan tidak boleh kosong.",
-            variant: 'destructive',
+    // Fetch all entries
+    const entriesUnsub = onSnapshot(collection(db, 'journals'), (snapshot) => {
+        const entriesData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Subcollections are not fetched here, this will need adjustment in components
+                comments: [], 
+            } as JournalEntry;
         });
+        setEntries(entriesData);
+        setIsLoaded(true);
+    });
+
+    return () => {
+        usersUnsub();
+        entriesUnsub();
+    };
+  }, [currentAuthUser]);
+  
+  // --- POINTS & LEVEL ---
+  const addPoints = useCallback(async (userId: string, amount: number) => {
+    if (!userId) return;
+    const userRef = doc(db, 'users', userId);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+          throw 'Document does not exist!';
+        }
+        const oldPoints = userDoc.data().points || 0;
+        const newPoints = oldPoints + amount;
+        const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
+        
+        transaction.update(userRef, { points: newPoints, level: newLevel });
+
+        if (newLevel > userDoc.data().level) {
+          toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
+        }
+      });
+    } catch (e) {
+      console.error("Transaction failed: ", e);
+    }
+  }, [toast]);
+
+
+  // --- JOURNAL ACTIONS ---
+  const addEntry = useCallback(async (content: string, images: string[], postType: PostType, options: string[]) => {
+    if (!currentAuthUser) {
+        toast({ title: 'Anda harus masuk untuk memposting', variant: 'destructive'});
         return null;
     }
-    if (postType === 'voting' && options.some(opt => !opt.trim())) {
-      toast({
-        title: 'Opsi Voting Kosong',
-        description: 'Opsi voting tidak boleh kosong.',
-        variant: 'destructive'
-      });
+    if (!content.trim()) {
+        toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
+        return null;
+    }
+     if (postType === 'voting' && options.some(opt => !opt.trim())) {
+      toast({ title: 'Opsi Voting Kosong', description: 'Opsi voting tidak boleh kosong.', variant: 'destructive' });
       return null;
     }
 
-    const currentUserId = getCurrentUserId();
-    const newEntry: JournalEntry = {
-      id: Date.now().toString(),
-      ownerId: currentUserId,
+    // 1. Upload images to Firebase Storage
+    const imageUrls = await Promise.all(
+        images.map(async (base64Image) => {
+            const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
+            const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
+            return getDownloadURL(uploadResult.ref);
+        })
+    );
+
+    // 2. Add new journal document to Firestore
+    const newEntryData = {
+      ownerId: currentAuthUser.uid,
       content,
       postType,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      comments: [],
+      images: imageUrls,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       likes: 0,
       likedBy: [],
       bookmarkedBy: [],
-      images,
       options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
       votedBy: [],
     };
-    setEntries(prev => [newEntry, ...prev]);
-    addPoints(currentUserId, 5); // +5 points for new entry
-    toast({
-        title: 'Postingan Tersimpan',
-        description: 'Postingan baru Anda telah disimpan.',
-    });
-    return newEntry;
-  }, [toast, addPoints]);
-
-  const updateEntry = useCallback((id: string, content: string, images: string[], options: string[]) => {
-    setEntries(prev =>
-      prev.map(entry => {
-        if (entry.id === id) {
-          const updatedEntry = { ...entry, content, images, updatedAt: new Date().toISOString() };
-          if (updatedEntry.postType === 'voting') {
-            updatedEntry.options = options.map((optText, index) => ({
-              text: optText,
-              votes: entry.options[index]?.votes || 0, // Keep existing votes
-            }));
-          }
-          return updatedEntry;
-        }
-        return entry;
-      })
-    );
-    toast({
-        title: 'Postingan Diperbarui',
-        description: 'Postingan Anda telah diperbarui.',
-    });
-  }, [toast]);
-
-  const deleteEntry = useCallback((id: string) => {
-    setEntries(prev => prev.filter(entry => entry.id !== id));
-    toast({
-        title: 'Postingan Dihapus',
-        description: 'Postingan Anda telah dihapus.',
-        variant: 'destructive',
-    });
-  }, [toast]);
-
-  const addComment = useCallback((entryId: string, commentContent: string, author: string) => {
-    if (!commentContent.trim()) {
-      toast({
-        title: 'Komentar Kosong',
-        description: 'Komentar tidak boleh kosong.',
-        variant: 'destructive'
-      });
-      return;
-    }
     
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      author: author || 'Anonim',
-      content: commentContent,
-      createdAt: new Date().toISOString()
-    };
+    try {
+        const docRef = await addDoc(collection(db, 'journals'), newEntryData);
+        await addPoints(currentAuthUser.uid, 5); // +5 points
+        toast({ title: 'Postingan Tersimpan', description: 'Postingan baru Anda telah disimpan.' });
+        // The onSnapshot listener will automatically update the UI.
+        return { id: docRef.id, ...newEntryData } as JournalEntry;
+    } catch (error) {
+        console.error("Error adding document: ", error);
+        toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
+        return null;
+    }
+  }, [currentAuthUser, toast, addPoints]);
 
-    let entryOwnerId: string | null = null;
-    setEntries(prev => prev.map(entry => {
-      if (entry.id === entryId) {
-        entryOwnerId = entry.ownerId;
-        return { ...entry, comments: [...(entry.comments || []), newComment] };
-      }
-      return entry;
-    }));
+  const updateEntry = useCallback(async (id: string, content: string, images: string[], options: string[]) => {
+     if (!currentAuthUser) return;
+     
+     const entryRef = doc(db, 'journals', id);
 
-    if (entryOwnerId) {
-      addPoints(entryOwnerId, 2); // +2 points for receiving a comment
+     // You might want to handle image updates (deleting old, uploading new)
+     // For simplicity, this example just updates the text content.
+     const updateData: any = {
+        content,
+        updatedAt: serverTimestamp(),
+        // images: updatedImageUrls, // Handle image updates here
+     };
+
+     if (options.length > 0) {
+        const entrySnap = await getDoc(entryRef);
+        const entry = entrySnap.data() as JournalEntry;
+        updateData.options = options.map((optText, index) => ({
+            text: optText,
+            votes: entry.options[index]?.votes || 0,
+        }));
+     }
+
+     await updateDoc(entryRef, updateData);
+     toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
+  }, [currentAuthUser, toast]);
+
+  const deleteEntry = useCallback(async (id: string) => {
+    if (!currentAuthUser) return;
+    
+    const entryRef = doc(db, 'journals', id);
+    const entrySnap = await getDoc(entryRef);
+    const entryData = entrySnap.data();
+
+    // Delete images from Storage
+    if (entryData?.images && entryData.images.length > 0) {
+        entryData.images.forEach(async (url: string) => {
+            try {
+                const imageRef = ref(storage, url);
+                await deleteObject(imageRef);
+            } catch (error) {
+                console.error("Failed to delete image from storage:", error);
+            }
+        });
     }
 
-    toast({
-        title: 'Komentar Ditambahkan',
-        description: 'Komentar Anda telah dipublikasikan.'
-    });
+    await deleteDoc(entryRef);
+    toast({ title: 'Postingan Dihapus', variant: 'destructive' });
+  }, [currentAuthUser, toast]);
 
-  }, [toast, addPoints]);
+  const toggleLike = useCallback(async (entryId: string) => {
+    if (!currentAuthUser) return;
+    const entryRef = doc(db, 'journals', entryId);
+    
+    await runTransaction(db, async (transaction) => {
+        const entryDoc = await transaction.get(entryRef);
+        if (!entryDoc.exists()) throw "Document does not exist!";
 
-  const toggleLike = useCallback((entryId: string) => {
-    const currentUserId = getCurrentUserId();
-    setEntries(prev => prev.map(entry => {
-        if (entry.id === entryId) {
-            const isLiked = entry.likedBy.includes(currentUserId);
-            if (isLiked) {
-                return {
-                    ...entry,
-                    likes: entry.likes - 1,
-                    likedBy: entry.likedBy.filter(id => id !== currentUserId)
-                };
-            } else {
-                addPoints(entry.ownerId, 1); // +1 point for entry owner
-                return {
-                    ...entry,
-                    likes: entry.likes + 1,
-                    likedBy: [...entry.likedBy, currentUserId]
-                };
-            }
+        const entryData = entryDoc.data();
+        const likedBy = entryData.likedBy || [];
+        const ownerId = entryData.ownerId;
+        let newLikedBy = [...likedBy];
+        
+        if (likedBy.includes(currentAuthUser.uid)) {
+            newLikedBy = likedBy.filter((uid: string) => uid !== currentAuthUser.uid);
+        } else {
+            newLikedBy.push(currentAuthUser.uid);
+            // Can't call addPoints directly in a transaction.
+            // This is a limitation. A Cloud Function would be a better solution.
+            // For now, we'll optimistically add points outside the transaction.
         }
-        return entry;
-    }));
-  }, [addPoints]);
+        
+        transaction.update(entryRef, {
+            likedBy: newLikedBy,
+            likes: newLikedBy.length
+        });
+        
+        // This is not transactionally safe, but a workaround for client-side logic
+        if (!likedBy.includes(currentAuthUser.uid) && ownerId !== currentAuthUser.uid) {
+           addPoints(ownerId, 1);
+        }
+    });
+  }, [currentAuthUser, addPoints]);
 
-  const toggleBookmark = useCallback((entryId: string) => {
-    const currentUserId = getCurrentUserId();
+  const toggleBookmark = useCallback(async (entryId: string) => {
+    if (!currentAuthUser) return;
+    const userRef = doc(db, 'users', currentAuthUser.uid);
+    const entryRef = doc(db, 'journals', entryId);
     let isBookmarkedCurrently = false;
 
-    setEntries(prev => {
-        const newEntries = prev.map(entry => {
-            if (entry.id === entryId) {
-                const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
-                isBookmarkedCurrently = isBookmarked;
-                if (isBookmarked) {
-                    return {
-                        ...entry,
-                        bookmarkedBy: entry.bookmarkedBy.filter(id => id !== currentUserId)
-                    };
-                } else {
-                    return {
-                        ...entry,
-                        bookmarkedBy: [...entry.bookmarkedBy, currentUserId]
-                    };
-                }
-            }
-            return entry;
-        });
-        return newEntries;
+    await runTransaction(db, async (transaction) => {
+        const entryDoc = await transaction.get(entryRef);
+        if (!entryDoc.exists()) throw "Journal does not exist!";
+
+        const bookmarkedBy = entryDoc.data().bookmarkedBy || [];
+        isBookmarkedCurrently = bookmarkedBy.includes(currentAuthUser.uid);
+
+        if (isBookmarkedCurrently) {
+            transaction.update(entryRef, { bookmarkedBy: arrayRemove(currentAuthUser.uid) });
+        } else {
+            transaction.update(entryRef, { bookmarkedBy: arrayUnion(currentAuthUser.uid) });
+        }
     });
 
     toast({
         title: isBookmarkedCurrently ? 'Bookmark Dihapus' : 'Bookmark Ditambah' 
     });
-    
-  }, [toast]);
+  }, [currentAuthUser, toast]);
 
-  const toggleFollow = useCallback((targetUserId: string) => {
-    const currentUserId = getCurrentUserId();
-    if (currentUserId === targetUserId) return;
+    const toggleFollow = useCallback(async (targetUserId: string) => {
+        if (!currentAuthUser || currentAuthUser.uid === targetUserId) return;
 
-    let isFollowingCurrently = false;
-    
-    setUsers(prevUsers => {
-        const currentUser = prevUsers.find(u => u.id === currentUserId);
-        if (currentUser) {
-            isFollowingCurrently = currentUser.following.includes(targetUserId);
+        const currentUserRef = doc(db, 'users', currentAuthUser.uid);
+        const targetUserRef = doc(db, 'users', targetUserId);
+        
+        const batch = writeBatch(db);
+
+        const currentUserSnap = await getDoc(currentUserRef);
+        const currentUserData = currentUserSnap.data() as User;
+        
+        const isFollowing = currentUserData.following.includes(targetUserId);
+        
+        if (isFollowing) {
+            // Unfollow
+            batch.update(currentUserRef, { following: arrayRemove(targetUserId) });
+            batch.update(targetUserRef, { followers: arrayRemove(currentAuthUser.uid) });
+        } else {
+            // Follow
+            batch.update(currentUserRef, { following: arrayUnion(targetUserId) });
+            batch.update(targetUserRef, { followers: arrayUnion(currentAuthUser.uid) });
+            addPoints(targetUserId, 2);
         }
+        
+        await batch.commit();
 
-        return prevUsers.map(user => {
-            // Update current user's following list
-            if (user.id === currentUserId) {
-                if (isFollowingCurrently) {
-                    return { ...user, following: user.following.filter(id => id !== targetUserId) };
-                } else {
-                    return { ...user, following: [...user.following, targetUserId] };
-                }
-            }
-            // Update target user's followers list
-            if (user.id === targetUserId) {
-                if (user.followers.includes(currentUserId)) {
-                    return { ...user, followers: user.followers.filter(id => id !== currentUserId) };
-                } else {
-                    addPoints(targetUserId, 2); // +2 points for getting a follower
-                    return { ...user, followers: [...user.followers, currentUserId] };
-                }
-            }
-            return user;
+        toast({
+            title: isFollowing ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
         });
-    });
+    }, [currentAuthUser, toast, addPoints]);
 
-    toast({
-        title: isFollowingCurrently ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
-        description: `Anda sekarang ${isFollowingCurrently ? 'tidak lagi' : ''} mengikuti pengguna ini.`,
-    });
-}, [toast, addPoints]);
+    const voteOnEntry = useCallback(async (entryId: string, optionIndex: number) => {
+        if (!currentAuthUser) return;
+        const entryRef = doc(db, 'journals', entryId);
 
-  const voteOnEntry = useCallback((entryId: string, optionIndex: number) => {
-    const currentUserId = getCurrentUserId();
-    setEntries(prevEntries => 
-      prevEntries.map(entry => {
-        if (entry.id === entryId && entry.postType === 'voting' && !entry.votedBy.includes(currentUserId)) {
-          const newOptions = [...entry.options];
-          newOptions[optionIndex] = { ...newOptions[optionIndex], votes: newOptions[optionIndex].votes + 1 };
-          
-          addPoints(currentUserId, 1); // +1 point for voting
-          
-          return {
-            ...entry,
-            options: newOptions,
-            votedBy: [...entry.votedBy, currentUserId],
-          };
+        await runTransaction(db, async (transaction) => {
+            const entryDoc = await transaction.get(entryRef);
+            if (!entryDoc.exists()) throw "Document does not exist!";
+            
+            const data = entryDoc.data();
+            if (data.postType !== 'voting' || data.votedBy.includes(currentAuthUser.uid)) {
+                return; // Already voted or not a voting post
+            }
+
+            const newOptions = [...data.options];
+            newOptions[optionIndex].votes += 1;
+
+            transaction.update(entryRef, {
+                options: newOptions,
+                votedBy: arrayUnion(currentAuthUser.uid)
+            });
+        });
+        addPoints(currentAuthUser.uid, 1);
+    }, [currentAuthUser, addPoints]);
+
+
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, currentAuthUserId: currentAuthUser?.uid };
+}
+
+
+// --- Component-specific data hooks ---
+
+// Hook to get comments for a specific entry
+export function useComments(entryId: string) {
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!entryId) return;
+        const commentsRef = collection(db, 'journals', entryId, 'comments');
+        const q = query(commentsRef); // You can add orderBy here
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const commentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];
+            setComments(commentsData);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [entryId]);
+
+    return { comments, isLoading };
+}
+
+// Hook to add a comment
+export function useAddComment() {
+    const { toast } = useToast();
+    const { addPoints } = useJournal(); // This is not ideal as it creates a new instance.
+                                       // In a larger app, state management (like Context) would be better.
+
+    const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string) => {
+        if (!commentContent.trim()) {
+            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
+            return;
         }
-        return entry;
-      })
-    );
-  }, [addPoints]);
+        
+        const commentData = {
+            authorId: author.id,
+            authorName: author.displayName,
+            authorAvatar: author.avatar,
+            content: commentContent,
+            createdAt: serverTimestamp(),
+        };
 
+        const commentsRef = collection(db, 'journals', entryId, 'comments');
+        await addDoc(commentsRef, commentData);
+        
+        if (author.id !== entryOwnerId) {
+           // This is tricky from client, a cloud function is better.
+           // For now, let's call addPoints but acknowledge it's not transactional here.
+           await addPoints(entryOwnerId, 2);
+        }
 
-  return { entries, users, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, isLoaded };
+        toast({ title: 'Komentar ditambahkan' });
+    }, [toast, addPoints]);
+
+    return { addComment };
 }

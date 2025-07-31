@@ -18,7 +18,7 @@ import {
   Type,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, getCurrentUserId, PostType } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType, useComments, useAddComment, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,8 +35,8 @@ import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
-  const currentUserId = getCurrentUserId();
-  const hasVoted = entry.votedBy?.includes(currentUserId);
+  const { currentAuthUserId } = useJournal();
+  const hasVoted = entry.votedBy?.includes(currentAuthUserId);
   const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const handleVote = (index: number) => {
@@ -71,76 +71,71 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 }
 
 
-function CommentSection({ entryId }: { entryId: string }) {
-    const { entries, addComment, isLoaded } = useJournal();
-    const { toast } = useToast();
+function CommentSection({ entryId, entryOwnerId }: { entryId: string, entryOwnerId: string }) {
+    const { comments, isLoading: isLoadingComments } = useComments(entryId);
+    const { currentUser } = useJournal();
+    const { addComment } = useAddComment();
     const [newComment, setNewComment] = useState('');
-    const [authorName, setAuthorName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
 
-    useEffect(() => {
-        const savedName = localStorage.getItem('moodlink-chat-user');
-        if (savedName) {
-            setAuthorName(JSON.parse(savedName).name);
-        } else {
-            setAuthorName('Anonim');
-        }
-    }, []);
-
-    const entry = useMemo(() => entries.find(e => e.id === entryId), [entries, entryId]);
-    const comments = useMemo(() => {
-        return [...(entry?.comments || [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    }, [entry?.comments]);
+    const sortedComments = useMemo(() => {
+        return [...comments].sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis())
+    }, [comments]);
 
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newComment.trim()) {
+        if (!newComment.trim() || !currentUser) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
-        setIsLoading(true);
-        // Simulate network delay
-        await new Promise(res => setTimeout(res, 500));
-        addComment(entryId, newComment, authorName);
-        setNewComment('');
-        setIsLoading(false);
+        setIsSubmitting(true);
+        try {
+            await addComment(entryId, newComment, currentUser, entryOwnerId);
+            setNewComment('');
+        } catch (error) {
+            console.error("Error submitting comment:", error);
+            toast({ title: 'Gagal mengirim komentar', variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
     }
     
-    if (!isLoaded) return <Skeleton className="h-40 w-full" />;
+    if (isLoadingComments) return <Skeleton className="h-40 w-full mt-6" />;
 
     return (
         <Card className="mt-6">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <MessageSquare />
-                    Komentar ({comments.length})
+                    Komentar ({sortedComments.length})
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleCommentSubmit} className="flex flex-col gap-4 mb-6">
                      <Textarea 
-                        placeholder={`Beri komentar sebagai ${authorName}...`}
+                        placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Anonim'}...`}
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        disabled={isLoading}
+                        disabled={isSubmitting}
                      />
-                     <Button type="submit" disabled={isLoading} className="self-end">
-                        {isLoading ? <LoaderCircle className="animate-spin mr-2" /> : <Send className="mr-2" />}
+                     <Button type="submit" disabled={isSubmitting} className="self-end">
+                        {isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Send className="mr-2" />}
                         Kirim
                      </Button>
                 </form>
                 <Separator />
                  <ScrollArea className="h-64 mt-4 pr-4">
                     <div className="space-y-4">
-                        {comments.length > 0 ? comments.map(comment => (
+                        {sortedComments.length > 0 ? sortedComments.map(comment => (
                             <div key={comment.id} className="flex gap-3">
                                 <Avatar>
-                                    <AvatarFallback>{comment.author.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between">
-                                        <p className="font-bold">{comment.author}</p>
-                                        <p className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString()}</p>
+                                        <p className="font-bold">{comment.authorName}</p>
+                                        <p className="text-xs text-muted-foreground">{comment.createdAt?.toDate().toLocaleString()}</p>
                                     </div>
                                     <p className="text-sm mt-1">{comment.content}</p>
                                 </div>
@@ -164,15 +159,13 @@ type JournalAppProps = {
 }
 
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType }: JournalAppProps) {
-  const { entries, users, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry } = useJournal();
+  const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId } = useJournal();
   const [editorContent, setEditorContent] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]); // stores base64 for new images, urls for existing
   const [postType, setPostType] = useState<PostType>('journal');
   const [voteOptions, setVoteOptions] = useState<string[]>(['', '']);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  
-  const currentUserId = getCurrentUserId();
   
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === selectedEntryId) || null;
@@ -183,9 +176,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     return users.find(u => u.id === activeEntry.ownerId);
   }, [activeEntry, users]);
   
-  const isOwner = activeEntry?.ownerId === currentUserId;
+  const isOwner = activeEntry?.ownerId === currentAuthUserId;
   
-  const currentUser = useMemo(() => users.find(u => u.id === currentUserId), [users, currentUserId]);
   const isFollowing = useMemo(() => {
       if (!currentUser || !activeEntry) return false;
       return currentUser.following.includes(activeEntry.ownerId);
@@ -253,14 +245,19 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   };
 
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const imagesToUpload = images.filter(img => img.startsWith('data:image'));
+    const existingImageUrls = images.filter(img => !img.startsWith('data:image'));
+    // In a real app, you'd handle deletion of images from storage if they were removed from the `existingImageUrls` array.
+
     if (activeEntry) {
       if(isOwner) {
-         updateEntry(activeEntry.id, editorContent, images, voteOptions);
+         // For simplicity, we are not handling image updates in this flow, only adding new ones if needed.
+         await updateEntry(activeEntry.id, editorContent, images, voteOptions);
       }
     } else {
-       let optionsForEntry = postType === 'voting' ? voteOptions : [];
-       const newEntry = addEntry(editorContent, images, postType, optionsForEntry);
+       let optionsForEntry = postType === 'voting' ? voteOptions.filter(o => o.trim() !== '') : [];
+       const newEntry = await addEntry(editorContent, imagesToUpload, postType, optionsForEntry);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -268,28 +265,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   };
 
    const sortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [...entries].sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
   }, [entries]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (activeEntry && isOwner) {
       const entryIndex = sortedEntries.findIndex(e => e.id === selectedEntryId);
-      deleteEntry(activeEntry.id);
+      await deleteEntry(activeEntry.id);
       
-      if (sortedEntries.length > 1) {
-        let nextEntryId: string | null = null;
-        if (entryIndex < sortedEntries.length - 1) {
-            nextEntryId = sortedEntries[entryIndex + 1].id;
-        } else if (entryIndex > 0) {
-            nextEntryId = sortedEntries[entryIndex - 1].id;
-        }
-        setSelectedEntryId(nextEntryId);
-        if (sortedEntries.length <= 1) {
-          onBack();
-        }
-      } else {
-        onBack();
-      }
+      onBack();
     }
   };
   
@@ -306,7 +290,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
           </style>
         </head>
         <body>
-          <h1>Entri Jurnal dari ${activeEntry ? new Date(activeEntry.createdAt).toLocaleDateString() : 'MoodLink'}</h1>
+          <h1>Entri Jurnal dari ${activeEntry ? activeEntry.createdAt.toDate().toLocaleDateString() : 'MoodLink'}</h1>
           <hr />
           <p>${editorContent}</p>
           ${images.map(img => `<img src="${img}" />`).join('')}
@@ -360,7 +344,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                           {entryOwner?.displayName || 'Anonim'}
                         </CardTitle>
                         <CardDescription>
-                            {activeEntry ? `Dibuat pada ${new Date(activeEntry.createdAt).toLocaleString()}`: 'Entri baru'}
+                            {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString()}`: 'Entri baru'}
                         </CardDescription>
                      </div>
                 </div>
@@ -430,7 +414,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                     </div>
                 )}
                 
-                { activeEntry?.postType === 'voting' && !isOwner && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
+                { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
 
                  { (isOwner || !activeEntry) && (
                   <div className="pt-4 mt-auto">
@@ -475,12 +459,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                 <>
                     <Separator className="mt-4" />
                     <CardFooter className="p-4">
-                        <SupportBar entry={activeEntry} />
+                        <SupportBar entry={activeEntry} onCommentClick={() => {}} />
                     </CardFooter>
                 </>
                 )}
             </Card>
-            {selectedEntryId && <CommentSection entryId={selectedEntryId} />}
+            {selectedEntryId && activeEntry && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} />}
             </>
           )}
         </main>

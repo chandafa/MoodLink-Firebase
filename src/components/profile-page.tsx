@@ -19,13 +19,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Icons } from './icons';
-import { getCurrentUserId, useJournal, User } from '@/hooks/use-journal';
+import { useJournal, User } from '@/hooks/use-journal';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookmarkPage } from './bookmark-page';
 import { LeaderboardPage } from './leaderboard-page';
 import { User as UserIcon, Bookmark, Trophy } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters.').max(50, 'Name must be at most 50 characters.'),
@@ -36,7 +38,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUpdate: (user: User) => void; }) {
+function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUpdate: (data: ProfileFormValues) => void; }) {
   const { toast } = useToast();
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -59,11 +61,7 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
 
 
   const onSubmit = (data: ProfileFormValues) => {
-    localStorage.setItem('moodlink-profile', JSON.stringify(data));
-    if (currentUser) {
-        const updatedUser = { ...currentUser, ...data };
-        onUpdate(updatedUser); 
-    }
+    onUpdate(data);
     toast({
       title: 'Profile Updated',
       description: 'Your profile has been successfully saved.',
@@ -171,20 +169,14 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
 }
 
 export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
-  const { users, isLoaded } = useJournal();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, isLoaded } = useJournal();
 
-  useEffect(() => {
-    if (isLoaded) {
-        const currentUserId = getCurrentUserId();
-        const user = users.find(u => u.id === currentUserId) || null;
-        setCurrentUser(user);
+  const handleUpdateUser = async (data: ProfileFormValues) => {
+    if (currentUser) {
+        const userRef = doc(db, 'users', currentUser.id);
+        await updateDoc(userRef, data);
+        // The onSnapshot listener in useJournal will update the state automatically
     }
-  }, [isLoaded, users]);
-  
-  const handleUpdateUser = (updatedUser: User) => {
-      setCurrentUser(updatedUser);
-      // In a real hook, this would call a function to update the user in the global state/DB
   }
 
   return (

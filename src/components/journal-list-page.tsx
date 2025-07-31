@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, getCurrentUserId, PostType } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,8 +22,8 @@ import { Progress } from './ui/progress';
 const ITEMS_PER_PAGE = 6;
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
-  const currentUserId = getCurrentUserId();
-  const hasVoted = entry.votedBy?.includes(currentUserId);
+  const { currentAuthUserId } = useJournal();
+  const hasVoted = entry.votedBy?.includes(currentAuthUserId);
   const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const handleVote = (e: React.MouseEvent, index: number) => {
@@ -71,19 +71,18 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 
 function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; }) {
   const { toast } = useToast();
-  const { toggleBookmark, voteOnEntry } = useJournal();
-  const currentUserId = getCurrentUserId();
-  const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
+  const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
+  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
   
-  const formattedDate = new Date(entry.createdAt).toLocaleDateString('en-US', {
+  const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  });
+  }) || 'Just now';
 
   const title = entry.content.split('\n')[0];
   const excerpt = entry.content.substring(entry.content.indexOf('\n') + 1).slice(0, 100) + '...' || title.slice(0, 100);
-  const isOwner = entry.ownerId === getCurrentUserId();
+  const isOwner = entry.ownerId === currentAuthUserId;
 
   const handleReport = () => {
     toast({
@@ -212,7 +211,7 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
   const filteredEntries = useMemo(() => {
     return entries
       .filter(entry => entry.content.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
   }, [entries, searchTerm]);
 
   const totalPages = Math.ceil(filteredEntries.length / ITEMS_PER_PAGE);

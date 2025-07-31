@@ -2,7 +2,7 @@
 import { motion } from 'framer-motion';
 import { Heart, Link, Repeat, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
-import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useMemo } from 'react';
 
 type SupportBarProps = {
   entry: JournalEntry;
@@ -23,10 +24,12 @@ type SupportBarProps = {
 };
 
 export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
-  const { toggleLike } = useJournal();
+  const { toggleLike, currentAuthUserId } = useJournal();
   const { toast } = useToast();
-  const currentUserId = getCurrentUserId();
-  const isLiked = entry.likedBy.includes(currentUserId);
+  
+  const isLiked = useMemo(() => 
+    entry.likedBy.includes(currentAuthUserId)
+  , [entry.likedBy, currentAuthUserId]);
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/?entryId=${entry.id}`;
@@ -73,6 +76,7 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
           size="sm"
           className="flex items-center gap-1.5"
           onClick={handleLikeClick}
+          disabled={!currentAuthUserId}
         >
           <Heart className={cn("h-4 w-4", isLiked && 'fill-red-500 text-red-500')} />
           <span className="text-xs font-semibold">{entry.likes}</span>
@@ -121,7 +125,7 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
             onClick={handleCommentClick}
             >
             <MessageSquare className="h-4 w-4" />
-            <span className="text-xs font-semibold">{entry.comments.length}</span>
+            <span className="text-xs font-semibold">{entry.comments?.length || 0}</span>
             </Button>
         </motion.div>
       )}

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,22 +13,22 @@ import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
-function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; }) {
+function JournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onSelect: () => void; }) {
   const { toast } = useToast();
-  const { toggleBookmark } = useJournal();
-  const currentUserId = getCurrentUserId();
-  const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
+  const { toggleBookmark, currentAuthUserId, deleteEntry } = useJournal();
+  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
 
-  const formattedDate = new Date(entry.createdAt).toLocaleDateString('en-US', {
+  const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  });
+  }) || 'Just now';
 
   const title = entry.content.split('\n')[0];
   const excerpt = entry.content.substring(entry.content.indexOf('\n') + 1).slice(0, 100) + '...' || title.slice(0, 100);
-  const isOwner = entry.ownerId === getCurrentUserId();
+  const isOwner = entry.ownerId === currentAuthUserId;
 
   const handleReport = () => {
     toast({
@@ -39,7 +39,7 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete(entry.id);
+    deleteEntry(entry.id);
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -94,7 +94,17 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
+        {entry.images && entry.images.length > 0 && (
+          <div className="relative w-full h-40">
+            <Image
+              src={entry.images[0]}
+              alt={title}
+              layout="fill"
+              objectFit="cover"
+              className="rounded-t-lg"
+            />
+          </div>
+        )}
         <CardHeader>
           <CardTitle className="truncate pr-8">{title}</CardTitle>
           <CardDescription>{formattedDate}</CardDescription>
@@ -126,14 +136,14 @@ function EmptyState() {
 }
 
 export function BookmarkPage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
-  const { entries, deleteEntry, isLoaded } = useJournal();
-  const currentUserId = getCurrentUserId();
+  const { entries, isLoaded, currentAuthUserId } = useJournal();
 
   const bookmarkedEntries = useMemo(() => {
+    if (!currentAuthUserId) return [];
     return entries
-      .filter(entry => entry.bookmarkedBy.includes(currentUserId))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [entries, currentUserId]);
+      .filter(entry => entry.bookmarkedBy.includes(currentAuthUserId))
+      .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+  }, [entries, currentAuthUserId]);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -175,7 +185,6 @@ export function BookmarkPage({ onSelectEntry }: { onSelectEntry: (id: string | n
                 key={entry.id}
                 entry={entry}
                 onSelect={() => onSelectEntry(entry.id)}
-                onDelete={deleteEntry}
               />
             ))}
           </motion.div>

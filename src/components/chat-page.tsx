@@ -9,26 +9,19 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Group } from './group-list-page';
-
+import { useJournal, User } from '@/hooks/use-journal';
+import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 type Message = {
   id: string;
   text: string;
   sender: {
+    id: string;
     name: string;
     avatar: string;
   };
-};
-
-const randomNames = ['CyberPanda', 'NeonTiger', 'Blueberry', 'QuantumLeap', 'ShadowCat'];
-const randomAvatars = ['🐼', '🐯', '🫐', '🚀', '🐱'];
-
-const getRandomUser = () => {
-  const randIndex = Math.floor(Math.random() * randomNames.length);
-  return {
-    name: randomNames[randIndex],
-    avatar: randomAvatars[randIndex],
-  };
+  createdAt: any;
 };
 
 type GroupChatPageProps = {
@@ -38,24 +31,22 @@ type GroupChatPageProps = {
 
 
 export default function GroupChatPage({ group, onBack }: GroupChatPageProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: `Selamat datang di grup ${group.name}!`, sender: { name: 'AdminBot', avatar: '🤖' } },
-    { id: '2', text: 'Senang bertemu kalian semua.', sender: getRandomUser() },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [currentUser, setCurrentUser] = useState({ name: 'User', avatar: '👤' });
+  const { currentUser } = useJournal();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('moodlink-chat-user');
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    } else {
-      const newUser = getRandomUser();
-      setCurrentUser(newUser);
-      localStorage.setItem('moodlink-chat-user', JSON.stringify(newUser));
-    }
-  }, []);
+    const messagesCol = collection(db, "groups", group.id, "messages");
+    const q = query(messagesCol, orderBy("createdAt", "asc"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const msgs = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Message);
+        setMessages(msgs);
+    });
+
+    return () => unsubscribe();
+  }, [group.id]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -67,17 +58,22 @@ export default function GroupChatPage({ group, onBack }: GroupChatPageProps) {
   }, [messages]);
 
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !currentUser) return;
+    
+    const messagesCol = collection(db, "groups", group.id, "messages");
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: currentUser,
-    };
+    await addDoc(messagesCol, {
+        text: inputValue,
+        sender: {
+            id: currentUser.id,
+            name: currentUser.displayName,
+            avatar: currentUser.avatar
+        },
+        createdAt: serverTimestamp()
+    });
 
-    setMessages(prev => [...prev, newMessage]);
     setInputValue('');
   };
 
@@ -114,10 +110,10 @@ export default function GroupChatPage({ group, onBack }: GroupChatPageProps) {
                             key={message.id}
                             className={cn(
                                 'flex items-end gap-2',
-                                message.sender.name === currentUser.name ? 'justify-end' : 'justify-start'
+                                message.sender.id === currentUser?.id ? 'justify-end' : 'justify-start'
                             )}
                             >
-                            {message.sender.name !== currentUser.name && (
+                            {message.sender.id !== currentUser?.id && (
                                 <Avatar className="h-8 w-8">
                                 <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{message.sender.avatar}</AvatarFallback>
                                 </Avatar>
@@ -125,7 +121,7 @@ export default function GroupChatPage({ group, onBack }: GroupChatPageProps) {
                             <div
                                 className={cn(
                                 'max-w-xs rounded-lg p-3 text-sm',
-                                message.sender.name === currentUser.name
+                                message.sender.id === currentUser?.id
                                     ? 'bg-primary text-primary-foreground'
                                     : 'bg-muted'
                                 )}
@@ -133,7 +129,7 @@ export default function GroupChatPage({ group, onBack }: GroupChatPageProps) {
                                 <p className="font-bold mb-1">{message.sender.name}</p>
                                 <p>{message.text}</p>
                             </div>
-                            {message.sender.name === currentUser.name && (
+                            {message.sender.id === currentUser?.id && (
                                 <Avatar className="h-8 w-8">
                                 <AvatarFallback>{currentUser.avatar}</AvatarFallback>
                                 </Avatar>

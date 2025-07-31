@@ -9,14 +9,12 @@ import { GroupListPage } from '@/components/group-list-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
-import { BookmarkPage } from '@/components/bookmark-page';
-import { LeaderboardPage } from '@/components/leaderboard-page';
 import { PostType } from '@/hooks/use-journal';
 
 function SplashScreen() {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 1 }}
@@ -66,9 +64,8 @@ export default function Home() {
   const handleSelectEntry = (id: string | null) => {
     setSelectedEntryId(id);
     setIsEditing(true);
-    // If it's a new post, we don't set a type, the editor will handle it
-    if(id !== null) {
-      setNewPostType('journal'); // Reset to default when editing existing
+    if (id === null) {
+      setNewPostType('journal'); // Default for new post
     }
   };
 
