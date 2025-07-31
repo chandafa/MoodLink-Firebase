@@ -10,6 +10,7 @@ import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { BookmarkPage } from '@/components/bookmark-page';
+import { LeaderboardPage } from '@/components/leaderboard-page';
 
 function SplashScreen() {
   return (
@@ -81,6 +82,8 @@ export default function Home() {
         return <GroupListPage />;
       case 'Saved':
         return <BookmarkPage onSelectEntry={handleSelectEntry} />;
+      case 'Leaderboard':
+        return <LeaderboardPage />;
       case 'Profile':
         return <ProfilePage />;
       case 'Settings':

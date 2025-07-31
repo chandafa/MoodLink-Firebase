@@ -17,6 +17,8 @@ export type User = {
     bio: string;
     followers: string[];
     following: string[];
+    points: number;
+    level: number;
 }
 
 export type JournalEntry = {
@@ -33,8 +35,8 @@ export type JournalEntry = {
 };
 
 const initialUsers: User[] = [
-    { id: 'user-123', displayName: 'Creator', avatar: '✍️', bio: 'The original author.', followers: ['another-user-456'], following: ['another-user-456'] },
-    { id: 'another-user-456', displayName: 'KindStranger', avatar: '😊', bio: 'Just a friendly stranger on the web.', followers: ['user-123'], following: ['user-123'] },
+    { id: 'user-123', displayName: 'Creator', avatar: '✍️', bio: 'The original author.', followers: ['another-user-456'], following: ['another-user-456'], points: 15, level: 1 },
+    { id: 'another-user-456', displayName: 'KindStranger', avatar: '😊', bio: 'Just a friendly stranger on the web.', followers: ['user-123'], following: ['user-123'], points: 5, level: 1 },
 ];
 
 
@@ -89,18 +91,44 @@ export const getCurrentUserId = () => {
     return userId;
 }
 
+const POINTS_PER_LEVEL = 50;
+
 export function useJournal() {
   const { toast } = useToast();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+   const addPoints = useCallback((userId: string, amount: number) => {
+    setUsers(prevUsers => {
+      return prevUsers.map(user => {
+        if (user.id === userId) {
+          const newPoints = user.points + amount;
+          const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
+          if (newLevel > user.level) {
+             toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
+          }
+          return { ...user, points: newPoints, level: newLevel };
+        }
+        return user;
+      });
+    });
+  }, [toast]);
+
   useEffect(() => {
     // Load Users
     try {
         const storedUsers = localStorage.getItem('moodlink-users');
         if (storedUsers) {
-            setUsers(JSON.parse(storedUsers));
+            const parsedUsers = JSON.parse(storedUsers);
+            const migratedUsers = parsedUsers.map((u: Partial<User>) => ({
+              ...u,
+              points: u.points ?? 0,
+              level: u.level ?? 1,
+              followers: u.followers ?? [],
+              following: u.following ?? [],
+            }));
+            setUsers(migratedUsers);
         } else {
             setUsers(initialUsers);
         }
@@ -154,9 +182,10 @@ export function useJournal() {
         });
         return null;
     }
+    const currentUserId = getCurrentUserId();
     const newEntry: JournalEntry = {
       id: Date.now().toString(),
-      ownerId: getCurrentUserId(),
+      ownerId: currentUserId,
       content,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -167,12 +196,13 @@ export function useJournal() {
       images,
     };
     setEntries(prev => [newEntry, ...prev]);
+    addPoints(currentUserId, 5); // +5 points for new entry
     toast({
         title: 'Entri Tersimpan',
         description: 'Entri jurnal baru Anda telah disimpan.',
     });
     return newEntry;
-  }, [toast]);
+  }, [toast, addPoints]);
 
   const updateEntry = useCallback((id: string, content: string, images: string[]) => {
     setEntries(prev =>
@@ -212,18 +242,25 @@ export function useJournal() {
       createdAt: new Date().toISOString()
     };
 
-    setEntries(prev => prev.map(entry => 
-      entry.id === entryId 
-        ? { ...entry, comments: [...(entry.comments || []), newComment] }
-        : entry
-    ));
+    let entryOwnerId: string | null = null;
+    setEntries(prev => prev.map(entry => {
+      if (entry.id === entryId) {
+        entryOwnerId = entry.ownerId;
+        return { ...entry, comments: [...(entry.comments || []), newComment] };
+      }
+      return entry;
+    }));
+
+    if (entryOwnerId) {
+      addPoints(entryOwnerId, 2); // +2 points for receiving a comment
+    }
 
     toast({
         title: 'Komentar Ditambahkan',
         description: 'Komentar Anda telah dipublikasikan.'
     });
 
-  }, [toast]);
+  }, [toast, addPoints]);
 
   const toggleLike = useCallback((entryId: string) => {
     const currentUserId = getCurrentUserId();
@@ -237,6 +274,7 @@ export function useJournal() {
                     likedBy: entry.likedBy.filter(id => id !== currentUserId)
                 };
             } else {
+                addPoints(currentUserId, 1); // +1 point for liking
                 return {
                     ...entry,
                     likes: entry.likes + 1,
@@ -246,7 +284,7 @@ export function useJournal() {
         }
         return entry;
     }));
-  }, []);
+  }, [addPoints]);
 
   const toggleBookmark = useCallback((entryId: string) => {
     const currentUserId = getCurrentUserId();
@@ -274,11 +312,10 @@ export function useJournal() {
         return newEntries;
     });
 
-    if (isBookmarkedCurrently) {
-        toast({ title: 'Bookmark dihapus' });
-    } else {
-        toast({ title: 'Bookmark ditambah' });
-    }
+    toast({
+        title: isBookmarkedCurrently ? 'Bookmark Dihapus' : 'Bookmark Ditambah' 
+    });
+    
   }, [toast]);
 
   const toggleFollow = useCallback((targetUserId: string) => {

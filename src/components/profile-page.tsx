@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Icons } from './icons';
 import { getCurrentUserId, useJournal, User } from '@/hooks/use-journal';
 import { Separator } from './ui/separator';
+import { Progress } from './ui/progress';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters.').max(50, 'Name must be at most 50 characters.'),
@@ -29,6 +30,7 @@ const profileSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
+const POINTS_PER_LEVEL = 50;
 
 export default function ProfilePage() {
   const { toast } = useToast();
@@ -75,6 +77,10 @@ export default function ProfilePage() {
   
   const avatarDisplay = form.watch('avatar') || '👤';
 
+  const pointsToNextLevel = currentUser ? POINTS_PER_LEVEL - (currentUser.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
+  const progressToNextLevel = currentUser ? (currentUser.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100 : 0;
+
+
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4">
       <header className="flex items-center gap-3 mb-8">
@@ -92,10 +98,10 @@ export default function ProfilePage() {
                 {avatarDisplay}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 text-center sm:text-left">
+            <div className="flex-1 text-center sm:text-left w-full">
                 <CardTitle>{currentUser?.displayName || 'Anonymous User'}</CardTitle>
                 <CardDescription>{currentUser?.bio || 'No bio yet.'}</CardDescription>
-                 <div className="flex justify-center sm:justify-start gap-4 mt-4">
+                 <div className="flex justify-center sm:justify-start gap-6 mt-4">
                     <div>
                         <p className="text-lg font-bold">{currentUser?.followers.length || 0}</p>
                         <p className="text-sm text-muted-foreground">Followers</p>
@@ -104,6 +110,17 @@ export default function ProfilePage() {
                         <p className="text-lg font-bold">{currentUser?.following.length || 0}</p>
                         <p className="text-sm text-muted-foreground">Following</p>
                     </div>
+                     <div>
+                        <p className="text-lg font-bold">{currentUser?.points || 0}</p>
+                        <p className="text-sm text-muted-foreground">Poin</p>
+                    </div>
+                </div>
+                 <div className="mt-4">
+                    <div className="flex justify-between items-center mb-1">
+                        <p className="text-sm font-semibold">Level {currentUser?.level || 1}</p>
+                        <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin ke level berikutnya</p>
+                    </div>
+                    <Progress value={progressToNextLevel} className="h-2" />
                 </div>
             </div>
           </div>
