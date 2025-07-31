@@ -322,16 +322,19 @@ export function useJournal() {
     const currentUserId = getCurrentUserId();
     if (currentUserId === targetUserId) return;
 
+    let isFollowing = false;
+    const currentUser = users.find(u => u.id === currentUserId);
+    if(currentUser){
+        isFollowing = currentUser.following.includes(targetUserId);
+    }
+    
     setUsers(prevUsers => {
-        let isFollowing = false;
-        const newUsers = prevUsers.map(user => {
+        return prevUsers.map(user => {
             // Update current user's following list
             if (user.id === currentUserId) {
-                if (user.following.includes(targetUserId)) {
-                    isFollowing = true;
+                if (isFollowing) {
                     return { ...user, following: user.following.filter(id => id !== targetUserId) };
                 } else {
-                    isFollowing = false;
                     return { ...user, following: [...user.following, targetUserId] };
                 }
             }
@@ -345,13 +348,13 @@ export function useJournal() {
             }
             return user;
         });
-        toast({
-            title: isFollowing ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
-            description: `Anda sekarang ${isFollowing ? 'tidak lagi' : ''} mengikuti pengguna ini.`,
-        });
-        return newUsers;
     });
-}, [toast]);
+
+    toast({
+        title: isFollowing ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
+        description: `Anda sekarang ${isFollowing ? 'tidak lagi' : ''} mengikuti pengguna ini.`,
+    });
+}, [users, toast]);
 
 
   return { entries, users, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, toggleFollow, isLoaded };
