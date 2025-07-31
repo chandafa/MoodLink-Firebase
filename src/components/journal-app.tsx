@@ -11,6 +11,7 @@ import {
   LoaderCircle,
   Image as ImageIcon,
   XCircle,
+  UserPlus
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
@@ -121,7 +122,7 @@ type JournalAppProps = {
 }
 
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: JournalAppProps) {
-  const { entries, addEntry, updateEntry, deleteEntry, isLoaded } = useJournal();
+  const { entries, users, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow } = useJournal();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -132,8 +133,19 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === selectedEntryId) || null;
   }, [selectedEntryId, entries]);
+
+  const entryOwner = useMemo(() => {
+    if (!activeEntry || !users) return null;
+    return users.find(u => u.id === activeEntry.ownerId);
+  }, [activeEntry, users]);
   
   const isOwner = activeEntry?.ownerId === currentUserId;
+  
+  const currentUser = useMemo(() => users.find(u => u.id === currentUserId), [users, currentUserId]);
+  const isFollowing = useMemo(() => {
+      if (!currentUser || !activeEntry) return false;
+      return currentUser.following.includes(activeEntry.ownerId);
+  }, [currentUser, activeEntry]);
 
   useEffect(() => {
     if (activeEntry) {
@@ -262,22 +274,33 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
           ) : (
             <>
             <Card className="flex-1 flex flex-col shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="font-headline">
-                    {activeEntry ? activeEntry.content.split('\n')[0] : 'Entri Baru'}
-                    </CardTitle>
-                    {activeEntry && (
-                        <p className="text-sm text-muted-foreground">
-                            {isOwner ? `Terakhir diperbarui pada ${new Date(activeEntry.updatedAt).toLocaleString()}` : `Dibuat pada ${new Date(activeEntry.createdAt).toLocaleString()}`}
-                        </p>
-                    )}
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                     {entryOwner && (
+                        <Avatar className="h-12 w-12">
+                            <AvatarFallback className="text-xl">{entryOwner.avatar}</AvatarFallback>
+                        </Avatar>
+                     )}
+                     <div>
+                        <CardTitle className="font-headline mb-1">
+                          {entryOwner?.displayName || 'Anonim'}
+                        </CardTitle>
+                        <CardDescription>
+                            {activeEntry ? `Dibuat pada ${new Date(activeEntry.createdAt).toLocaleString()}`: 'Entri baru'}
+                        </CardDescription>
+                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {(isOwner || !activeEntry) && (
                     <Button onClick={handleSave} size="lg">
                       <Save className="mr-2 h-5 w-5" />
                       Simpan
+                    </Button>
+                  )}
+                  {!isOwner && activeEntry && (
+                    <Button onClick={() => toggleFollow(activeEntry.ownerId)} variant={isFollowing ? 'secondary' : 'default'}>
+                      <UserPlus className="mr-2 h-5 w-5" />
+                      {isFollowing ? 'Diikuti' : 'Ikuti'}
                     </Button>
                   )}
                   {activeEntry && (
@@ -294,7 +317,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
+              <CardContent className="flex-1 flex flex-col pt-4">
                 <Textarea
                   placeholder="Mulai menulis..."
                   className="flex-1 text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"

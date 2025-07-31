@@ -19,6 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Icons } from './icons';
+import { getCurrentUserId, useJournal, User } from '@/hooks/use-journal';
+import { Separator } from './ui/separator';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters.').max(50, 'Name must be at most 50 characters.'),
@@ -30,7 +32,8 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
   const { toast } = useToast();
-  const [avatar, setAvatar] = useState('👤');
+  const { users, isLoaded } = useJournal();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -42,22 +45,35 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem('moodlink-profile');
-    if (savedProfile) {
-      const profileData = JSON.parse(savedProfile);
-      form.reset(profileData);
-      setAvatar(profileData.avatar || '👤');
+    if (isLoaded) {
+        const currentUserId = getCurrentUserId();
+        const user = users.find(u => u.id === currentUserId) || null;
+        setCurrentUser(user);
+        if (user) {
+            form.reset({
+                displayName: user.displayName,
+                bio: user.bio,
+                avatar: user.avatar,
+            });
+        }
     }
-  }, [form]);
+  }, [isLoaded, users, form]);
 
   const onSubmit = (data: ProfileFormValues) => {
     localStorage.setItem('moodlink-profile', JSON.stringify(data));
-    setAvatar(data.avatar || '👤');
+    if (currentUser) {
+        // This is a mock update. In a real app, you'd call an update function from the hook.
+        const updatedUser = { ...currentUser, ...data };
+        setCurrentUser(updatedUser); 
+        // In a real implementation, the hook would handle updating localStorage for the users array.
+    }
     toast({
       title: 'Profile Updated',
       description: 'Your profile has been successfully saved.',
     });
   };
+  
+  const avatarDisplay = form.watch('avatar') || '👤';
 
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4">
@@ -70,19 +86,33 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Edit Your Profile</CardTitle>
-          <CardDescription>Make changes to your profile here. Click save when you're done.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center mb-6">
+          <div className="flex flex-col items-center sm:flex-row gap-6">
             <Avatar style={{ height: '8rem', width: '8rem' }}>
               <AvatarFallback style={{ fontSize: '4rem' }} className="bg-secondary text-secondary-foreground">
-                {avatar}
+                {avatarDisplay}
               </AvatarFallback>
             </Avatar>
+            <div className="flex-1 text-center sm:text-left">
+                <CardTitle>{currentUser?.displayName || 'Anonymous User'}</CardTitle>
+                <CardDescription>{currentUser?.bio || 'No bio yet.'}</CardDescription>
+                 <div className="flex justify-center sm:justify-start gap-4 mt-4">
+                    <div>
+                        <p className="text-lg font-bold">{currentUser?.followers.length || 0}</p>
+                        <p className="text-sm text-muted-foreground">Followers</p>
+                    </div>
+                    <div>
+                        <p className="text-lg font-bold">{currentUser?.following.length || 0}</p>
+                        <p className="text-sm text-muted-foreground">Following</p>
+                    </div>
+                </div>
+            </div>
           </div>
+        </CardHeader>
+        <Separator className="my-4" />
+        <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+               <h3 className="text-lg font-semibold">Edit Your Profile</h3>
               <FormField
                 control={form.control}
                 name="displayName"
@@ -123,14 +153,6 @@ export default function ProfilePage() {
                       <Input
                         placeholder="👤"
                         {...field}
-                        onChange={(e) => {
-                          form.setValue('avatar', e.target.value);
-                          if(e.target.value.trim()) {
-                            setAvatar(e.target.value);
-                          } else {
-                            setAvatar('👤');
-                          }
-                        }}
                       />
                     </FormControl>
                     <FormMessage />

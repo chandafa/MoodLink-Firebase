@@ -10,6 +10,15 @@ export type Comment = {
   createdAt: string;
 };
 
+export type User = {
+    id: string;
+    displayName: string;
+    avatar: string;
+    bio: string;
+    followers: string[];
+    following: string[];
+}
+
 export type JournalEntry = {
   id: string;
   ownerId: string;
@@ -22,6 +31,12 @@ export type JournalEntry = {
   bookmarkedBy: string[];
   images: string[];
 };
+
+const initialUsers: User[] = [
+    { id: 'user-123', displayName: 'Creator', avatar: '✍️', bio: 'The original author.', followers: ['another-user-456'], following: ['another-user-456'] },
+    { id: 'another-user-456', displayName: 'KindStranger', avatar: '😊', bio: 'Just a friendly stranger on the web.', followers: ['user-123'], following: ['user-123'] },
+];
+
 
 const initialEntries: JournalEntry[] = [
     {
@@ -77,9 +92,24 @@ export const getCurrentUserId = () => {
 export function useJournal() {
   const { toast } = useToast();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    // Load Users
+    try {
+        const storedUsers = localStorage.getItem('moodlink-users');
+        if (storedUsers) {
+            setUsers(JSON.parse(storedUsers));
+        } else {
+            setUsers(initialUsers);
+        }
+    } catch(error) {
+        console.error("Failed to load users", error);
+        setUsers(initialUsers);
+    }
+
+    // Load Entries
     try {
       const storedEntries = localStorage.getItem('moodlink-entries');
       if (storedEntries) {
@@ -108,11 +138,12 @@ export function useJournal() {
     if (isLoaded) {
       try {
         localStorage.setItem('moodlink-entries', JSON.stringify(entries));
+        localStorage.setItem('moodlink-users', JSON.stringify(users));
       } catch (error) {
-        console.error('Failed to save journal entries to localStorage', error);
+        console.error('Failed to save data to localStorage', error);
       }
     }
-  }, [entries, isLoaded]);
+  }, [entries, users, isLoaded]);
 
   const addEntry = useCallback((content: string, images: string[]) => {
     if (!content.trim()) {
@@ -242,19 +273,49 @@ export function useJournal() {
         });
         return newEntries;
     });
-    
-    // showToast must be called after the state update
-    const showToast = () => {
-        if (isBookmarkedCurrently) {
-            toast({ title: 'Bookmark dihapus' });
-        } else {
-            toast({ title: 'Bookmark ditambah' });
-        }
-    }
-    
-    setTimeout(showToast, 0);
 
+    if (isBookmarkedCurrently) {
+        toast({ title: 'Bookmark dihapus' });
+    } else {
+        toast({ title: 'Bookmark ditambah' });
+    }
   }, [toast]);
 
-  return { entries, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, isLoaded };
+  const toggleFollow = useCallback((targetUserId: string) => {
+    const currentUserId = getCurrentUserId();
+    if (currentUserId === targetUserId) return;
+
+    setUsers(prevUsers => {
+        let isFollowing = false;
+        const newUsers = prevUsers.map(user => {
+            // Update current user's following list
+            if (user.id === currentUserId) {
+                if (user.following.includes(targetUserId)) {
+                    isFollowing = true;
+                    return { ...user, following: user.following.filter(id => id !== targetUserId) };
+                } else {
+                    isFollowing = false;
+                    return { ...user, following: [...user.following, targetUserId] };
+                }
+            }
+            // Update target user's followers list
+            if (user.id === targetUserId) {
+                if (user.followers.includes(currentUserId)) {
+                    return { ...user, followers: user.followers.filter(id => id !== currentUserId) };
+                } else {
+                    return { ...user, followers: [...user.followers, currentUserId] };
+                }
+            }
+            return user;
+        });
+        toast({
+            title: isFollowing ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
+            description: `Anda sekarang ${isFollowing ? 'tidak lagi' : ''} mengikuti pengguna ini.`,
+        });
+        return newUsers;
+    });
+}, [toast]);
+
+
+  return { entries, users, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, toggleFollow, isLoaded };
 }
