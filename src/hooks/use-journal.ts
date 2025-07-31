@@ -17,6 +17,8 @@ export type JournalEntry = {
   createdAt: string;
   updatedAt: string;
   comments: Comment[];
+  likes: number;
+  likedBy: string[];
 };
 
 const initialEntries: JournalEntry[] = [
@@ -29,6 +31,8 @@ const initialEntries: JournalEntry[] = [
       comments: [
         { id: 'c1', author: 'KindStranger', content: 'What a wonderful start!', createdAt: new Date().toISOString() }
       ],
+      likes: 10,
+      likedBy: ['another-user-456'],
     },
     {
       id: '2',
@@ -37,6 +41,8 @@ const initialEntries: JournalEntry[] = [
       createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       comments: [],
+      likes: 5,
+      likedBy: ['user-123'],
     },
      {
       id: '3',
@@ -45,6 +51,8 @@ const initialEntries: JournalEntry[] = [
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       comments: [],
+      likes: 2,
+      likedBy: [],
     },
 ];
 
@@ -67,7 +75,15 @@ export function useJournal() {
     try {
       const storedEntries = localStorage.getItem('moodlink-entries');
       if (storedEntries) {
-        setEntries(JSON.parse(storedEntries));
+        const parsedEntries = JSON.parse(storedEntries);
+        // Ensure all entries have the new properties
+        const migratedEntries = parsedEntries.map((e: Partial<JournalEntry>) => ({
+          ...e,
+          likes: e.likes ?? 0,
+          likedBy: e.likedBy ?? [],
+          comments: e.comments ?? []
+        }));
+        setEntries(migratedEntries);
       } else {
         setEntries(initialEntries);
       }
@@ -104,6 +120,8 @@ export function useJournal() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       comments: [],
+      likes: 0,
+      likedBy: [],
     };
     setEntries(prev => [newEntry, ...prev]);
     toast({
@@ -164,5 +182,28 @@ export function useJournal() {
 
   }, [toast]);
 
-  return { entries, addEntry, updateEntry, deleteEntry, addComment, isLoaded };
+  const toggleLike = useCallback((entryId: string) => {
+    const currentUserId = getCurrentUserId();
+    setEntries(prev => prev.map(entry => {
+        if (entry.id === entryId) {
+            const isLiked = entry.likedBy.includes(currentUserId);
+            if (isLiked) {
+                return {
+                    ...entry,
+                    likes: entry.likes - 1,
+                    likedBy: entry.likedBy.filter(id => id !== currentUserId)
+                };
+            } else {
+                return {
+                    ...entry,
+                    likes: entry.likes + 1,
+                    likedBy: [...entry.likedBy, currentUserId]
+                };
+            }
+        }
+        return entry;
+    }));
+  }, []);
+
+  return { entries, addEntry, updateEntry, deleteEntry, addComment, toggleLike, isLoaded };
 }

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
@@ -12,6 +12,8 @@ import { ThemeToggle } from './theme-toggle';
 import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { SupportBar } from './support-bar';
+import { Separator } from './ui/separator';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -53,7 +55,7 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.3 }}
     >
-        <Card onClick={onSelect} className="cursor-pointer h-full flex flex-col hover:border-primary transition-colors duration-200 relative group">
+        <Card className="cursor-pointer h-full flex flex-col hover:border-primary transition-colors duration-200 relative group" onClick={onSelect}>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
@@ -90,6 +92,10 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
             <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground line-clamp-3">{excerpt}</p>
             </CardContent>
+            <Separator className="my-2" />
+            <CardFooter className="p-2 pt-0">
+                <SupportBar entry={entry} onCommentClick={onSelect} />
+            </CardFooter>
         </Card>
     </motion.div>
   );

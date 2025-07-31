@@ -10,9 +10,9 @@ import {
   Send,
   LoaderCircle
 } from 'lucide-react';
-import { useJournal, type JournalEntry, type Comment, getCurrentUserId } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ThemeToggle } from './theme-toggle';
@@ -22,6 +22,7 @@ import { Skeleton } from './ui/skeleton';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
+import { SupportBar } from './support-bar';
 
 function CommentSection({ entryId }: { entryId: string }) {
     const { entries, addComment, isLoaded } = useJournal();
@@ -268,6 +269,14 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
                   readOnly={!isOwner && !!activeEntry}
                 />
               </CardContent>
+               {activeEntry && (
+                <>
+                    <Separator className="mt-4" />
+                    <CardFooter className="p-4">
+                        <SupportBar entry={activeEntry} />
+                    </CardFooter>
+                </>
+                )}
             </Card>
             {selectedEntryId && <CommentSection entryId={selectedEntryId} />}
             </>
