@@ -84,20 +84,17 @@ export default function Home() {
   };
 
   const renderContent = () => {
+    if (isEditing) {
+      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} />;
+    }
+
     switch (activeTab) {
       case 'Home':
-        if(isEditing){
-          return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} />;
-        }
         return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
       case 'Grup':
         return <GroupListPage />;
-      case 'Saved':
-        return <BookmarkPage onSelectEntry={handleSelectEntry} />;
-      case 'Leaderboard':
-        return <LeaderboardPage />;
       case 'Profile':
-        return <ProfilePage />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         return <SettingsPage />;
       default:

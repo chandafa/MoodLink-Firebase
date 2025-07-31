@@ -1,13 +1,11 @@
 'use client';
-import { Home, Users, User, Settings, Bookmark, Trophy } from 'lucide-react';
+import { Home, Users, User, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { name: 'Home', icon: Home },
   { name: 'Grup', icon: Users },
-  { name: 'Saved', icon: Bookmark },
-  { name: 'Leaderboard', icon: Trophy },
   { name: 'Profile', icon: User },
   { name: 'Settings', icon: Settings },
 ];

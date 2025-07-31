@@ -22,6 +22,10 @@ import { Icons } from './icons';
 import { getCurrentUserId, useJournal, User } from '@/hooks/use-journal';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BookmarkPage } from './bookmark-page';
+import { LeaderboardPage } from './leaderboard-page';
+import { User as UserIcon, Bookmark, Trophy } from 'lucide-react';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters.').max(50, 'Name must be at most 50 characters.'),
@@ -32,11 +36,8 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-export default function ProfilePage() {
+function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUpdate: (user: User) => void; }) {
   const { toast } = useToast();
-  const { users, isLoaded } = useJournal();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -45,29 +46,23 @@ export default function ProfilePage() {
       avatar: '👤',
     },
   });
-
+  
   useEffect(() => {
-    if (isLoaded) {
-        const currentUserId = getCurrentUserId();
-        const user = users.find(u => u.id === currentUserId) || null;
-        setCurrentUser(user);
-        if (user) {
-            form.reset({
-                displayName: user.displayName,
-                bio: user.bio,
-                avatar: user.avatar,
-            });
-        }
+    if (currentUser) {
+        form.reset({
+            displayName: currentUser.displayName,
+            bio: currentUser.bio,
+            avatar: currentUser.avatar,
+        });
     }
-  }, [isLoaded, users, form]);
+  }, [currentUser, form]);
+
 
   const onSubmit = (data: ProfileFormValues) => {
     localStorage.setItem('moodlink-profile', JSON.stringify(data));
     if (currentUser) {
-        // This is a mock update. In a real app, you'd call an update function from the hook.
         const updatedUser = { ...currentUser, ...data };
-        setCurrentUser(updatedUser); 
-        // In a real implementation, the hook would handle updating localStorage for the users array.
+        onUpdate(updatedUser); 
     }
     toast({
       title: 'Profile Updated',
@@ -80,17 +75,8 @@ export default function ProfilePage() {
   const pointsToNextLevel = currentUser ? POINTS_PER_LEVEL - (currentUser.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
   const progressToNextLevel = currentUser ? (currentUser.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100 : 0;
 
-
   return (
-    <div className="container mx-auto max-w-2xl py-8 px-4">
-      <header className="flex items-center gap-3 mb-8">
-        <Icons.logo className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold font-headline text-foreground">
-          Profile
-        </h1>
-      </header>
-
-      <Card>
+     <Card>
         <CardHeader>
           <div className="flex flex-col items-center sm:flex-row gap-6">
             <Avatar style={{ height: '8rem', width: '8rem' }}>
@@ -181,6 +167,56 @@ export default function ProfilePage() {
           </Form>
         </CardContent>
       </Card>
+  )
+}
+
+export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
+  const { users, isLoaded } = useJournal();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+        const currentUserId = getCurrentUserId();
+        const user = users.find(u => u.id === currentUserId) || null;
+        setCurrentUser(user);
+    }
+  }, [isLoaded, users]);
+  
+  const handleUpdateUser = (updatedUser: User) => {
+      setCurrentUser(updatedUser);
+      // In a real hook, this would call a function to update the user in the global state/DB
+  }
+
+  return (
+    <div className="container mx-auto max-w-4xl py-8 px-4">
+      <header className="flex items-center gap-3 mb-8">
+        <Icons.logo className="h-8 w-8 text-primary" />
+        <h1 className="text-3xl font-bold font-headline text-foreground">
+          Profil & Lainnya
+        </h1>
+      </header>
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="profile">
+                <UserIcon className="mr-2 h-4 w-4" /> Profil
+            </TabsTrigger>
+            <TabsTrigger value="bookmarks">
+                <Bookmark className="mr-2 h-4 w-4" /> Tersimpan
+            </TabsTrigger>
+            <TabsTrigger value="leaderboard">
+                <Trophy className="mr-2 h-4 w-4" /> Peringkat
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile" className="mt-6">
+            <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} />
+          </TabsContent>
+          <TabsContent value="bookmarks" className="mt-6">
+            <BookmarkPage onSelectEntry={onSelectEntry} />
+          </TabsContent>
+          <TabsContent value="leaderboard" className="mt-6">
+            <LeaderboardPage />
+          </TabsContent>
+        </Tabs>
     </div>
   );
 }
