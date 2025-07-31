@@ -16,6 +16,7 @@ import {
   X,
   Vote,
   Type,
+  Hourglass,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User } from '@/hooks/use-journal';
@@ -245,18 +246,13 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
 
 
   const handleSave = async () => {
-    const imagesToUpload = images.filter(img => img.startsWith('data:image'));
-    const existingImageUrls = images.filter(img => !img.startsWith('data:image'));
-    // In a real app, you'd handle deletion of images from storage if they were removed from the `existingImageUrls` array.
-
     if (activeEntry) {
       if(isOwner) {
-         // For simplicity, we are not handling image updates in this flow, only adding new ones if needed.
          await updateEntry(activeEntry.id, editorContent, images, voteOptions);
       }
     } else {
        let optionsForEntry = postType === 'voting' ? voteOptions.filter(o => o.trim() !== '') : [];
-       const newEntry = await addEntry(editorContent, imagesToUpload, postType, optionsForEntry);
+       const newEntry = await addEntry(editorContent, images, postType, optionsForEntry);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -383,10 +379,17 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                      <Button variant={postType === 'voting' ? 'default' : 'outline'} onClick={() => setPostType('voting')}>
                        <Vote className="mr-2 h-4 w-4" />Voting
                      </Button>
+                     <Button variant={postType === 'capsule' ? 'default' : 'outline'} onClick={() => setPostType('capsule')}>
+                       <Hourglass className="mr-2 h-4 w-4" />Kapsul
+                     </Button>
                    </div>
                  )}
                 <Textarea
-                  placeholder={postType === 'journal' ? "Mulai menulis jurnal..." : "Tulis pertanyaan voting..."}
+                  placeholder={
+                    postType === 'journal' ? "Mulai menulis jurnal..." :
+                    postType === 'voting' ? "Tulis pertanyaan voting..." :
+                    "Tulis pesan untuk masa depan..."
+                  }
                   className="flex-1 text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
                   value={editorContent}
                   onChange={e => setEditorContent(e.target.value)}
@@ -412,10 +415,19 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                         </Button>
                     </div>
                 )}
+                 { (isOwner || !activeEntry) && postType === 'capsule' && (
+                    <div className="mt-4 p-4 bg-accent rounded-lg text-accent-foreground">
+                        <div className="flex items-center gap-2">
+                           <Hourglass className="h-5 w-5" />
+                           <p className="font-semibold">Ini adalah Kapsul Waktu.</p>
+                        </div>
+                        <p className="text-sm mt-1">Postingan ini akan disegel dan baru bisa dibuka dalam 30 hari.</p>
+                    </div>
+                )}
                 
                 { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
 
-                 { (isOwner || !activeEntry) && (
+                 { (isOwner || !activeEntry) && postType !== 'capsule' && (
                   <div className="pt-4 mt-auto">
                     <div className={cn("grid gap-2", images.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
                         {images.map((img, index) => (
@@ -454,7 +466,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                   </div>
                 )}
               </CardContent>
-               {activeEntry && (
+               {activeEntry && activeEntry.postType !== 'capsule' && (
                 <>
                     <Separator className="mt-4" />
                     <CardFooter className="p-4">
@@ -463,7 +475,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                 </>
                 )}
             </Card>
-            {selectedEntryId && activeEntry && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} />}
+            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} />}
             </>
           )}
         </main>

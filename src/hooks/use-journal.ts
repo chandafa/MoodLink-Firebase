@@ -23,9 +23,11 @@ import {
   arrayRemove,
   writeBatch,
   orderBy,
+  Timestamp,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { addDays } from 'date-fns';
 
 // Types remain mostly the same, but createdAt/updatedAt will be handled by Firestore Timestamps
 export type Comment = {
@@ -48,7 +50,7 @@ export type User = {
   level: number;
 };
 
-export type PostType = 'journal' | 'voting';
+export type PostType = 'journal' | 'voting' | 'capsule';
 
 export type VoteOption = {
   text: string;
@@ -62,6 +64,7 @@ export type JournalEntry = {
   content: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
+  openAt: any; // Firestore Timestamp, for capsules
   commentCount: number;
   likes: number;
   likedBy: string[];
@@ -167,6 +170,7 @@ export function useJournal() {
         
         // Asynchronously fetch comment counts
         entriesData.forEach(async (entry) => {
+            if (entry.postType === 'capsule') return;
             const count = await getCommentCount(entry.id);
             setEntries(prevEntries => 
                 prevEntries.map(e => e.id === entry.id ? { ...e, commentCount: count } : e)
@@ -227,17 +231,17 @@ export function useJournal() {
     }
 
     try {
-      // 1. Upload images to Firebase Storage
-      const imageUrls = await Promise.all(
+      // 1. Upload images to Firebase Storage (if any, and not for capsules)
+      const imageUrls = postType !== 'capsule' ? await Promise.all(
           images.map(async (base64Image) => {
               const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
               const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
               return getDownloadURL(uploadResult.ref);
           })
-      );
+      ) : [];
 
       // 2. Add new journal document to Firestore
-      const newEntryData = {
+      const newEntryData: any = {
         ownerId: currentAuthUser.uid,
         content,
         postType,
@@ -250,10 +254,17 @@ export function useJournal() {
         options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
         votedBy: [],
       };
+
+      if (postType === 'capsule') {
+          const openDate = addDays(new Date(), 30);
+          newEntryData.openAt = Timestamp.fromDate(openDate);
+          toast({ title: 'Kapsul Waktu Disegel', description: 'Kapsul Anda akan terbuka dalam 30 hari.' });
+      } else {
+          toast({ title: 'Postingan Tersimpan', description: 'Postingan baru Anda telah disimpan.' });
+      }
       
       const docRef = await addDoc(collection(db, 'journals'), newEntryData);
-      await addPoints(currentAuthUser.uid, 5); // +5 points
-      toast({ title: 'Postingan Tersimpan', description: 'Postingan baru Anda telah disimpan.' });
+      await addPoints(currentAuthUser.uid, 5); // +5 points for any post
       // The onSnapshot listener will automatically update the UI.
       return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
 
@@ -268,19 +279,25 @@ export function useJournal() {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
+    const docSnap = await getDoc(entryRef);
+    if (!docSnap.exists()) {
+        toast({ title: 'Error', description: 'Postingan tidak ditemukan.', variant: 'destructive'});
+        return;
+    }
+    const postType = docSnap.data().postType;
 
     // Separate new base64 images from existing URLs
     const newImagesBase64 = images.filter(img => img.startsWith('data:image'));
     const existingImageUrls = images.filter(img => !img.startsWith('data:image'));
 
     // Upload new images to Firebase Storage
-    const newImageUrls = await Promise.all(
+    const newImageUrls = postType !== 'capsule' ? await Promise.all(
         newImagesBase64.map(async (base64Image) => {
             const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
             const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
             return getDownloadURL(uploadResult.ref);
         })
-    );
+    ) : [];
 
     const allImageUrls = [...existingImageUrls, ...newImageUrls];
     
@@ -290,9 +307,8 @@ export function useJournal() {
       updatedAt: serverTimestamp(),
     };
 
-    if (options.length > 0) {
-      const entrySnap = await getDoc(entryRef);
-      const entry = entrySnap.data() as JournalEntry;
+    if (postType === 'voting' && options.length > 0) {
+      const entry = docSnap.data() as JournalEntry;
       updateData.options = options.map((optText, index) => ({
         text: optText,
         votes: entry.options[index]?.votes || 0,

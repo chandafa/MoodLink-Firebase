@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
-import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark, Vote } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark, Vote, Hourglass } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -210,7 +210,7 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
 
   const filteredEntries = useMemo(() => {
     return entries
-      .filter(entry => entry.content.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter(entry => entry.content.toLowerCase().includes(searchTerm.toLowerCase()) && entry.postType !== 'capsule')
       .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
   }, [entries, searchTerm]);
 
@@ -267,6 +267,10 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
                            <DropdownMenuItem onClick={() => onNewPost('voting')}>
                                <Vote className="mr-2 h-4 w-4" />
                                <span>Voting</span>
+                           </DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => onNewPost('capsule')}>
+                               <Hourglass className="mr-2 h-4 w-4" />
+                               <span>Kapsul Waktu</span>
                            </DropdownMenuItem>
                         </DropdownMenuGroup>
                     </DropdownMenuContent>

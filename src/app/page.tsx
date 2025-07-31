@@ -10,6 +10,7 @@ import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { PostType } from '@/hooks/use-journal';
+import { CapsulePage } from '@/components/capsule-page';
 
 function SplashScreen() {
   return (
@@ -90,6 +91,8 @@ export default function Home() {
         return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
       case 'Grup':
         return <GroupListPage />;
+      case 'Capsule':
+        return <CapsulePage onSelectEntry={handleSelectEntry} />;
       case 'Profile':
         return <ProfilePage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
@@ -116,7 +119,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Grup' && !isEditing && <HelpChatbot />}
+          {activeTab !== 'Grup' && !isEditing && activeTab !== 'Capsule' && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}

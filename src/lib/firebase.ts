@@ -19,6 +19,7 @@ import {
   arrayRemove,
   writeBatch,
   orderBy,
+  Timestamp,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -59,5 +60,6 @@ export {
     arrayUnion,
     arrayRemove,
     writeBatch,
-    orderBy
+    orderBy,
+    Timestamp,
 };
