@@ -226,36 +226,37 @@ export function useJournal() {
       return null;
     }
 
-    // 1. Upload images to Firebase Storage
-    const imageUrls = await Promise.all(
-        images.map(async (base64Image) => {
-            const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
-            const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
-            return getDownloadURL(uploadResult.ref);
-        })
-    );
-
-    // 2. Add new journal document to Firestore
-    const newEntryData = {
-      ownerId: currentAuthUser.uid,
-      content,
-      postType,
-      images: imageUrls,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      likes: 0,
-      likedBy: [],
-      bookmarkedBy: [],
-      options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
-      votedBy: [],
-    };
-    
     try {
-        const docRef = await addDoc(collection(db, 'journals'), newEntryData);
-        await addPoints(currentAuthUser.uid, 5); // +5 points
-        toast({ title: 'Postingan Tersimpan', description: 'Postingan baru Anda telah disimpan.' });
-        // The onSnapshot listener will automatically update the UI.
-        return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
+      // 1. Upload images to Firebase Storage
+      const imageUrls = await Promise.all(
+          images.map(async (base64Image) => {
+              const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
+              const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
+              return getDownloadURL(uploadResult.ref);
+          })
+      );
+
+      // 2. Add new journal document to Firestore
+      const newEntryData = {
+        ownerId: currentAuthUser.uid,
+        content,
+        postType,
+        images: imageUrls,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        likes: 0,
+        likedBy: [],
+        bookmarkedBy: [],
+        options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
+        votedBy: [],
+      };
+      
+      const docRef = await addDoc(collection(db, 'journals'), newEntryData);
+      await addPoints(currentAuthUser.uid, 5); // +5 points
+      toast({ title: 'Postingan Tersimpan', description: 'Postingan baru Anda telah disimpan.' });
+      // The onSnapshot listener will automatically update the UI.
+      return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
+
     } catch (error) {
         console.error("Error adding document: ", error);
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
