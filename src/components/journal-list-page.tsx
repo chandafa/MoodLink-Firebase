@@ -9,16 +9,21 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
-import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 6;
 
 function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; }) {
   const { toast } = useToast();
+  const { toggleBookmark } = useJournal();
+  const currentUserId = getCurrentUserId();
+  const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
+  
   const formattedDate = new Date(entry.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -46,6 +51,11 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
     onSelect();
   }
 
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleBookmark(entry.id);
+  }
+
 
   return (
     <motion.div
@@ -56,34 +66,39 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
         transition={{ duration: 0.3 }}
     >
         <Card className="cursor-pointer h-full flex flex-col hover:border-primary transition-colors duration-200 relative group" onClick={onSelect}>
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    {isOwner && (
-                        <DropdownMenuItem onClick={handleEditClick}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit</span>
+            <div className="absolute top-2 right-2 z-10 flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleBookmarkClick}>
+                    <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current text-primary")} />
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        {isOwner && (
+                            <DropdownMenuItem onClick={handleEditClick}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={handleReport}>
+                            <Flag className="mr-2 h-4 w-4" />
+                            <span>Laporkan</span>
                         </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={handleReport}>
-                        <Flag className="mr-2 h-4 w-4" />
-                        <span>Laporkan</span>
-                    </DropdownMenuItem>
-                    {isOwner && (
-                        <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                             <span>Hapus</span>
-                        </DropdownMenuItem>
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        {isOwner && (
+                            <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Hapus</span>
+                            </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
             <CardHeader>
                 <CardTitle className="truncate pr-8">{title}</CardTitle>

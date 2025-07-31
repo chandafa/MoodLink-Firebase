@@ -19,6 +19,7 @@ export type JournalEntry = {
   comments: Comment[];
   likes: number;
   likedBy: string[];
+  bookmarkedBy: string[];
 };
 
 const initialEntries: JournalEntry[] = [
@@ -33,6 +34,7 @@ const initialEntries: JournalEntry[] = [
       ],
       likes: 10,
       likedBy: ['another-user-456'],
+      bookmarkedBy: ['user-123'],
     },
     {
       id: '2',
@@ -43,6 +45,7 @@ const initialEntries: JournalEntry[] = [
       comments: [],
       likes: 5,
       likedBy: ['user-123'],
+      bookmarkedBy: [],
     },
      {
       id: '3',
@@ -53,6 +56,7 @@ const initialEntries: JournalEntry[] = [
       comments: [],
       likes: 2,
       likedBy: [],
+      bookmarkedBy: ['user-123'],
     },
 ];
 
@@ -81,7 +85,8 @@ export function useJournal() {
           ...e,
           likes: e.likes ?? 0,
           likedBy: e.likedBy ?? [],
-          comments: e.comments ?? []
+          comments: e.comments ?? [],
+          bookmarkedBy: e.bookmarkedBy ?? [],
         }));
         setEntries(migratedEntries);
       } else {
@@ -122,6 +127,7 @@ export function useJournal() {
       comments: [],
       likes: 0,
       likedBy: [],
+      bookmarkedBy: [],
     };
     setEntries(prev => [newEntry, ...prev]);
     toast({
@@ -205,5 +211,28 @@ export function useJournal() {
     }));
   }, []);
 
-  return { entries, addEntry, updateEntry, deleteEntry, addComment, toggleLike, isLoaded };
+  const toggleBookmark = useCallback((entryId: string) => {
+    const currentUserId = getCurrentUserId();
+    setEntries(prev => prev.map(entry => {
+        if (entry.id === entryId) {
+            const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
+            if (isBookmarked) {
+                toast({ title: 'Bookmark dihapus'});
+                return {
+                    ...entry,
+                    bookmarkedBy: entry.bookmarkedBy.filter(id => id !== currentUserId)
+                };
+            } else {
+                toast({ title: 'Bookmark ditambah'});
+                return {
+                    ...entry,
+                    bookmarkedBy: [...entry.bookmarkedBy, currentUserId]
+                };
+            }
+        }
+        return entry;
+    }));
+  }, [toast]);
+
+  return { entries, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, isLoaded };
 }

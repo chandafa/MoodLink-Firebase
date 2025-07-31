@@ -9,6 +9,7 @@ import ChatPage from '@/components/chat-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
+import { BookmarkPage } from '@/components/bookmark-page';
 
 function SplashScreen() {
   return (
@@ -78,6 +79,8 @@ export default function Home() {
         return <JournalListPage onSelectEntry={handleSelectEntry} />;
       case 'Chat':
         return <ChatPage />;
+      case 'Saved':
+        return <BookmarkPage onSelectEntry={handleSelectEntry} />;
       case 'Profile':
         return <ProfilePage />;
       case 'Settings':

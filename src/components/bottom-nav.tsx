@@ -1,11 +1,12 @@
 'use client';
-import { Home, MessageSquare, User, Settings } from 'lucide-react';
+import { Home, MessageSquare, User, Settings, Bookmark } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { name: 'Home', icon: Home },
   { name: 'Chat', icon: MessageSquare },
+  { name: 'Saved', icon: Bookmark },
   { name: 'Profile', icon: User },
   { name: 'Settings', icon: Settings },
 ];
