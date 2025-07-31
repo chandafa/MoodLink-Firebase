@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
 import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -99,8 +100,19 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+            {entry.images && entry.images.length > 0 && (
+              <div className="relative w-full h-40">
+                <Image
+                  src={entry.images[0]}
+                  alt={title}
+                  layout="fill"
+                  objectFit="cover"
+                  className="rounded-t-lg"
+                />
+              </div>
+            )}
 
-            <CardHeader>
+            <CardHeader className={cn(entry.images && entry.images.length > 0 && "pt-4")}>
                 <CardTitle className="truncate pr-8">{title}</CardTitle>
                 <CardDescription>{formattedDate}</CardDescription>
             </CardHeader>

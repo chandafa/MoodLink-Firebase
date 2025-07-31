@@ -20,6 +20,7 @@ export type JournalEntry = {
   likes: number;
   likedBy: string[];
   bookmarkedBy: string[];
+  images: string[];
 };
 
 const initialEntries: JournalEntry[] = [
@@ -35,6 +36,7 @@ const initialEntries: JournalEntry[] = [
       likes: 10,
       likedBy: ['another-user-456'],
       bookmarkedBy: ['user-123'],
+      images: ['https://placehold.co/600x400.png?text=Reflection'],
     },
     {
       id: '2',
@@ -46,6 +48,7 @@ const initialEntries: JournalEntry[] = [
       likes: 5,
       likedBy: ['user-123'],
       bookmarkedBy: [],
+      images: [],
     },
      {
       id: '3',
@@ -57,6 +60,7 @@ const initialEntries: JournalEntry[] = [
       likes: 2,
       likedBy: [],
       bookmarkedBy: ['user-123'],
+      images: ['https://placehold.co/600x400.png?text=Nostalgia', 'https://placehold.co/600x400.png?text=Adventure'],
     },
 ];
 
@@ -87,6 +91,7 @@ export function useJournal() {
           likedBy: e.likedBy ?? [],
           comments: e.comments ?? [],
           bookmarkedBy: e.bookmarkedBy ?? [],
+          images: e.images ?? [],
         }));
         setEntries(migratedEntries);
       } else {
@@ -109,7 +114,7 @@ export function useJournal() {
     }
   }, [entries, isLoaded]);
 
-  const addEntry = useCallback((content: string) => {
+  const addEntry = useCallback((content: string, images: string[]) => {
     if (!content.trim()) {
         toast({
             title: 'Entri Kosong',
@@ -128,6 +133,7 @@ export function useJournal() {
       likes: 0,
       likedBy: [],
       bookmarkedBy: [],
+      images,
     };
     setEntries(prev => [newEntry, ...prev]);
     toast({
@@ -137,10 +143,10 @@ export function useJournal() {
     return newEntry;
   }, [toast]);
 
-  const updateEntry = useCallback((id: string, content: string) => {
+  const updateEntry = useCallback((id: string, content: string, images: string[]) => {
     setEntries(prev =>
       prev.map(entry =>
-        entry.id === id ? { ...entry, content, updatedAt: new Date().toISOString() } : entry
+        entry.id === id ? { ...entry, content, images, updatedAt: new Date().toISOString() } : entry
       )
     );
     toast({
@@ -236,12 +242,18 @@ export function useJournal() {
         });
         return newEntries;
     });
-
-    if (isBookmarkedCurrently) {
-        toast({ title: 'Bookmark dihapus' });
-    } else {
-        toast({ title: 'Bookmark ditambah' });
+    
+    // showToast must be called after the state update
+    const showToast = () => {
+        if (isBookmarkedCurrently) {
+            toast({ title: 'Bookmark dihapus' });
+        } else {
+            toast({ title: 'Bookmark ditambah' });
+        }
     }
+    
+    setTimeout(showToast, 0);
+
   }, [toast]);
 
   return { entries, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, isLoaded };

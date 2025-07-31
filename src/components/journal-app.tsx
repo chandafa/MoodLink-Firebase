@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   MessageSquare,
   Printer,
@@ -8,8 +8,11 @@ import {
   Trash2,
   ArrowLeft,
   Send,
-  LoaderCircle
+  LoaderCircle,
+  Image as ImageIcon,
+  XCircle,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -23,6 +26,8 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { SupportBar } from './support-bar';
+import { cn } from '@/lib/utils';
+
 
 function CommentSection({ entryId }: { entryId: string }) {
     const { entries, addComment, isLoaded } = useJournal();
@@ -118,6 +123,9 @@ type JournalAppProps = {
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: JournalAppProps) {
   const { entries, addEntry, updateEntry, deleteEntry, isLoaded } = useJournal();
   const [editorContent, setEditorContent] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const currentUserId = getCurrentUserId();
   
@@ -130,19 +138,43 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
   useEffect(() => {
     if (activeEntry) {
       setEditorContent(activeEntry.content);
+      setImages(activeEntry.images || []);
     } else {
       // It's a new entry, so clear the editor
       setEditorContent('');
+      setImages([]);
     }
   }, [activeEntry]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      if (images.length + e.target.files.length > 3) {
+        toast({ title: "Batas Gambar", description: "Anda hanya bisa mengunggah maksimal 3 gambar.", variant: "destructive" });
+        return;
+      }
+
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImages(prevImages => [...prevImages, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+  
+  const removeImage = (index: number) => {
+    setImages(prevImages => prevImages.filter((_, i) => i !== index));
+  };
+
 
   const handleSave = () => {
     if (activeEntry) {
       if(isOwner) {
-         updateEntry(activeEntry.id, editorContent);
+         updateEntry(activeEntry.id, editorContent, images);
       }
     } else {
-      const newEntry = addEntry(editorContent);
+      const newEntry = addEntry(editorContent, images);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -184,12 +216,14 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
             body { font-family: 'Poppins', sans-serif; line-height: 1.6; }
             h1 { color: #333; }
             p { white-space: pre-wrap; }
+            img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 1rem; }
           </style>
         </head>
         <body>
           <h1>Entri Jurnal dari ${activeEntry ? new Date(activeEntry.createdAt).toLocaleDateString() : 'MoodLink'}</h1>
           <hr />
           <p>${editorContent}</p>
+          ${images.map(img => `<img src="${img}" />`).join('')}
         </body>
       </html>
     `;
@@ -268,6 +302,44 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
                   onChange={e => setEditorContent(e.target.value)}
                   readOnly={!isOwner && !!activeEntry}
                 />
+                 { (isOwner || !activeEntry) && (
+                  <div className="pt-4 mt-auto">
+                    <div className={cn("grid gap-2", images.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
+                        {images.map((img, index) => (
+                          <div key={index} className="relative group">
+                              <Image src={img} alt={`Preview ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
+                              <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeImage(index)}>
+                                  <XCircle className="h-4 w-4" />
+                              </Button>
+                          </div>
+                        ))}
+                    </div>
+                    <Separator className="my-4" />
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={images.length >= 3}>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Tambah Gambar ({images.length}/3)
+                    </Button>
+                     <Input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        onChange={handleImageUpload} 
+                        accept="image/*" 
+                        multiple 
+                      />
+                  </div>
+                )}
+                 { (!isOwner && activeEntry && images.length > 0) && (
+                  <div className="pt-4 mt-auto">
+                    <div className={cn("grid gap-2", images.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
+                        {images.map((img, index) => (
+                          <div key={index} className="relative">
+                              <Image src={img} alt={`Image ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
                {activeEntry && (
                 <>
