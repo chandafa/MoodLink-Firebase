@@ -269,7 +269,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
                 />
               </CardContent>
             </Card>
-            {activeEntryId && <CommentSection entryId={activeEntryId} />}
+            {selectedEntryId && <CommentSection entryId={selectedEntryId} />}
             </>
           )}
         </main>
