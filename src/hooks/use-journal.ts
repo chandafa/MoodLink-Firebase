@@ -3,28 +3,60 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 
+export type Comment = {
+  id: string;
+  author: string;
+  content: string;
+  createdAt: string;
+};
+
 export type JournalEntry = {
   id: string;
+  ownerId: string;
   content: string;
   createdAt: string;
   updatedAt: string;
+  comments: Comment[];
 };
 
 const initialEntries: JournalEntry[] = [
     {
       id: '1',
+      ownerId: 'user-123', // This entry belongs to the "current user"
       content: "This is my first journal entry. It's a beautiful day to start reflecting on my thoughts. I'm excited to see where this journey takes me.",
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      comments: [
+        { id: 'c1', author: 'KindStranger', content: 'What a wonderful start!', createdAt: new Date().toISOString() }
+      ],
     },
     {
       id: '2',
+      ownerId: 'another-user-456', // This entry belongs to another user
       content: 'I had a great idea today for a new project. It involves combining my passion for painting and technology. I need to flesh out the details, but the initial concept feels very promising.',
       createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      comments: [],
+    },
+     {
+      id: '3',
+      ownerId: 'user-123',
+      content: 'Feeling a bit nostalgic today, thinking about past travels and adventures. Every memory is a treasure.',
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      comments: [],
     },
 ];
 
+// Mock current user ID. In a real app, this would come from an auth context.
+export const getCurrentUserId = () => {
+    let userId = localStorage.getItem('moodlink-user-id');
+    if (!userId) {
+        userId = 'user-123'; // Default user for demo
+        localStorage.setItem('moodlink-user-id', userId);
+    }
+    return userId;
+}
 
 export function useJournal() {
   const { toast } = useToast();
@@ -59,22 +91,24 @@ export function useJournal() {
   const addEntry = useCallback((content: string) => {
     if (!content.trim()) {
         toast({
-            title: 'Empty Entry',
-            description: "You can't save an empty journal entry.",
+            title: 'Entri Kosong',
+            description: "Anda tidak bisa menyimpan entri jurnal yang kosong.",
             variant: 'destructive',
         });
         return null;
     }
     const newEntry: JournalEntry = {
       id: Date.now().toString(),
+      ownerId: getCurrentUserId(),
       content,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      comments: [],
     };
     setEntries(prev => [newEntry, ...prev]);
     toast({
-        title: 'Entry Saved',
-        description: 'Your new journal entry has been saved.',
+        title: 'Entri Tersimpan',
+        description: 'Entri jurnal baru Anda telah disimpan.',
     });
     return newEntry;
   }, [toast]);
@@ -86,19 +120,49 @@ export function useJournal() {
       )
     );
     toast({
-        title: 'Entry Updated',
-        description: 'Your journal entry has been updated.',
+        title: 'Entri Diperbarui',
+        description: 'Entri jurnal Anda telah diperbarui.',
     });
   }, [toast]);
 
   const deleteEntry = useCallback((id: string) => {
     setEntries(prev => prev.filter(entry => entry.id !== id));
     toast({
-        title: 'Entry Deleted',
-        description: 'Your journal entry has been deleted.',
+        title: 'Entri Dihapus',
+        description: 'Entri jurnal Anda telah dihapus.',
         variant: 'destructive',
     });
   }, [toast]);
 
-  return { entries, addEntry, updateEntry, deleteEntry, isLoaded };
+  const addComment = useCallback((entryId: string, commentContent: string, author: string) => {
+    if (!commentContent.trim()) {
+      toast({
+        title: 'Komentar Kosong',
+        description: 'Komentar tidak boleh kosong.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      author: author || 'Anonim',
+      content: commentContent,
+      createdAt: new Date().toISOString()
+    };
+
+    setEntries(prev => prev.map(entry => 
+      entry.id === entryId 
+        ? { ...entry, comments: [...entry.comments, newComment] }
+        : entry
+    ));
+
+    toast({
+        title: 'Komentar Ditambahkan',
+        description: 'Komentar Anda telah dipublikasikan.'
+    });
+
+  }, [toast]);
+
+  return { entries, addEntry, updateEntry, deleteEntry, addComment, isLoaded };
 }
