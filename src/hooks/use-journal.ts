@@ -111,7 +111,16 @@ export function useJournal() {
         // User is signed out, sign them in anonymously.
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
-          toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
+           if (error.code === 'auth/configuration-not-found') {
+             toast({
+                title: 'Aksi Diperlukan',
+                description: 'Otentikasi anonim belum diaktifkan. Harap aktifkan di Firebase Console.',
+                variant: 'destructive',
+                duration: 10000,
+             });
+           } else {
+              toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
+           }
         });
       }
     });
