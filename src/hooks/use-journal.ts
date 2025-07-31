@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -263,30 +264,44 @@ export function useJournal() {
   }, [currentAuthUser, toast, addPoints]);
 
   const updateEntry = useCallback(async (id: string, content: string, images: string[], options: string[]) => {
-     if (!currentAuthUser) return;
-     
-     const entryRef = doc(db, 'journals', id);
+    if (!currentAuthUser) return;
 
-     // You might want to handle image updates (deleting old, uploading new)
-     // For simplicity, this example just updates the text content.
-     const updateData: any = {
-        content,
-        updatedAt: serverTimestamp(),
-        // images: updatedImageUrls, // Handle image updates here
-     };
+    const entryRef = doc(db, 'journals', id);
 
-     if (options.length > 0) {
-        const entrySnap = await getDoc(entryRef);
-        const entry = entrySnap.data() as JournalEntry;
-        updateData.options = options.map((optText, index) => ({
-            text: optText,
-            votes: entry.options[index]?.votes || 0,
-        }));
-     }
+    // Separate new base64 images from existing URLs
+    const newImagesBase64 = images.filter(img => img.startsWith('data:image'));
+    const existingImageUrls = images.filter(img => !img.startsWith('data:image'));
 
-     await updateDoc(entryRef, updateData);
-     toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
+    // Upload new images to Firebase Storage
+    const newImageUrls = await Promise.all(
+        newImagesBase64.map(async (base64Image) => {
+            const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
+            const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
+            return getDownloadURL(uploadResult.ref);
+        })
+    );
+
+    const allImageUrls = [...existingImageUrls, ...newImageUrls];
+    
+    const updateData: any = {
+      content,
+      images: allImageUrls,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (options.length > 0) {
+      const entrySnap = await getDoc(entryRef);
+      const entry = entrySnap.data() as JournalEntry;
+      updateData.options = options.map((optText, index) => ({
+        text: optText,
+        votes: entry.options[index]?.votes || 0,
+      }));
+    }
+
+    await updateDoc(entryRef, updateData);
+    toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
   }, [currentAuthUser, toast]);
+
 
   const deleteEntry = useCallback(async (id: string) => {
     if (!currentAuthUser) return;
