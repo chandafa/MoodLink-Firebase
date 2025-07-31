@@ -21,6 +21,7 @@ import {
   arrayUnion,
   arrayRemove,
   writeBatch,
+  orderBy,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -117,7 +118,7 @@ export function useJournal() {
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
           if (error.code === 'auth/configuration-not-found') {
-                toast({
+                 toast({
                     title: 'Authentication Disabled',
                     description: 'Anonymous authentication is not enabled. Please enable it in your Firebase console.',
                     variant: 'destructive',

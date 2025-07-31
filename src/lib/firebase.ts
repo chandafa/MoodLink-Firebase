@@ -18,6 +18,7 @@ import {
   arrayUnion,
   arrayRemove,
   writeBatch,
+  orderBy,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -57,5 +58,6 @@ export {
     runTransaction,
     arrayUnion,
     arrayRemove,
-    writeBatch
+    writeBatch,
+    orderBy
 };
