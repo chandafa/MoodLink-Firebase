@@ -330,25 +330,36 @@ export function useJournal() {
   const toggleBookmark = useCallback(async (entryId: string) => {
     if (!currentAuthUser) return;
     const entryRef = doc(db, 'journals', entryId);
-    let isBookmarkedCurrently = false;
-
-    await runTransaction(db, async (transaction) => {
-        const entryDoc = await transaction.get(entryRef);
-        if (!entryDoc.exists()) throw "Journal does not exist!";
-
-        const bookmarkedBy = entryDoc.data().bookmarkedBy || [];
-        isBookmarkedCurrently = bookmarkedBy.includes(currentAuthUser.uid);
-
-        if (isBookmarkedCurrently) {
-            transaction.update(entryRef, { bookmarkedBy: arrayRemove(currentAuthUser.uid) });
-        } else {
-            transaction.update(entryRef, { bookmarkedBy: arrayUnion(currentAuthUser.uid) });
-        }
-    });
-
-    toast({
-        title: isBookmarkedCurrently ? 'Bookmark Dihapus' : 'Bookmark Ditambah' 
-    });
+    
+    try {
+        await runTransaction(db, async (transaction) => {
+            const entryDoc = await transaction.get(entryRef);
+            if (!entryDoc.exists()) {
+                throw "Document does not exist!";
+            }
+    
+            const entryData = entryDoc.data();
+            const bookmarkedBy = entryData.bookmarkedBy || [];
+            const isBookmarked = bookmarkedBy.includes(currentAuthUser.uid);
+    
+            if (isBookmarked) {
+                // Unbookmark
+                transaction.update(entryRef, { 
+                    bookmarkedBy: arrayRemove(currentAuthUser.uid)
+                });
+                toast({ title: 'Bookmark Dihapus' });
+            } else {
+                // Bookmark
+                transaction.update(entryRef, { 
+                    bookmarkedBy: arrayUnion(currentAuthUser.uid)
+                });
+                toast({ title: 'Berhasil ditambahkan ke bookmark' });
+            }
+        });
+    } catch (error) {
+        console.error("Error toggling bookmark:", error);
+        toast({ title: 'Gagal memproses bookmark', variant: 'destructive' });
+    }
   }, [currentAuthUser, toast]);
 
     const toggleFollow = useCallback(async (targetUserId: string) => {
@@ -465,3 +476,43 @@ export function useComments(entryId: string) {
 
     return { comments, isLoading };
 }
+
+// Hook for adding a comment
+// This is now moved into the main useJournal hook to avoid dependency issues
+/*
+export function useAddComment() {
+    const { toast } = useToast();
+    const { addPoints } = useJournal(); // This will create a new instance, which is problematic
+
+    const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string) => {
+        if (!commentContent.trim()) {
+            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
+            return;
+        }
+        
+        const commentData = {
+            authorId: author.id,
+            authorName: author.displayName,
+            authorAvatar: author.avatar,
+            content: commentContent,
+            createdAt: serverTimestamp(),
+        };
+
+        const commentsRef = collection(db, 'journals', entryId, 'comments');
+        await addDoc(commentsRef, commentData);
+        
+        // Add points to the original poster if the commenter is someone else
+        if (author.id !== entryOwnerId) {
+           // This is tricky from client, a cloud function is better.
+           // For now, let's call addPoints but acknowledge it's not transactional here.
+           await addPoints(entryOwnerId, 2);
+        }
+
+        toast({ title: 'Komentar ditambahkan' });
+    }, [toast, addPoints]);
+
+    return { addComment };
+}
+*/
+
+    
