@@ -8,6 +8,7 @@ import { Icons } from '@/components/icons';
 import ChatPage from '@/components/chat-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
+import { JournalListPage } from '@/components/journal-list-page';
 
 function SplashScreen() {
   return (
@@ -48,6 +49,8 @@ function SplashScreen() {
 export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -56,10 +59,23 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleSelectEntry = (id: string | null) => {
+    setSelectedEntryId(id);
+    setIsEditing(true);
+  };
+  
+  const handleBackToList = () => {
+    setIsEditing(false);
+    setSelectedEntryId(null);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Home':
-        return <JournalApp />;
+        if(isEditing){
+          return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} />;
+        }
+        return <JournalListPage onSelectEntry={handleSelectEntry} />;
       case 'Chat':
         return <ChatPage />;
       case 'Profile':
@@ -67,7 +83,7 @@ export default function Home() {
       case 'Settings':
         return <SettingsPage />;
       default:
-        return <JournalApp />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} />;
     }
   };
 
@@ -88,7 +104,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Chat' && <HelpChatbot />}
+          {activeTab !== 'Chat' && !isEditing && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}

@@ -8,6 +8,7 @@ import {
   Search,
   Trash2,
   Save,
+  ArrowLeft
 } from 'lucide-react';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
@@ -71,14 +72,18 @@ function EntryCard({
   );
 }
 
-export function JournalApp() {
+type JournalAppProps = {
+  selectedEntryId: string | null;
+  onBack: () => void;
+  setSelectedEntryId: (id: string | null) => void;
+}
+
+export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: JournalAppProps) {
   const { entries, addEntry, updateEntry, deleteEntry, isLoaded } =
     useJournal();
-  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [editorContent, setEditorContent] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSidebarVisible, setSidebarVisible] = useState(true);
-
+  
+  const activeEntryId = selectedEntryId;
 
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === activeEntryId) || null;
@@ -87,20 +92,10 @@ export function JournalApp() {
   useEffect(() => {
     if (activeEntry) {
       setEditorContent(activeEntry.content);
-      if (window.innerWidth < 768) { // md breakpoint
-        setSidebarVisible(false);
-      }
     } else {
       setEditorContent('');
     }
   }, [activeEntry]);
-
-  useEffect(() => {
-    // Select first entry if none is selected and entries are loaded
-    if (isLoaded && !activeEntryId && entries.length > 0) {
-      setActiveEntryId(entries[0].id);
-    }
-  }, [isLoaded, entries, activeEntryId]);
 
   const handleSave = () => {
     if (activeEntry) {
@@ -108,35 +103,33 @@ export function JournalApp() {
     } else {
       const newEntry = addEntry(editorContent);
       if(newEntry) {
-        setActiveEntryId(newEntry.id);
+        setSelectedEntryId(newEntry.id);
       }
     }
   };
 
-  const handleNewEntry = () => {
-    setActiveEntryId(null);
-    setEditorContent('');
-    if (window.innerWidth < 768) {
-      setSidebarVisible(false);
-    }
-  };
+  const sortedEntries = useMemo(() => {
+    return [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [entries]);
   
   const handleDelete = () => {
     if (activeEntry) {
       const entryIndex = sortedEntries.findIndex(e => e.id === activeEntryId);
       deleteEntry(activeEntry.id);
       
-      // Select the next entry or the previous one
       if (sortedEntries.length > 1) {
+        let nextEntryId: string | null = null;
         if (entryIndex < sortedEntries.length - 1) {
-          setActiveEntryId(sortedEntries[entryIndex + 1].id);
+            nextEntryId = sortedEntries[entryIndex + 1].id;
         } else if (entryIndex > 0) {
-          setActiveEntryId(sortedEntries[entryIndex - 1].id);
-        } else {
-          setActiveEntryId(null);
+            nextEntryId = sortedEntries[entryIndex - 1].id;
+        }
+        setSelectedEntryId(nextEntryId);
+        if (sortedEntries.length <= 1) {
+          onBack();
         }
       } else {
-        setActiveEntryId(null);
+        onBack();
       }
     }
   };
@@ -168,92 +161,30 @@ export function JournalApp() {
   };
 
 
-  const filteredEntries = useMemo(() => {
-    return entries.filter(entry =>
-      entry.content.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [entries, searchTerm]);
-  
-  const sortedEntries = useMemo(() => {
-    return [...filteredEntries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [filteredEntries]);
-
-  const handleSelectEntry = (id: string) => {
-    setActiveEntryId(id);
-    if(window.innerWidth < 768) {
-      setSidebarVisible(false);
-    }
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
+            <Button onClick={onBack} size="icon" variant="ghost" className="mr-2">
+                <ArrowLeft />
+            </Button>
           <Icons.logo className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold font-headline text-foreground">
-            MoodLink
+            {activeEntry ? 'Edit Entry' : 'New Entry'}
           </h1>
         </div>
         <div className="hidden md:flex items-center gap-2">
           <ThemeToggle />
         </div>
-        <div className="md:hidden">
-          <Button onClick={() => setSidebarVisible(true)} size="icon" variant="ghost">
-            <BookText />
-          </Button>
-        </div>
       </header>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4">
-        <aside className={`md:col-span-1 xl:col-span-1 border-r flex flex-col transition-transform transform ${isSidebarVisible ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-0 bg-background z-30 md:z-0`}>
-          <div className="p-4 space-y-4">
-            <div className="flex items-center gap-2">
-                <Button onClick={() => setSidebarVisible(false)} size="icon" variant="ghost" className="md:hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </Button>
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                        placeholder="Search entries..."
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
-            <Button onClick={handleNewEntry} className="w-full" size="lg">
-              <FilePlus className="mr-2 h-5 w-5" />
-              New Entry
-            </Button>
-          </div>
-          <Separator />
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-3">
-              {!isLoaded ? (
-                Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
-              ) : sortedEntries.length > 0 ? (
-                sortedEntries.map(entry => (
-                  <EntryCard
-                    key={entry.id}
-                    entry={entry}
-                    isActive={entry.id === activeEntryId}
-                    onClick={() => handleSelectEntry(entry.id)}
-                  />
-                ))
-              ) : (
-                <p className="text-center text-muted-foreground p-4">No entries found.</p>
-              )}
-            </div>
-          </ScrollArea>
-        </aside>
-
-        <main className={`md:col-span-2 xl:col-span-3 p-4 md:p-6 flex flex-col transition-opacity ${!isSidebarVisible ? 'opacity-100' : 'opacity-50 md:opacity-100'}`}>
-          { !isLoaded && entries.length === 0 ? (
+      <main className="flex-1 p-4 md:p-6 flex flex-col">
+          { !isLoaded && !activeEntry ? (
              <Card className="flex-1 flex flex-col">
                 <CardHeader> <Skeleton className="h-8 w-48" /> </CardHeader>
                 <CardContent className="flex-1"> <Skeleton className="h-full w-full" /> </CardContent>
              </Card>
-          ) : entries.length > 0 || activeEntryId === null ? (
+          ) : (
             <Card className="flex-1 flex flex-col shadow-lg">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -292,11 +223,8 @@ export function JournalApp() {
                 />
               </CardContent>
             </Card>
-          ) : (
-            <EmptyState />
           )}
         </main>
-      </div>
     </div>
   );
 }
