@@ -17,10 +17,12 @@ export default function PublicProfilePage({
   userId,
   onBack,
   onSelectEntry,
+  onStartChat,
 }: {
   userId: string;
   onBack: () => void;
   onSelectEntry: (id: string | null) => void;
+  onStartChat: (user: User) => void;
 }) {
   const { users, isLoaded, currentUser, toggleFollow, getUserEntries } = useJournal();
 
@@ -43,6 +45,12 @@ export default function PublicProfilePage({
       toggleFollow(userProfile.id);
     }
   };
+  
+  const handleStartChat = () => {
+      if (userProfile) {
+          onStartChat(userProfile);
+      }
+  }
 
   const pointsToNextLevel = userProfile ? POINTS_PER_LEVEL - (userProfile.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
   const progressToNextLevel = userProfile ? (userProfile.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100 : 0;
@@ -136,7 +144,7 @@ export default function PublicProfilePage({
                     <UserPlus className="mr-2 h-4 w-4" />
                     {isFollowing ? 'Diikuti' : 'Ikuti'}
                 </Button>
-                 <Button variant="outline" className="w-full sm:w-auto">
+                 <Button variant="outline" className="w-full sm:w-auto" onClick={handleStartChat}>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Kirim Pesan
                 </Button>

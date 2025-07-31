@@ -8,12 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GroupListPage } from './group-list-page';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournal, User } from '@/hooks/use-journal';
 import { Separator } from './ui/separator';
 
-export function MessagesPage() {
+type MessagesPageProps = {
+  onStartChat: (user: User) => void;
+}
+
+export function MessagesPage({ onStartChat }: MessagesPageProps) {
   const [view, setView] = useState<'main' | 'groups'>('main');
-  const { currentUser } = useJournal();
+  const { currentUser, users } = useJournal();
 
   // Dummy data for active conversations
   const conversations = [
@@ -36,6 +40,10 @@ export function MessagesPage() {
         </AnimatePresence>
     )
   }
+  
+  // A dummy user to test chat with
+  const otherUser = users.find(u => u.id !== currentUser?.id);
+
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -81,6 +89,21 @@ export function MessagesPage() {
                             </div>
                         </div>
                     </li>
+                    {otherUser && (
+                        <li className="p-4 hover:bg-accent cursor-pointer" onClick={() => onStartChat(otherUser)}>
+                             <div className="flex items-center gap-4">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarFallback className="bg-secondary text-secondary-foreground text-xl">
+                                        {otherUser.avatar}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold">{otherUser.displayName}</p>
+                                    <p className="text-sm text-muted-foreground truncate max-w-xs">Mulai percakapan...</p>
+                                </div>
+                            </div>
+                        </li>
+                    )}
                     {conversations.map(convo => (
                         <li key={convo.id} className="p-4 hover:bg-accent cursor-pointer">
                             <div className="flex items-center gap-4">

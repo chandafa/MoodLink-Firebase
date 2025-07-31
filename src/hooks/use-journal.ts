@@ -73,6 +73,14 @@ export type JournalEntry = {
   votedBy: string[];
 };
 
+export type ChatMessage = {
+    id: string;
+    senderId: string;
+    text: string;
+    createdAt: any;
+};
+
+
 const POINTS_PER_LEVEL = 50;
 
 async function getCommentCount(journalId: string): Promise<number> {
@@ -498,8 +506,27 @@ export function useJournal() {
         return entries.filter(entry => entry.ownerId === userId);
     }, [entries]);
 
+    // --- CHAT ACTIONS ---
+    const getChatRoomId = (user1Id: string, user2Id: string) => {
+        return [user1Id, user2Id].sort().join('_');
+    };
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid };
+    const sendMessage = useCallback(async (targetUserId: string, text: string) => {
+        if (!currentAuthUser || !text.trim()) return;
+
+        const roomId = getChatRoomId(currentAuthUser.uid, targetUserId);
+        const messagesCol = collection(db, 'chats', roomId, 'messages');
+
+        await addDoc(messagesCol, {
+            text,
+            senderId: currentAuthUser.uid,
+            createdAt: serverTimestamp()
+        });
+        
+    }, [currentAuthUser]);
+
+
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage };
 }
 
 
@@ -531,4 +558,32 @@ export function useComments(entryId: string) {
     }, [entryId]);
 
     return { comments, isLoading };
+}
+
+// Hook to get chat messages for a specific room
+export function useChatMessages(roomId: string) {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!roomId) {
+            setIsLoading(false);
+            return;
+        };
+        const messagesRef = collection(db, 'chats', roomId, 'messages');
+        const q = query(messagesRef, orderBy("createdAt", "asc"));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const messagesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ChatMessage[];
+            setMessages(messagesData);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching chat messages:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [roomId]);
+
+    return { messages, isLoading };
 }

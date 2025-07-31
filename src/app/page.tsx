@@ -9,9 +9,10 @@ import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
-import { PostType } from '@/hooks/use-journal';
+import { PostType, User } from '@/hooks/use-journal';
 import { CapsulePage } from '@/components/capsule-page';
 import PublicProfilePage from '@/components/public-profile-page';
+import PrivateChatPage from '@/components/private-chat-page';
 
 function SplashScreen() {
   return (
@@ -56,6 +57,7 @@ export default function Home() {
   const [newPostType, setNewPostType] = useState<PostType>('journal');
   const [isEditing, setIsEditing] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+  const [chattingWith, setChattingWith] = useState<User | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -68,6 +70,7 @@ export default function Home() {
     setSelectedEntryId(id);
     setIsEditing(true);
     setViewingProfileId(null);
+    setChattingWith(null);
     if (id === null) {
       setNewPostType('journal'); // Default for new post
     }
@@ -78,23 +81,36 @@ export default function Home() {
     setSelectedEntryId(null);
     setIsEditing(true);
     setViewingProfileId(null);
+    setChattingWith(null);
   }
   
   const handleBackToList = () => {
     setIsEditing(false);
     setSelectedEntryId(null);
     setViewingProfileId(null);
+    setChattingWith(null);
   };
   
   const handleViewProfile = (userId: string) => {
     setViewingProfileId(userId);
     setIsEditing(false);
     setSelectedEntryId(null);
+    setChattingWith(null);
   };
 
+  const handleStartChat = (user: User) => {
+    setChattingWith(user);
+    setViewingProfileId(null);
+    setIsEditing(false);
+    setSelectedEntryId(null);
+  }
+
   const renderContent = () => {
+    if (chattingWith) {
+      return <PrivateChatPage targetUser={chattingWith} onBack={handleBackToList} />
+    }
     if (viewingProfileId) {
-      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} />;
+      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onStartChat={handleStartChat} />;
     }
     if (isEditing) {
       return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} />;
@@ -104,7 +120,7 @@ export default function Home() {
       case 'Home':
         return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
       case 'Pesan':
-        return <MessagesPage />;
+        return <MessagesPage onStartChat={handleStartChat} />;
       case 'Capsule':
         return <CapsulePage onSelectEntry={handleSelectEntry} />;
       case 'Profile':
@@ -133,7 +149,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && activeTab !== 'Capsule' && <HelpChatbot />}
+          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && activeTab !== 'Capsule' && !chattingWith && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}
