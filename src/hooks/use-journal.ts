@@ -234,6 +234,7 @@ export function useJournal() {
       // 1. Upload images to Firebase Storage (if any, and not for capsules)
       const imageUrls = postType !== 'capsule' ? await Promise.all(
           images.map(async (base64Image) => {
+              if (!base64Image.startsWith('data:image')) return base64Image; // It's already a URL
               const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
               const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
               return getDownloadURL(uploadResult.ref);

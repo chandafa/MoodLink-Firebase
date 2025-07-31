@@ -351,7 +351,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                     </Button>
                   )}
                   {!isOwner && activeEntry && (
-                    <Button onClick={() => toggleFollow(activeEntry.ownerId)} variant={isFollowing ? 'secondary' : 'default'}>
+                    <Button onClick={() => toggleFollow(activeEntry.ownerId)} variant={isFollowing ? 'secondary' : 'default'} disabled={!currentUser}>
                       <UserPlus className="mr-2 h-5 w-5" />
                       {isFollowing ? 'Diikuti' : 'Ikuti'}
                     </Button>
