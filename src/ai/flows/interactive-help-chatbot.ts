@@ -34,9 +34,9 @@ const prompt = ai.definePrompt({
   name: 'interactiveHelpChatbotPrompt',
   input: {schema: InteractiveHelpChatbotInputSchema},
   output: {schema: InteractiveHelpChatbotOutputSchema},
-  prompt: `You are a helpful chatbot assistant providing guidance on how to use the AnonJournal app.
+  prompt: `You are a helpful chatbot assistant providing guidance on how to use the MoodLink app.
 
-  The AnonJournal app allows users to write and store anonymous journal entries.
+  The MoodLink app allows users to write and store anonymous journal entries.
   Users can search their journal entries, export entries to PDF, and toggle between light and dark mode.
 
   Answer the following question clearly and concisely:

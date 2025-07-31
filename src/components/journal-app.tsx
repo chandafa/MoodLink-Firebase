@@ -77,6 +77,8 @@ export function JournalApp() {
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [editorContent, setEditorContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSidebarVisible, setSidebarVisible] = useState(true);
+
 
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === activeEntryId) || null;
@@ -85,10 +87,20 @@ export function JournalApp() {
   useEffect(() => {
     if (activeEntry) {
       setEditorContent(activeEntry.content);
+      if (window.innerWidth < 768) { // md breakpoint
+        setSidebarVisible(false);
+      }
     } else {
       setEditorContent('');
     }
   }, [activeEntry]);
+
+  useEffect(() => {
+    // Select first entry if none is selected and entries are loaded
+    if (isLoaded && !activeEntryId && entries.length > 0) {
+      setActiveEntryId(entries[0].id);
+    }
+  }, [isLoaded, entries, activeEntryId]);
 
   const handleSave = () => {
     if (activeEntry) {
@@ -104,12 +116,28 @@ export function JournalApp() {
   const handleNewEntry = () => {
     setActiveEntryId(null);
     setEditorContent('');
+    if (window.innerWidth < 768) {
+      setSidebarVisible(false);
+    }
   };
-
+  
   const handleDelete = () => {
     if (activeEntry) {
+      const entryIndex = sortedEntries.findIndex(e => e.id === activeEntryId);
       deleteEntry(activeEntry.id);
-      setActiveEntryId(null);
+      
+      // Select the next entry or the previous one
+      if (sortedEntries.length > 1) {
+        if (entryIndex < sortedEntries.length - 1) {
+          setActiveEntryId(sortedEntries[entryIndex + 1].id);
+        } else if (entryIndex > 0) {
+          setActiveEntryId(sortedEntries[entryIndex - 1].id);
+        } else {
+          setActiveEntryId(null);
+        }
+      } else {
+        setActiveEntryId(null);
+      }
     }
   };
   
@@ -119,13 +147,13 @@ export function JournalApp() {
         <head>
           <title>Journal Entry</title>
           <style>
-            body { font-family: 'PT Sans', sans-serif; line-height: 1.6; }
+            body { font-family: 'Poppins', sans-serif; line-height: 1.6; }
             h1 { color: #333; }
             p { white-space: pre-wrap; }
           </style>
         </head>
         <body>
-          <h1>Journal Entry from ${activeEntry ? new Date(activeEntry.createdAt).toLocaleDateString() : 'AnonJournal'}</h1>
+          <h1>Journal Entry from ${activeEntry ? new Date(activeEntry.createdAt).toLocaleDateString() : 'MoodLink'}</h1>
           <hr />
           <p>${editorContent}</p>
         </body>
@@ -150,29 +178,48 @@ export function JournalApp() {
     return [...filteredEntries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [filteredEntries]);
 
+  const handleSelectEntry = (id: string) => {
+    setActiveEntryId(id);
+    if(window.innerWidth < 768) {
+      setSidebarVisible(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Icons.logo className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold font-headline text-foreground">
-            AnonJournal
+            MoodLink
           </h1>
         </div>
-        <ThemeToggle />
+        <div className="hidden md:flex items-center gap-2">
+          <ThemeToggle />
+        </div>
+        <div className="md:hidden">
+          <Button onClick={() => setSidebarVisible(true)} size="icon" variant="ghost">
+            <BookText />
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4">
-        <aside className="md:col-span-1 xl:col-span-1 border-r flex flex-col">
+        <aside className={`md:col-span-1 xl:col-span-1 border-r flex flex-col transition-transform transform ${isSidebarVisible ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-0 bg-background z-30 md:z-0`}>
           <div className="p-4 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Search entries..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-2">
+                <Button onClick={() => setSidebarVisible(false)} size="icon" variant="ghost" className="md:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </Button>
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                        placeholder="Search entries..."
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
             <Button onClick={handleNewEntry} className="w-full" size="lg">
               <FilePlus className="mr-2 h-5 w-5" />
@@ -190,7 +237,7 @@ export function JournalApp() {
                     key={entry.id}
                     entry={entry}
                     isActive={entry.id === activeEntryId}
-                    onClick={() => setActiveEntryId(entry.id)}
+                    onClick={() => handleSelectEntry(entry.id)}
                   />
                 ))
               ) : (
@@ -200,7 +247,7 @@ export function JournalApp() {
           </ScrollArea>
         </aside>
 
-        <main className="md:col-span-2 xl:col-span-3 p-4 md:p-6 flex flex-col">
+        <main className={`md:col-span-2 xl:col-span-3 p-4 md:p-6 flex flex-col transition-opacity ${!isSidebarVisible ? 'opacity-100' : 'opacity-50 md:opacity-100'}`}>
           { !isLoaded && entries.length === 0 ? (
              <Card className="flex-1 flex flex-col">
                 <CardHeader> <Skeleton className="h-8 w-48" /> </CardHeader>
@@ -222,11 +269,11 @@ export function JournalApp() {
                 <div className="flex items-center gap-2">
                   <Button onClick={handleSave} size="lg">
                     <Save className="mr-2 h-5 w-5" />
-                    {activeEntry ? 'Save Changes' : 'Save Entry'}
+                    {activeEntry ? 'Save' : 'Save'}
                   </Button>
                   {activeEntry && (
                     <>
-                      <Button onClick={handlePrint} variant="outline" size="icon" aria-label="Print entry">
+                      <Button onClick={handlePrint} variant="outline" size="icon" aria-label="Print entry" className="hidden md:inline-flex">
                         <Printer className="h-5 w-5" />
                       </Button>
                       <Button onClick={handleDelete} variant="destructive" size="icon" aria-label="Delete entry">

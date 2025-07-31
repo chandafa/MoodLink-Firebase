@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem('anonjournal-theme') as Theme | null;
+    const storedTheme = localStorage.getItem('moodlink-theme') as Theme | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     if (storedTheme) {
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, []);
 
   const handleSetTheme = (newTheme: Theme) => {
-    localStorage.setItem('anonjournal-theme', newTheme);
+    localStorage.setItem('moodlink-theme', newTheme);
     setTheme(newTheme);
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(newTheme);

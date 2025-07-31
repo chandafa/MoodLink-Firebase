@@ -33,7 +33,7 @@ export function useJournal() {
 
   useEffect(() => {
     try {
-      const storedEntries = localStorage.getItem('anonjournal-entries');
+      const storedEntries = localStorage.getItem('moodlink-entries');
       if (storedEntries) {
         setEntries(JSON.parse(storedEntries));
       } else {
@@ -49,7 +49,7 @@ export function useJournal() {
   useEffect(() => {
     if (isLoaded) {
       try {
-        localStorage.setItem('anonjournal-entries', JSON.stringify(entries));
+        localStorage.setItem('moodlink-entries', JSON.stringify(entries));
       } catch (error) {
         console.error('Failed to save journal entries to localStorage', error);
       }
