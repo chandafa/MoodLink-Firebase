@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
-import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
