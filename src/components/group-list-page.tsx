@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Icons } from './icons';
-import { Users } from 'lucide-react';
+import { Users, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GroupChatPage from './chat-page';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -32,7 +31,7 @@ const dummyGroups: Group[] = [
   { id: 'musik', name: 'Pojok Musik', description: 'Bagikan dan temukan musik baru dari berbagai genre.', members: 201, emoji: '🎵', joinedBy: [] },
 ];
 
-export function GroupListPage() {
+export function GroupListPage({ onBack }: { onBack: () => void }) {
     const [groups, setGroups] = useState<Group[]>(dummyGroups);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const { currentUser } = useJournal();
@@ -80,13 +79,16 @@ export function GroupListPage() {
     
   return (
     <div className="container mx-auto py-8 px-4">
-      <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <Icons.logo className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold font-headline text-foreground">
-            Grup Mood
-          </h1>
-        </div>
+      <header className="flex items-center mb-8">
+          <Button onClick={onBack} size="icon" variant="ghost" className="mr-2">
+            <ArrowLeft />
+          </Button>
+          <div className="flex items-center gap-3">
+            <Users className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold font-headline text-foreground">
+                Grup Mood
+            </h1>
+          </div>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

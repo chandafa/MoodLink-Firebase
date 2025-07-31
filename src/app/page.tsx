@@ -5,7 +5,7 @@ import { JournalApp } from '@/components/journal-app';
 import { HelpChatbot } from '@/components/help-chatbot';
 import { BottomNav } from '@/components/bottom-nav';
 import { Icons } from '@/components/icons';
-import { GroupListPage } from '@/components/group-list-page';
+import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
@@ -89,8 +89,8 @@ export default function Home() {
     switch (activeTab) {
       case 'Home':
         return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
-      case 'Grup':
-        return <GroupListPage />;
+      case 'Pesan':
+        return <MessagesPage />;
       case 'Capsule':
         return <CapsulePage onSelectEntry={handleSelectEntry} />;
       case 'Profile':
@@ -119,7 +119,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Grup' && !isEditing && activeTab !== 'Capsule' && <HelpChatbot />}
+          {activeTab !== 'Pesan' && !isEditing && activeTab !== 'Capsule' && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}
