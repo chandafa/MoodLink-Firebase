@@ -153,7 +153,7 @@ export function useJournal() {
 
     setEntries(prev => prev.map(entry => 
       entry.id === entryId 
-        ? { ...entry, comments: [...entry.comments, newComment] }
+        ? { ...entry, comments: [...(entry.comments || []), newComment] }
         : entry
     ));
 
