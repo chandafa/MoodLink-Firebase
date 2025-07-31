@@ -125,7 +125,7 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
             onClick={handleCommentClick}
             >
             <MessageSquare className="h-4 w-4" />
-            <span className="text-xs font-semibold">{entry.comments?.length || 0}</span>
+            <span className="text-xs font-semibold">{entry.commentCount || 0}</span>
             </Button>
         </motion.div>
       )}

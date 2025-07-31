@@ -61,7 +61,7 @@ export type JournalEntry = {
   content: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
-  comments: Comment[]; // This will be a subcollection, so we might not store it directly here
+  commentCount: number;
   likes: number;
   likedBy: string[];
   bookmarkedBy: string[];
@@ -71,6 +71,12 @@ export type JournalEntry = {
 };
 
 const POINTS_PER_LEVEL = 50;
+
+async function getCommentCount(journalId: string): Promise<number> {
+    const commentsRef = collection(db, 'journals', journalId, 'comments');
+    const snapshot = await getDocs(query(commentsRef));
+    return snapshot.size;
+}
 
 export function useJournal() {
   const { toast } = useToast();
@@ -117,8 +123,8 @@ export function useJournal() {
         // User is signed out, sign them in anonymously.
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
-          if (error.code === 'auth/configuration-not-found') {
-                 toast({
+            if (error.code === 'auth/configuration-not-found') {
+                toast({
                     title: 'Authentication Disabled',
                     description: 'Anonymous authentication is not enabled. Please enable it in your Firebase console.',
                     variant: 'destructive',
@@ -151,12 +157,20 @@ export function useJournal() {
             return {
                 id: doc.id,
                 ...data,
-                // Subcollections are not fetched here, this will need adjustment in components
-                comments: [], 
+                commentCount: 0, 
             } as JournalEntry;
         });
+        
         setEntries(entriesData);
         setIsLoaded(true);
+        
+        // Asynchronously fetch comment counts
+        entriesData.forEach(async (entry) => {
+            const count = await getCommentCount(entry.id);
+            setEntries(prevEntries => 
+                prevEntries.map(e => e.id === entry.id ? { ...e, commentCount: count } : e)
+            );
+        });
     });
 
     return () => {
@@ -240,7 +254,7 @@ export function useJournal() {
         await addPoints(currentAuthUser.uid, 5); // +5 points
         toast({ title: 'Postingan Tersimpan', description: 'Postingan baru Anda telah disimpan.' });
         // The onSnapshot listener will automatically update the UI.
-        return { id: docRef.id, ...newEntryData } as JournalEntry;
+        return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
     } catch (error) {
         console.error("Error adding document: ", error);
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
@@ -369,6 +383,8 @@ export function useJournal() {
         const targetUserRef = doc(db, 'users', targetUserId);
         
         const currentUserSnap = await getDoc(currentUserRef);
+        if (!currentUserSnap.exists()) return;
+
         const currentUserData = currentUserSnap.data() as User;
         
         const isFollowing = currentUserData.following.includes(targetUserId);
@@ -379,19 +395,17 @@ export function useJournal() {
             // Unfollow
             batch.update(currentUserRef, { following: arrayRemove(targetUserId) });
             batch.update(targetUserRef, { followers: arrayRemove(currentAuthUser.uid) });
+            toast({ title: 'Berhenti Mengikuti' });
         } else {
             // Follow
             batch.update(currentUserRef, { following: arrayUnion(targetUserId) });
             batch.update(targetUserRef, { followers: arrayUnion(currentAuthUser.uid) });
             // Add points outside of batch, as it's a separate transaction logic
             addPoints(targetUserId, 2);
+            toast({ title: 'Mulai Mengikuti' });
         }
         
         await batch.commit();
-
-        toast({
-            title: isFollowing ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
-        });
     }, [currentAuthUser, toast, addPoints]);
 
     const voteOnEntry = useCallback(async (entryId: string, optionIndex: number) => {
@@ -438,6 +452,12 @@ export function useJournal() {
         if (author.id !== entryOwnerId) {
            await addPoints(entryOwnerId, 2);
         }
+        
+        setEntries(prevEntries =>
+            prevEntries.map(e =>
+                e.id === entryId ? { ...e, commentCount: e.commentCount + 1 } : e
+            )
+        );
 
         toast({ title: 'Komentar ditambahkan' });
     }, [toast, addPoints]);
@@ -476,43 +496,3 @@ export function useComments(entryId: string) {
 
     return { comments, isLoading };
 }
-
-// Hook for adding a comment
-// This is now moved into the main useJournal hook to avoid dependency issues
-/*
-export function useAddComment() {
-    const { toast } = useToast();
-    const { addPoints } = useJournal(); // This will create a new instance, which is problematic
-
-    const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string) => {
-        if (!commentContent.trim()) {
-            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
-            return;
-        }
-        
-        const commentData = {
-            authorId: author.id,
-            authorName: author.displayName,
-            authorAvatar: author.avatar,
-            content: commentContent,
-            createdAt: serverTimestamp(),
-        };
-
-        const commentsRef = collection(db, 'journals', entryId, 'comments');
-        await addDoc(commentsRef, commentData);
-        
-        // Add points to the original poster if the commenter is someone else
-        if (author.id !== entryOwnerId) {
-           // This is tricky from client, a cloud function is better.
-           // For now, let's call addPoints but acknowledge it's not transactional here.
-           await addPoints(entryOwnerId, 2);
-        }
-
-        toast({ title: 'Komentar ditambahkan' });
-    }, [toast, addPoints]);
-
-    return { addComment };
-}
-*/
-
-    
