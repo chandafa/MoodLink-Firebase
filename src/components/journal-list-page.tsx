@@ -3,25 +3,75 @@
 import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, getCurrentUserId, PostType } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
-import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark, Vote } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
+import { Progress } from './ui/progress';
+
 
 const ITEMS_PER_PAGE = 6;
 
+function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
+  const currentUserId = getCurrentUserId();
+  const hasVoted = entry.votedBy?.includes(currentUserId);
+  const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
+
+  const handleVote = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    if (!hasVoted) {
+      onVote(entry.id, index);
+    }
+  };
+  
+  if (hasVoted) {
+      return (
+          <div className="space-y-2 mt-4">
+              {entry.options.map((option, index) => {
+                  const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
+                  return (
+                      <div key={index}>
+                           <div className="flex items-center justify-between text-sm mb-1">
+                              <span>{option.text}</span>
+                              <span className="font-bold">{Math.round(percentage)}%</span>
+                           </div>
+                           <Progress value={percentage} className="h-2" />
+                      </div>
+                  )
+              })}
+          </div>
+      )
+  }
+
+  return (
+    <div className="flex flex-col space-y-2 mt-4">
+      {entry.options.map((option, index) => (
+        <Button
+          key={index}
+          variant="outline"
+          className="w-full justify-center"
+          onClick={(e) => handleVote(e, index)}
+        >
+          {option.text}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+
 function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; }) {
   const { toast } = useToast();
-  const { toggleBookmark } = useJournal();
+  const { toggleBookmark, voteOnEntry } = useJournal();
   const currentUserId = getCurrentUserId();
   const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
   
@@ -113,11 +163,19 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
             )}
 
             <CardHeader className={cn(entry.images && entry.images.length > 0 && "pt-4")}>
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    {entry.postType === 'voting' ? <Vote className="h-4 w-4" /> : <BookText className="h-4 w-4" />}
+                    <span className="text-xs font-medium uppercase">{entry.postType}</span>
+                </div>
                 <CardTitle className="truncate pr-8">{title}</CardTitle>
                 <CardDescription>{formattedDate}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground line-clamp-3">{excerpt}</p>
+                {entry.postType === 'journal' ? (
+                  <p className="text-sm text-muted-foreground line-clamp-3">{excerpt}</p>
+                ) : (
+                  <VotingSection entry={entry} onVote={voteOnEntry} />
+                )}
             </CardContent>
             <Separator className="my-2" />
             <CardFooter className="p-2 pt-0">
@@ -128,17 +186,17 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
   );
 }
 
-function EmptyState({ onNewEntryClick }: { onNewEntryClick: () => void }) {
+function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
     return (
       <div className="text-center p-8 flex flex-col items-center justify-center h-full col-span-full">
         <div className="p-4 bg-secondary rounded-full mb-4">
           <BookText className="w-16 h-16 text-primary" />
         </div>
-        <h3 className="text-xl font-semibold mb-2">Jurnal Anda kosong</h3>
+        <h3 className="text-xl font-semibold mb-2">Belum ada postingan</h3>
         <p className="text-muted-foreground mb-4">
-          Klik tombol di bawah untuk memulai entri pertama Anda.
+          Klik tombol di bawah untuk membuat postingan pertama Anda.
         </p>
-        <Button onClick={onNewEntryClick}>
+        <Button onClick={() => onNewPost('journal')}>
             <FilePlus className="mr-2" />
             Buat Entri Baru
         </Button>
@@ -146,7 +204,7 @@ function EmptyState({ onNewEntryClick }: { onNewEntryClick: () => void }) {
     );
   }
 
-export function JournalListPage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
+export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; }) {
   const { entries, deleteEntry, isLoaded } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -181,23 +239,40 @@ export function JournalListPage({ onSelectEntry }: { onSelectEntry: (id: string 
             <div className="flex items-center gap-3">
                 <Icons.logo className="h-8 w-8 text-primary" />
                 <h1 className="text-3xl font-bold font-headline text-foreground">
-                    Jurnal Saya
+                    Linimasa
                 </h1>
             </div>
             <div className="flex items-center gap-2">
                 <div className="relative flex-1 min-w-40">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                        placeholder="Cari entri..."
+                        placeholder="Cari postingan..."
                         className="pl-10"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                 <Button onClick={() => onSelectEntry(null)}>
-                    <FilePlus className="mr-2" />
-                    Entri Baru
-                </Button>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button>
+                        <FilePlus className="mr-2" />
+                        Postingan Baru
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuGroup>
+                           <DropdownMenuItem onClick={() => onNewPost('journal')}>
+                               <BookText className="mr-2 h-4 w-4" />
+                               <span>Jurnal</span>
+                           </DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => onNewPost('voting')}>
+                               <Vote className="mr-2 h-4 w-4" />
+                               <span>Voting</span>
+                           </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                 </DropdownMenu>
+
                 <div className="hidden md:flex">
                      <ThemeToggle />
                 </div>
@@ -221,7 +296,7 @@ export function JournalListPage({ onSelectEntry }: { onSelectEntry: (id: string 
                 ))}
             </div>
         ) : filteredEntries.length === 0 ? (
-            <EmptyState onNewEntryClick={() => onSelectEntry(null)} />
+            <EmptyState onNewPost={onNewPost} />
         ) : (
             <>
                 <AnimatePresence>

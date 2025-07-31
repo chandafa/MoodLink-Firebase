@@ -11,10 +11,14 @@ import {
   LoaderCircle,
   Image as ImageIcon,
   XCircle,
-  UserPlus
+  UserPlus,
+  PlusCircle,
+  X,
+  Vote,
+  Type,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, getCurrentUserId } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, getCurrentUserId, PostType } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +32,43 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { SupportBar } from './support-bar';
 import { cn } from '@/lib/utils';
+import { Progress } from './ui/progress';
+
+function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
+  const currentUserId = getCurrentUserId();
+  const hasVoted = entry.votedBy?.includes(currentUserId);
+  const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
+
+  const handleVote = (index: number) => {
+    if (!hasVoted) {
+      onVote(entry.id, index);
+    }
+  };
+
+  return (
+    <div className="space-y-3 mt-4">
+      {entry.options.map((option, index) => {
+        const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
+        return (
+          <div key={index}>
+            <Button
+              variant={hasVoted ? 'secondary' : 'outline'}
+              className="w-full justify-start h-auto"
+              onClick={() => handleVote(index)}
+              disabled={hasVoted}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span>{option.text}</span>
+                {hasVoted && <span className="text-xs font-bold">{Math.round(percentage)}%</span>}
+              </div>
+            </Button>
+            {hasVoted && <Progress value={percentage} className="h-2 mt-1" />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 
 function CommentSection({ entryId }: { entryId: string }) {
@@ -119,12 +160,15 @@ type JournalAppProps = {
   selectedEntryId: string | null;
   onBack: () => void;
   setSelectedEntryId: (id: string | null) => void;
+  newPostType: PostType;
 }
 
-export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: JournalAppProps) {
-  const { entries, users, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow } = useJournal();
+export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType }: JournalAppProps) {
+  const { entries, users, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry } = useJournal();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [postType, setPostType] = useState<PostType>('journal');
+  const [voteOptions, setVoteOptions] = useState<string[]>(['', '']);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -151,12 +195,18 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
     if (activeEntry) {
       setEditorContent(activeEntry.content);
       setImages(activeEntry.images || []);
+      setPostType(activeEntry.postType);
+      if (activeEntry.postType === 'voting') {
+        setVoteOptions(activeEntry.options.map(opt => opt.text));
+      }
     } else {
       // It's a new entry, so clear the editor
+      setPostType(newPostType);
       setEditorContent('');
       setImages([]);
+      setVoteOptions(['', '']);
     }
-  }, [activeEntry]);
+  }, [activeEntry, newPostType]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -178,15 +228,39 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
   const removeImage = (index: number) => {
     setImages(prevImages => prevImages.filter((_, i) => i !== index));
   };
+  
+  const handleOptionChange = (index: number, value: string) => {
+    const newOptions = [...voteOptions];
+    newOptions[index] = value;
+    setVoteOptions(newOptions);
+  };
+  
+  const addVoteOption = () => {
+    if(voteOptions.length < 5) {
+      setVoteOptions([...voteOptions, '']);
+    } else {
+      toast({ title: 'Batas Opsi', description: 'Maksimal 5 opsi voting.', variant: 'destructive'});
+    }
+  };
+
+  const removeVoteOption = (index: number) => {
+    if (voteOptions.length > 2) {
+      const newOptions = voteOptions.filter((_, i) => i !== index);
+      setVoteOptions(newOptions);
+    } else {
+       toast({ title: 'Opsi Minimum', description: 'Minimal harus ada 2 opsi voting.', variant: 'destructive'});
+    }
+  };
 
 
   const handleSave = () => {
     if (activeEntry) {
       if(isOwner) {
-         updateEntry(activeEntry.id, editorContent, images);
+         updateEntry(activeEntry.id, editorContent, images, voteOptions);
       }
     } else {
-      const newEntry = addEntry(editorContent, images);
+       let optionsForEntry = postType === 'voting' ? voteOptions : [];
+       const newEntry = addEntry(editorContent, images, postType, optionsForEntry);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -257,7 +331,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
             </Button>
           <Icons.logo className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold font-headline text-foreground">
-            {activeEntry ? (isOwner ? 'Edit Entri' : 'Lihat Entri') : 'Entri Baru'}
+            {activeEntry ? (isOwner ? 'Edit Post' : 'Lihat Post') : `Post ${postType} Baru`}
           </h1>
         </div>
         <div className="hidden md:flex items-center gap-2">
@@ -318,13 +392,46 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId }: Jour
                 </div>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col pt-4">
+                 { (isOwner || !activeEntry) && !activeEntry && (
+                   <div className="flex gap-2 mb-4">
+                     <Button variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
+                       <Type className="mr-2 h-4 w-4" />Jurnal
+                     </Button>
+                     <Button variant={postType === 'voting' ? 'default' : 'outline'} onClick={() => setPostType('voting')}>
+                       <Vote className="mr-2 h-4 w-4" />Voting
+                     </Button>
+                   </div>
+                 )}
                 <Textarea
-                  placeholder="Mulai menulis..."
+                  placeholder={postType === 'journal' ? "Mulai menulis jurnal..." : "Tulis pertanyaan voting..."}
                   className="flex-1 text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
                   value={editorContent}
                   onChange={e => setEditorContent(e.target.value)}
                   readOnly={!isOwner && !!activeEntry}
                 />
+                 { (isOwner || !activeEntry) && postType === 'voting' && (
+                    <div className="space-y-2 mt-4">
+                        <h3 className="text-sm font-medium">Opsi Voting</h3>
+                        {voteOptions.map((option, index) => (
+                           <div key={index} className="flex items-center gap-2">
+                               <Input 
+                                   value={option}
+                                   onChange={(e) => handleOptionChange(index, e.target.value)}
+                                   placeholder={`Opsi ${index + 1}`}
+                               />
+                               <Button variant="ghost" size="icon" onClick={() => removeVoteOption(index)}>
+                                   <X className="h-4 w-4" />
+                               </Button>
+                           </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={addVoteOption}>
+                           <PlusCircle className="mr-2 h-4 w-4" /> Tambah Opsi
+                        </Button>
+                    </div>
+                )}
+                
+                { activeEntry?.postType === 'voting' && !isOwner && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
+
                  { (isOwner || !activeEntry) && (
                   <div className="pt-4 mt-auto">
                     <div className={cn("grid gap-2", images.length > 1 ? "grid-cols-3" : "grid-cols-1")}>

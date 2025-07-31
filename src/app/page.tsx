@@ -11,6 +11,7 @@ import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { BookmarkPage } from '@/components/bookmark-page';
 import { LeaderboardPage } from '@/components/leaderboard-page';
+import { PostType } from '@/hooks/use-journal';
 
 function SplashScreen() {
   return (
@@ -52,6 +53,7 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [newPostType, setNewPostType] = useState<PostType>('journal');
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -64,7 +66,17 @@ export default function Home() {
   const handleSelectEntry = (id: string | null) => {
     setSelectedEntryId(id);
     setIsEditing(true);
+    // If it's a new post, we don't set a type, the editor will handle it
+    if(id !== null) {
+      setNewPostType('journal'); // Reset to default when editing existing
+    }
   };
+
+  const handleNewPost = (type: PostType) => {
+    setNewPostType(type);
+    setSelectedEntryId(null);
+    setIsEditing(true);
+  }
   
   const handleBackToList = () => {
     setIsEditing(false);
@@ -75,9 +87,9 @@ export default function Home() {
     switch (activeTab) {
       case 'Home':
         if(isEditing){
-          return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} />;
+          return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} />;
         }
-        return <JournalListPage onSelectEntry={handleSelectEntry} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
       case 'Grup':
         return <GroupListPage />;
       case 'Saved':
@@ -89,7 +101,7 @@ export default function Home() {
       case 'Settings':
         return <SettingsPage />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
     }
   };
 

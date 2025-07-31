@@ -21,10 +21,18 @@ export type User = {
     level: number;
 }
 
+export type PostType = 'journal' | 'voting';
+
+export type VoteOption = {
+  text: string;
+  votes: number;
+};
+
 export type JournalEntry = {
   id: string;
   ownerId: string;
-  content: string;
+  postType: PostType;
+  content: string; // For journal: content, for voting: question
   createdAt: string;
   updatedAt: string;
   comments: Comment[];
@@ -32,6 +40,9 @@ export type JournalEntry = {
   likedBy: string[];
   bookmarkedBy: string[];
   images: string[];
+  // Voting specific
+  options: VoteOption[];
+  votedBy: string[];
 };
 
 const initialUsers: User[] = [
@@ -44,6 +55,7 @@ const initialEntries: JournalEntry[] = [
     {
       id: '1',
       ownerId: 'user-123', // This entry belongs to the "current user"
+      postType: 'journal',
       content: "This is my first journal entry. It's a beautiful day to start reflecting on my thoughts. I'm excited to see where this journey takes me.",
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -54,10 +66,13 @@ const initialEntries: JournalEntry[] = [
       likedBy: ['another-user-456'],
       bookmarkedBy: ['user-123'],
       images: ['https://placehold.co/600x400.png?text=Reflection'],
+      options: [],
+      votedBy: [],
     },
     {
       id: '2',
       ownerId: 'another-user-456', // This entry belongs to another user
+      postType: 'journal',
       content: 'I had a great idea today for a new project. It involves combining my passion for painting and technology. I need to flesh out the details, but the initial concept feels very promising.',
       createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -66,18 +81,27 @@ const initialEntries: JournalEntry[] = [
       likedBy: ['user-123'],
       bookmarkedBy: [],
       images: [],
+      options: [],
+      votedBy: [],
     },
      {
       id: '3',
       ownerId: 'user-123',
-      content: 'Feeling a bit nostalgic today, thinking about past travels and adventures. Every memory is a treasure.',
+      postType: 'voting',
+      content: 'What should I learn next?',
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       comments: [],
       likes: 2,
       likedBy: [],
       bookmarkedBy: ['user-123'],
-      images: ['https://placehold.co/600x400.png?text=Nostalgia', 'https://placehold.co/600x400.png?text=Adventure'],
+      images: [],
+      options: [
+          { text: 'React Native', votes: 12 },
+          { text: 'Go (Golang)', votes: 8 },
+          { text: 'Rust', votes: 5 },
+      ],
+      votedBy: ['another-user-456'],
     },
 ];
 
@@ -101,7 +125,7 @@ export function useJournal() {
 
    const addPoints = useCallback((userId: string, amount: number) => {
     setUsers(prevUsers => {
-      return prevUsers.map(user => {
+      const newUsers = prevUsers.map(user => {
         if (user.id === userId) {
           const newPoints = user.points + amount;
           const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
@@ -112,6 +136,7 @@ export function useJournal() {
         }
         return user;
       });
+      return newUsers;
     });
   }, [toast]);
 
@@ -143,13 +168,20 @@ export function useJournal() {
       if (storedEntries) {
         const parsedEntries = JSON.parse(storedEntries);
         // Ensure all entries have the new properties
-        const migratedEntries = parsedEntries.map((e: Partial<JournalEntry>) => ({
-          ...e,
+        const migratedEntries = parsedEntries.map((e: Partial<JournalEntry>): JournalEntry => ({
+          id: e.id || '',
+          ownerId: e.ownerId || '',
+          postType: e.postType ?? 'journal',
+          content: e.content || '',
+          createdAt: e.createdAt || new Date().toISOString(),
+          updatedAt: e.updatedAt || new Date().toISOString(),
           likes: e.likes ?? 0,
           likedBy: e.likedBy ?? [],
           comments: e.comments ?? [],
           bookmarkedBy: e.bookmarkedBy ?? [],
           images: e.images ?? [],
+          options: e.options ?? [],
+          votedBy: e.votedBy ?? [],
         }));
         setEntries(migratedEntries);
       } else {
@@ -173,20 +205,30 @@ export function useJournal() {
     }
   }, [entries, users, isLoaded]);
 
-  const addEntry = useCallback((content: string, images: string[]) => {
+  const addEntry = useCallback((content: string, images: string[], postType: PostType, options: string[]) => {
     if (!content.trim()) {
         toast({
-            title: 'Entri Kosong',
-            description: "Anda tidak bisa menyimpan entri jurnal yang kosong.",
+            title: 'Konten Kosong',
+            description: "Konten postingan tidak boleh kosong.",
             variant: 'destructive',
         });
         return null;
     }
+    if (postType === 'voting' && options.some(opt => !opt.trim())) {
+      toast({
+        title: 'Opsi Voting Kosong',
+        description: 'Opsi voting tidak boleh kosong.',
+        variant: 'destructive'
+      });
+      return null;
+    }
+
     const currentUserId = getCurrentUserId();
     const newEntry: JournalEntry = {
       id: Date.now().toString(),
       ownerId: currentUserId,
       content,
+      postType,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       comments: [],
@@ -194,33 +236,45 @@ export function useJournal() {
       likedBy: [],
       bookmarkedBy: [],
       images,
+      options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
+      votedBy: [],
     };
     setEntries(prev => [newEntry, ...prev]);
     addPoints(currentUserId, 5); // +5 points for new entry
     toast({
-        title: 'Entri Tersimpan',
-        description: 'Entri jurnal baru Anda telah disimpan.',
+        title: 'Postingan Tersimpan',
+        description: 'Postingan baru Anda telah disimpan.',
     });
     return newEntry;
   }, [toast, addPoints]);
 
-  const updateEntry = useCallback((id: string, content: string, images: string[]) => {
+  const updateEntry = useCallback((id: string, content: string, images: string[], options: string[]) => {
     setEntries(prev =>
-      prev.map(entry =>
-        entry.id === id ? { ...entry, content, images, updatedAt: new Date().toISOString() } : entry
-      )
+      prev.map(entry => {
+        if (entry.id === id) {
+          const updatedEntry = { ...entry, content, images, updatedAt: new Date().toISOString() };
+          if (updatedEntry.postType === 'voting') {
+            updatedEntry.options = options.map((optText, index) => ({
+              text: optText,
+              votes: entry.options[index]?.votes || 0, // Keep existing votes
+            }));
+          }
+          return updatedEntry;
+        }
+        return entry;
+      })
     );
     toast({
-        title: 'Entri Diperbarui',
-        description: 'Entri jurnal Anda telah diperbarui.',
+        title: 'Postingan Diperbarui',
+        description: 'Postingan Anda telah diperbarui.',
     });
   }, [toast]);
 
   const deleteEntry = useCallback((id: string) => {
     setEntries(prev => prev.filter(entry => entry.id !== id));
     toast({
-        title: 'Entri Dihapus',
-        description: 'Entri jurnal Anda telah dihapus.',
+        title: 'Postingan Dihapus',
+        description: 'Postingan Anda telah dihapus.',
         variant: 'destructive',
     });
   }, [toast]);
@@ -274,7 +328,7 @@ export function useJournal() {
                     likedBy: entry.likedBy.filter(id => id !== currentUserId)
                 };
             } else {
-                addPoints(currentUserId, 1); // +1 point for liking
+                addPoints(entry.ownerId, 1); // +1 point for entry owner
                 return {
                     ...entry,
                     likes: entry.likes + 1,
@@ -322,17 +376,18 @@ export function useJournal() {
     const currentUserId = getCurrentUserId();
     if (currentUserId === targetUserId) return;
 
-    let isFollowing = false;
-    const currentUser = users.find(u => u.id === currentUserId);
-    if(currentUser){
-        isFollowing = currentUser.following.includes(targetUserId);
-    }
+    let isFollowingCurrently = false;
     
     setUsers(prevUsers => {
+        const currentUser = prevUsers.find(u => u.id === currentUserId);
+        if (currentUser) {
+            isFollowingCurrently = currentUser.following.includes(targetUserId);
+        }
+
         return prevUsers.map(user => {
             // Update current user's following list
             if (user.id === currentUserId) {
-                if (isFollowing) {
+                if (isFollowingCurrently) {
                     return { ...user, following: user.following.filter(id => id !== targetUserId) };
                 } else {
                     return { ...user, following: [...user.following, targetUserId] };
@@ -343,6 +398,7 @@ export function useJournal() {
                 if (user.followers.includes(currentUserId)) {
                     return { ...user, followers: user.followers.filter(id => id !== currentUserId) };
                 } else {
+                    addPoints(targetUserId, 2); // +2 points for getting a follower
                     return { ...user, followers: [...user.followers, currentUserId] };
                 }
             }
@@ -351,11 +407,32 @@ export function useJournal() {
     });
 
     toast({
-        title: isFollowing ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
-        description: `Anda sekarang ${isFollowing ? 'tidak lagi' : ''} mengikuti pengguna ini.`,
+        title: isFollowingCurrently ? 'Berhenti Mengikuti' : 'Mulai Mengikuti',
+        description: `Anda sekarang ${isFollowingCurrently ? 'tidak lagi' : ''} mengikuti pengguna ini.`,
     });
-}, [users, toast]);
+}, [toast, addPoints]);
+
+  const voteOnEntry = useCallback((entryId: string, optionIndex: number) => {
+    const currentUserId = getCurrentUserId();
+    setEntries(prevEntries => 
+      prevEntries.map(entry => {
+        if (entry.id === entryId && entry.postType === 'voting' && !entry.votedBy.includes(currentUserId)) {
+          const newOptions = [...entry.options];
+          newOptions[optionIndex] = { ...newOptions[optionIndex], votes: newOptions[optionIndex].votes + 1 };
+          
+          addPoints(currentUserId, 1); // +1 point for voting
+          
+          return {
+            ...entry,
+            options: newOptions,
+            votedBy: [...entry.votedBy, currentUserId],
+          };
+        }
+        return entry;
+      })
+    );
+  }, [addPoints]);
 
 
-  return { entries, users, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, toggleFollow, isLoaded };
+  return { entries, users, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, isLoaded };
 }
