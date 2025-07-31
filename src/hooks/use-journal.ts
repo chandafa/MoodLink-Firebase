@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -494,9 +493,13 @@ export function useJournal() {
 
         toast({ title: 'Komentar ditambahkan' });
     }, [toast, addPoints]);
+    
+    const getUserEntries = useCallback((userId: string) => {
+        return entries.filter(entry => entry.ownerId === userId);
+    }, [entries]);
 
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, currentAuthUserId: currentAuthUser?.uid };
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid };
 }
 
 

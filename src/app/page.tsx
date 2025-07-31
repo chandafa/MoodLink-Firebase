@@ -11,6 +11,7 @@ import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { PostType } from '@/hooks/use-journal';
 import { CapsulePage } from '@/components/capsule-page';
+import PublicProfilePage from '@/components/public-profile-page';
 
 function SplashScreen() {
   return (
@@ -54,6 +55,7 @@ export default function Home() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [newPostType, setNewPostType] = useState<PostType>('journal');
   const [isEditing, setIsEditing] = useState(false);
+  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -65,6 +67,7 @@ export default function Home() {
   const handleSelectEntry = (id: string | null) => {
     setSelectedEntryId(id);
     setIsEditing(true);
+    setViewingProfileId(null);
     if (id === null) {
       setNewPostType('journal'); // Default for new post
     }
@@ -74,16 +77,27 @@ export default function Home() {
     setNewPostType(type);
     setSelectedEntryId(null);
     setIsEditing(true);
+    setViewingProfileId(null);
   }
   
   const handleBackToList = () => {
     setIsEditing(false);
     setSelectedEntryId(null);
+    setViewingProfileId(null);
+  };
+  
+  const handleViewProfile = (userId: string) => {
+    setViewingProfileId(userId);
+    setIsEditing(false);
+    setSelectedEntryId(null);
   };
 
   const renderContent = () => {
+    if (viewingProfileId) {
+      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} />;
+    }
     if (isEditing) {
-      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} />;
+      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} />;
     }
 
     switch (activeTab) {
@@ -119,7 +133,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Pesan' && !isEditing && activeTab !== 'Capsule' && <HelpChatbot />}
+          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && activeTab !== 'Capsule' && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}

@@ -156,9 +156,10 @@ type JournalAppProps = {
   onBack: () => void;
   setSelectedEntryId: (id: string | null) => void;
   newPostType: PostType;
+  onViewProfile: (userId: string) => void;
 }
 
-export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType }: JournalAppProps) {
+export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId } = useJournal();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<string[]>([]); // stores base64 for new images, urls for existing
@@ -300,6 +301,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     }
   };
 
+  const handleProfileClick = () => {
+    if (entryOwner && !isOwner) {
+      onViewProfile(entryOwner.id);
+    }
+  }
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -330,12 +337,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
                      {entryOwner && (
-                        <Avatar className="h-12 w-12">
+                        <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={handleProfileClick}>
                             <AvatarFallback className="text-xl">{entryOwner.avatar}</AvatarFallback>
                         </Avatar>
                      )}
                      <div>
-                        <CardTitle className="font-headline mb-1">
+                        <CardTitle className={cn("font-headline mb-1", !isOwner && "cursor-pointer hover:underline")} onClick={handleProfileClick}>
                           {entryOwner?.displayName || 'Anonim'}
                         </CardTitle>
                         <CardDescription>
