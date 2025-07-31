@@ -213,25 +213,35 @@ export function useJournal() {
 
   const toggleBookmark = useCallback((entryId: string) => {
     const currentUserId = getCurrentUserId();
-    setEntries(prev => prev.map(entry => {
-        if (entry.id === entryId) {
-            const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
-            if (isBookmarked) {
-                toast({ title: 'Bookmark dihapus'});
-                return {
-                    ...entry,
-                    bookmarkedBy: entry.bookmarkedBy.filter(id => id !== currentUserId)
-                };
-            } else {
-                toast({ title: 'Bookmark ditambah'});
-                return {
-                    ...entry,
-                    bookmarkedBy: [...entry.bookmarkedBy, currentUserId]
-                };
+    let isBookmarkedCurrently = false;
+
+    setEntries(prev => {
+        const newEntries = prev.map(entry => {
+            if (entry.id === entryId) {
+                const isBookmarked = entry.bookmarkedBy.includes(currentUserId);
+                isBookmarkedCurrently = isBookmarked;
+                if (isBookmarked) {
+                    return {
+                        ...entry,
+                        bookmarkedBy: entry.bookmarkedBy.filter(id => id !== currentUserId)
+                    };
+                } else {
+                    return {
+                        ...entry,
+                        bookmarkedBy: [...entry.bookmarkedBy, currentUserId]
+                    };
+                }
             }
-        }
-        return entry;
-    }));
+            return entry;
+        });
+        return newEntries;
+    });
+
+    if (isBookmarkedCurrently) {
+        toast({ title: 'Bookmark dihapus' });
+    } else {
+        toast({ title: 'Bookmark ditambah' });
+    }
   }, [toast]);
 
   return { entries, addEntry, updateEntry, deleteEntry, addComment, toggleLike, toggleBookmark, isLoaded };
