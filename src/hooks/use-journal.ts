@@ -86,32 +86,46 @@ export function useJournal() {
         // User is signed in.
         setCurrentAuthUser(user);
         const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+        
+        const userDocUnsub = onSnapshot(userRef, (doc) => {
+            if (doc.exists()) {
+                const userData = { id: doc.id, ...doc.data() } as User;
+                setCurrentUser(userData);
+            } else {
+                 // New user, create a document for them.
+                const newUser: Omit<User, 'id'> = {
+                    displayName: `Anonim${Math.floor(Math.random() * 1000)}`,
+                    avatar: '👤',
+                    bio: 'Pengguna baru MoodLink!',
+                    followers: [],
+                    following: [],
+                    points: 0,
+                    level: 1,
+                };
+                runTransaction(db, async (transaction) => {
+                    transaction.set(userRef, newUser);
+                }).then(() => {
+                    setCurrentUser({ ...newUser, id: user.uid });
+                });
+            }
+        });
 
-        if (userSnap.exists()) {
-          const userData = { id: userSnap.id, ...userSnap.data() } as User;
-          setCurrentUser(userData);
-        } else {
-          // New user, create a document for them.
-          const newUser: Omit<User, 'id'> = {
-            displayName: `Anonim${Math.floor(Math.random() * 1000)}`,
-            avatar: '👤',
-            bio: 'Pengguna baru MoodLink!',
-            followers: [],
-            following: [],
-            points: 0,
-            level: 1,
-          };
-          await runTransaction(db, async (transaction) => {
-            transaction.set(userRef, newUser);
-          });
-          setCurrentUser({ ...newUser, id: user.uid });
-        }
+        return () => userDocUnsub();
+
       } else {
         // User is signed out, sign them in anonymously.
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
-          toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
+          if (error.code === 'auth/configuration-not-found') {
+                toast({
+                    title: 'Authentication Disabled',
+                    description: 'Anonymous authentication is not enabled. Please enable it in your Firebase console.',
+                    variant: 'destructive',
+                    duration: 10000,
+                });
+            } else {
+                toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
+            }
         });
       }
     });
@@ -130,7 +144,7 @@ export function useJournal() {
     });
 
     // Fetch all entries
-    const entriesUnsub = onSnapshot(collection(db, 'journals'), (snapshot) => {
+    const entriesUnsub = onSnapshot(query(collection(db, 'journals'), orderBy('createdAt', 'desc')), (snapshot) => {
         const entriesData = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -161,13 +175,18 @@ export function useJournal() {
           throw 'Document does not exist!';
         }
         const oldPoints = userDoc.data().points || 0;
+        const oldLevel = userDoc.data().level || 1;
         const newPoints = oldPoints + amount;
         const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
         
         transaction.update(userRef, { points: newPoints, level: newLevel });
 
-        if (newLevel > userDoc.data().level) {
-          toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
+        if (newLevel > oldLevel) {
+          // This toast needs to be called outside the transaction.
+          // We'll queue it up.
+          setTimeout(() => {
+            toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
+          }, 0);
         }
       });
     } catch (e) {
@@ -288,32 +307,27 @@ export function useJournal() {
         const entryData = entryDoc.data();
         const likedBy = entryData.likedBy || [];
         const ownerId = entryData.ownerId;
-        let newLikedBy = [...likedBy];
         
         if (likedBy.includes(currentAuthUser.uid)) {
-            newLikedBy = likedBy.filter((uid: string) => uid !== currentAuthUser.uid);
+            transaction.update(entryRef, { 
+                likedBy: arrayRemove(currentAuthUser.uid),
+                likes: (entryData.likes || 1) - 1
+            });
         } else {
-            newLikedBy.push(currentAuthUser.uid);
-            // Can't call addPoints directly in a transaction.
-            // This is a limitation. A Cloud Function would be a better solution.
-            // For now, we'll optimistically add points outside the transaction.
-        }
-        
-        transaction.update(entryRef, {
-            likedBy: newLikedBy,
-            likes: newLikedBy.length
-        });
-        
-        // This is not transactionally safe, but a workaround for client-side logic
-        if (!likedBy.includes(currentAuthUser.uid) && ownerId !== currentAuthUser.uid) {
-           addPoints(ownerId, 1);
+             transaction.update(entryRef, { 
+                likedBy: arrayUnion(currentAuthUser.uid),
+                likes: (entryData.likes || 0) + 1
+            });
+            // This is not transactionally safe, but a workaround for client-side logic
+            if (ownerId !== currentAuthUser.uid) {
+                addPoints(ownerId, 1);
+            }
         }
     });
   }, [currentAuthUser, addPoints]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
     if (!currentAuthUser) return;
-    const userRef = doc(db, 'users', currentAuthUser.uid);
     const entryRef = doc(db, 'journals', entryId);
     let isBookmarkedCurrently = false;
 
@@ -342,13 +356,13 @@ export function useJournal() {
         const currentUserRef = doc(db, 'users', currentAuthUser.uid);
         const targetUserRef = doc(db, 'users', targetUserId);
         
-        const batch = writeBatch(db);
-
         const currentUserSnap = await getDoc(currentUserRef);
         const currentUserData = currentUserSnap.data() as User;
         
         const isFollowing = currentUserData.following.includes(targetUserId);
         
+        const batch = writeBatch(db);
+
         if (isFollowing) {
             // Unfollow
             batch.update(currentUserRef, { following: arrayRemove(targetUserId) });
@@ -357,6 +371,7 @@ export function useJournal() {
             // Follow
             batch.update(currentUserRef, { following: arrayUnion(targetUserId) });
             batch.update(targetUserRef, { followers: arrayUnion(currentAuthUser.uid) });
+            // Add points outside of batch, as it's a separate transaction logic
             addPoints(targetUserId, 2);
         }
         
@@ -391,41 +406,6 @@ export function useJournal() {
         addPoints(currentAuthUser.uid, 1);
     }, [currentAuthUser, addPoints]);
 
-
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, currentAuthUserId: currentAuthUser?.uid };
-}
-
-
-// --- Component-specific data hooks ---
-
-// Hook to get comments for a specific entry
-export function useComments(entryId: string) {
-    const [comments, setComments] = useState<Comment[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        if (!entryId) return;
-        const commentsRef = collection(db, 'journals', entryId, 'comments');
-        const q = query(commentsRef); // You can add orderBy here
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const commentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];
-            setComments(commentsData);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [entryId]);
-
-    return { comments, isLoading };
-}
-
-// Hook to add a comment
-export function useAddComment() {
-    const { toast } = useToast();
-    const { addPoints } = useJournal(); // This is not ideal as it creates a new instance.
-                                       // In a larger app, state management (like Context) would be better.
-
     const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string) => {
         if (!commentContent.trim()) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
@@ -444,13 +424,43 @@ export function useAddComment() {
         await addDoc(commentsRef, commentData);
         
         if (author.id !== entryOwnerId) {
-           // This is tricky from client, a cloud function is better.
-           // For now, let's call addPoints but acknowledge it's not transactional here.
            await addPoints(entryOwnerId, 2);
         }
 
         toast({ title: 'Komentar ditambahkan' });
     }, [toast, addPoints]);
 
-    return { addComment };
+
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, currentAuthUserId: currentAuthUser?.uid };
+}
+
+
+// --- Component-specific data hooks ---
+
+// Hook to get comments for a specific entry
+export function useComments(entryId: string) {
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!entryId) {
+            setIsLoading(false);
+            return;
+        };
+        const commentsRef = collection(db, 'journals', entryId, 'comments');
+        const q = query(commentsRef, orderBy("createdAt", "desc"));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const commentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];
+            setComments(commentsData);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching comments:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [entryId]);
+
+    return { comments, isLoading };
 }

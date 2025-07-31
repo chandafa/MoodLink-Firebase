@@ -18,7 +18,7 @@ import {
   Type,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType, useComments, useAddComment, User } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType, useComments, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -73,8 +73,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 
 function CommentSection({ entryId, entryOwnerId }: { entryId: string, entryOwnerId: string }) {
     const { comments, isLoading: isLoadingComments } = useComments(entryId);
-    const { currentUser } = useJournal();
-    const { addComment } = useAddComment();
+    const { currentUser, addComment } = useJournal();
     const [newComment, setNewComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
