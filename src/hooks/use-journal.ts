@@ -30,7 +30,8 @@ import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 
-// Types remain mostly the same, but createdAt/updatedAt will be handled by Firestore Timestamps
+export type Visibility = 'public' | 'private' | 'restricted';
+
 export type Comment = {
   id: string;
   authorId: string;
@@ -73,6 +74,8 @@ export type JournalEntry = {
   images: string[]; // URLs from Firebase Storage or cPanel hosting
   options: VoteOption[];
   votedBy: string[];
+  visibility: Visibility;
+  allowedUserIds: string[];
 };
 
 export type ChatMessage = {
@@ -269,7 +272,7 @@ export function useJournal() {
 
 
   // --- JOURNAL ACTIONS ---
-  const addEntry = useCallback(async (content: string, images: (File | string)[], postType: PostType, options: string[]) => {
+  const addEntry = useCallback(async (content: string, images: (File | string)[], postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) {
         toast({ title: 'Anda harus masuk untuk memposting', variant: 'destructive'});
         return null;
@@ -308,6 +311,8 @@ export function useJournal() {
         bookmarkedBy: [],
         options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
         votedBy: [],
+        visibility,
+        allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
       };
 
       if (postType === 'capsule') {
@@ -330,7 +335,7 @@ export function useJournal() {
     }
   }, [currentAuthUser, toast, addPoints, uploadImageToHosting]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], options: string[]) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], options: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -356,6 +361,8 @@ export function useJournal() {
       content,
       images: allImageUrls,
       updatedAt: serverTimestamp(),
+      visibility,
+      allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
     };
 
     if (postType === 'voting' && options.length > 0) {
@@ -548,9 +555,19 @@ export function useJournal() {
         toast({ title: 'Komentar ditambahkan' });
     }, [toast, addPoints]);
     
+    const getFollowersData = useCallback((followerIds: string[]): User[] => {
+        return users.filter(user => followerIds.includes(user.id));
+    }, [users]);
+    
     const getUserEntries = useCallback((userId: string) => {
-        return entries.filter(entry => entry.ownerId === userId);
-    }, [entries]);
+        return entries.filter(entry => {
+            if (entry.ownerId !== userId) return false;
+            if (entry.visibility === 'public') return true;
+            if (entry.ownerId === currentAuthUser?.uid) return true;
+            if (entry.visibility === 'restricted' && entry.allowedUserIds.includes(currentAuthUser?.uid || '')) return true;
+            return false;
+        });
+    }, [entries, currentAuthUser]);
 
     // --- CHAT ACTIONS ---
     const getChatRoomId = (user1Id: string, user2Id: string) => {
@@ -600,7 +617,7 @@ export function useJournal() {
     }, [currentAuthUser, currentUser, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting };
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData };
 }
 
 

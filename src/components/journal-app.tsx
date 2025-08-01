@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -17,9 +18,12 @@ import {
   Vote,
   Type,
   Hourglass,
+  Lock,
+  Globe,
+  Users,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType, useComments, User } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType, useComments, User, Visibility } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,6 +38,10 @@ import { ScrollArea } from './ui/scroll-area';
 import { SupportBar } from './support-bar';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Label } from './ui/label';
+import { Checkbox } from './ui/checkbox';
+
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
@@ -160,7 +168,7 @@ type JournalAppProps = {
 }
 
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile }: JournalAppProps) {
-  const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId } = useJournal();
+  const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId, getFollowersData } = useJournal();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<(File | string)[]>([]); // Can hold File objects for new uploads or string URLs for existing
   const [imagePreviews, setImagePreviews] = useState<string[]>([]); // For displaying previews
@@ -168,6 +176,9 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   const [voteOptions, setVoteOptions] = useState<string[]>(['', '']);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [visibility, setVisibility] = useState<Visibility>('public');
+  const [allowedUsers, setAllowedUsers] = useState<string[]>([]);
+  const [followers, setFollowers] = useState<User[]>([]);
   
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === selectedEntryId) || null;
@@ -186,11 +197,21 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   }, [currentUser, activeEntry]);
 
   useEffect(() => {
+      if (currentUser && visibility === 'restricted') {
+          setFollowers(getFollowersData(currentUser.followers));
+      } else {
+          setFollowers([]);
+      }
+  }, [currentUser, visibility, getFollowersData]);
+
+  useEffect(() => {
     if (activeEntry) {
       setEditorContent(activeEntry.content);
       setImages(activeEntry.images || []);
       setImagePreviews(activeEntry.images || []);
       setPostType(activeEntry.postType);
+      setVisibility(activeEntry.visibility || 'public');
+      setAllowedUsers(activeEntry.allowedUserIds || []);
       if (activeEntry.postType === 'voting') {
         setVoteOptions(activeEntry.options.map(opt => opt.text));
       }
@@ -201,6 +222,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setImages([]);
       setImagePreviews([]);
       setVoteOptions(['', '']);
+      setVisibility('public');
+      setAllowedUsers([]);
     }
   }, [activeEntry, newPostType]);
 
@@ -253,15 +276,20 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     }
   };
 
+  const handleAllowedUserChange = (userId: string, isChecked: boolean) => {
+      setAllowedUsers(prev => 
+          isChecked ? [...prev, userId] : prev.filter(id => id !== userId)
+      );
+  };
 
   const handleSave = async () => {
     if (activeEntry) {
       if(isOwner) {
-         await updateEntry(activeEntry.id, editorContent, images, voteOptions);
+         await updateEntry(activeEntry.id, editorContent, images, voteOptions, visibility, allowedUsers);
       }
     } else {
        let optionsForEntry = postType === 'voting' ? voteOptions.filter(o => o.trim() !== '') : [];
-       const newEntry = await addEntry(editorContent, images, postType, optionsForEntry);
+       const newEntry = await addEntry(editorContent, images, postType, optionsForEntry, visibility, allowedUsers);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -441,6 +469,51 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                 )}
                 
                 { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
+                
+                 {(isOwner || !activeEntry) && (
+                    <div className="space-y-4 mt-6 pt-4 border-t">
+                      <h3 className="text-sm font-medium">Visibilitas</h3>
+                       <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex gap-4">
+                           <div className="flex items-center space-x-2">
+                               <RadioGroupItem value="public" id="v-public" />
+                               <Label htmlFor="v-public" className="flex items-center gap-2"><Globe className="h-4 w-4" /> Publik</Label>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                               <RadioGroupItem value="private" id="v-private" />
+                               <Label htmlFor="v-private" className="flex items-center gap-2"><Lock className="h-4 w-4" /> Pribadi</Label>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                               <RadioGroupItem value="restricted" id="v-restricted" />
+                               <Label htmlFor="v-restricted" className="flex items-center gap-2"><Users className="h-4 w-4" /> Terbatas</Label>
+                           </div>
+                       </RadioGroup>
+                       
+                       {visibility === 'restricted' && (
+                         <div className="pt-4">
+                           <h4 className="text-sm font-medium mb-2">Pilih siapa yang bisa melihat</h4>
+                           {followers.length > 0 ? (
+                               <ScrollArea className="h-40 rounded-md border p-4">
+                                   <div className="space-y-2">
+                                       {followers.map(follower => (
+                                           <div key={follower.id} className="flex items-center space-x-2">
+                                               <Checkbox
+                                                   id={`user-${follower.id}`}
+                                                   checked={allowedUsers.includes(follower.id)}
+                                                   onCheckedChange={(checked) => handleAllowedUserChange(follower.id, !!checked)}
+                                               />
+                                               <Label htmlFor={`user-${follower.id}`}>{follower.displayName}</Label>
+                                           </div>
+                                       ))}
+                                   </div>
+                               </ScrollArea>
+                           ) : (
+                               <p className="text-xs text-muted-foreground">Anda tidak memiliki pengikut untuk dipilih.</p>
+                           )}
+                         </div>
+                       )}
+                    </div>
+                 )}
+
 
                  { (isOwner || !activeEntry) && postType !== 'capsule' && (
                   <div className="pt-4 mt-auto">

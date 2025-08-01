@@ -1,16 +1,17 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType, Visibility } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
-import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark, Vote, Hourglass } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookText, FilePlus, MoreVertical, Edit, Flag, Trash2, Search, Bookmark, Vote, Hourglass, Globe, Lock, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -20,6 +21,19 @@ import { Progress } from './ui/progress';
 
 
 const ITEMS_PER_PAGE = 6;
+
+const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
+    switch (visibility) {
+        case 'public':
+            return <Globe className="h-3 w-3" />;
+        case 'private':
+            return <Lock className="h-3 w-3" />;
+        case 'restricted':
+            return <Users className="h-3 w-3" />;
+        default:
+            return <Globe className="h-3 w-3" />;
+    }
+};
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
@@ -165,6 +179,9 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     {entry.postType === 'voting' ? <Vote className="h-4 w-4" /> : <BookText className="h-4 w-4" />}
                     <span className="text-xs font-medium uppercase">{entry.postType}</span>
+                     <Separator orientation="vertical" className="h-4" />
+                    <VisibilityIcon visibility={entry.visibility} />
+                    <span className="text-xs font-medium capitalize">{entry.visibility}</span>
                 </div>
                 <CardTitle className="truncate pr-8">{title}</CardTitle>
                 <CardDescription>{formattedDate}</CardDescription>
@@ -204,15 +221,25 @@ function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
   }
 
 export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; }) {
-  const { entries, deleteEntry, isLoaded } = useJournal();
+  const { entries, deleteEntry, isLoaded, currentAuthUserId } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   const filteredEntries = useMemo(() => {
     return entries
-      .filter(entry => entry.content.toLowerCase().includes(searchTerm.toLowerCase()) && entry.postType !== 'capsule')
+      .filter(entry => {
+        const isMatch = entry.content.toLowerCase().includes(searchTerm.toLowerCase()) && entry.postType !== 'capsule';
+        if (!isMatch) return false;
+
+        const isOwner = entry.ownerId === currentAuthUserId;
+        if (entry.visibility === 'public') return true;
+        if (isOwner) return true;
+        if (entry.visibility === 'restricted' && entry.allowedUserIds.includes(currentAuthUserId || '')) return true;
+
+        return false;
+      })
       .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-  }, [entries, searchTerm]);
+  }, [entries, searchTerm, currentAuthUserId]);
 
   const totalPages = Math.ceil(filteredEntries.length / ITEMS_PER_PAGE);
   const paginatedEntries = useMemo(() => {
