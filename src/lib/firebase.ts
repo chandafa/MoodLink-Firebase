@@ -20,6 +20,7 @@ import {
   writeBatch,
   orderBy,
   Timestamp,
+  setDoc,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -62,4 +63,5 @@ export {
     writeBatch,
     orderBy,
     Timestamp,
+    setDoc,
 };

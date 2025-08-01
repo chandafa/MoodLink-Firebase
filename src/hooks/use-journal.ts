@@ -24,6 +24,7 @@ import {
   writeBatch,
   orderBy,
   Timestamp,
+  setDoc,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -79,6 +80,19 @@ export type ChatMessage = {
     senderId: string;
     text: string;
     createdAt: any;
+};
+
+export type Conversation = {
+    id: string; // roomId
+    lastMessage: string;
+    lastMessageTimestamp: any;
+    participantIds: string[];
+    participantDetails: {
+        [key: string]: {
+            displayName: string;
+            avatar: string;
+        }
+    };
 };
 
 
@@ -544,18 +558,46 @@ export function useJournal() {
     };
 
     const sendMessage = useCallback(async (targetUserId: string, text: string) => {
-        if (!currentAuthUser || !text.trim()) return;
+        if (!currentUser || !currentAuthUser || !text.trim()) return;
+        
+        const targetUser = users.find(u => u.id === targetUserId);
+        if (!targetUser) {
+            toast({ title: 'Pengguna tidak ditemukan', variant: 'destructive' });
+            return;
+        }
 
         const roomId = getChatRoomId(currentAuthUser.uid, targetUserId);
         const messagesCol = collection(db, 'chats', roomId, 'messages');
+        const chatDocRef = doc(db, 'chats', roomId);
 
+        // Add the message
         await addDoc(messagesCol, {
             text,
             senderId: currentAuthUser.uid,
             createdAt: serverTimestamp()
         });
         
-    }, [currentAuthUser]);
+        // Update the conversation summary document
+        const conversationData: Conversation = {
+            id: roomId,
+            lastMessage: text,
+            lastMessageTimestamp: serverTimestamp(),
+            participantIds: [currentAuthUser.uid, targetUserId],
+            participantDetails: {
+                [currentAuthUser.uid]: {
+                    displayName: currentUser.displayName,
+                    avatar: currentUser.avatar
+                },
+                [targetUserId]: {
+                    displayName: targetUser.displayName,
+                    avatar: targetUser.avatar,
+                }
+            }
+        };
+
+        await setDoc(chatDocRef, conversationData, { merge: true });
+
+    }, [currentAuthUser, currentUser, users, toast]);
 
 
   return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting };
@@ -618,4 +660,37 @@ export function useChatMessages(roomId: string) {
     }, [roomId]);
 
     return { messages, isLoading };
+}
+
+// Hook to get a user's conversations
+export function useConversations(userId: string | null) {
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!userId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const conversationsRef = collection(db, 'chats');
+        const q = query(
+            conversationsRef, 
+            where('participantIds', 'array-contains', userId),
+            orderBy('lastMessageTimestamp', 'desc')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const convos = snapshot.docs.map(doc => doc.data() as Conversation);
+            setConversations(convos);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching conversations:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [userId]);
+
+    return { conversations, isLoading };
 }
