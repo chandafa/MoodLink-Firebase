@@ -162,7 +162,8 @@ type JournalAppProps = {
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId } = useJournal();
   const [editorContent, setEditorContent] = useState('');
-  const [images, setImages] = useState<string[]>([]); // stores base64 for new images, urls for existing
+  const [images, setImages] = useState<(File | string)[]>([]); // Can hold File objects for new uploads or string URLs for existing
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]); // For displaying previews
   const [postType, setPostType] = useState<PostType>('journal');
   const [voteOptions, setVoteOptions] = useState<string[]>(['', '']);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,6 +189,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     if (activeEntry) {
       setEditorContent(activeEntry.content);
       setImages(activeEntry.images || []);
+      setImagePreviews(activeEntry.images || []);
       setPostType(activeEntry.postType);
       if (activeEntry.postType === 'voting') {
         setVoteOptions(activeEntry.options.map(opt => opt.text));
@@ -197,6 +199,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setPostType(newPostType);
       setEditorContent('');
       setImages([]);
+      setImagePreviews([]);
       setVoteOptions(['', '']);
     }
   }, [activeEntry, newPostType]);
@@ -207,11 +210,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
         toast({ title: "Batas Gambar", description: "Anda hanya bisa mengunggah maksimal 3 gambar.", variant: "destructive" });
         return;
       }
+      
+      const newFiles = Array.from(e.target.files);
+      setImages(prev => [...prev, ...newFiles]);
 
-      Array.from(e.target.files).forEach(file => {
+      // Create previews for new files
+      newFiles.forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setImages(prevImages => [...prevImages, reader.result as string]);
+          setImagePreviews(prev => [...prev, reader.result as string]);
         };
         reader.readAsDataURL(file);
       });
@@ -219,7 +226,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   };
   
   const removeImage = (index: number) => {
-    setImages(prevImages => prevImages.filter((_, i) => i !== index));
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
   
   const handleOptionChange = (index: number, value: string) => {
@@ -289,7 +297,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
           <h1>Entri Jurnal dari ${activeEntry ? activeEntry.createdAt.toDate().toLocaleDateString() : 'MoodLink'}</h1>
           <hr />
           <p>${editorContent}</p>
-          ${images.map(img => `<img src="${img}" />`).join('')}
+          ${imagePreviews.map(img => `<img src="${img}" />`).join('')}
         </body>
       </html>
     `;
@@ -436,8 +444,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
 
                  { (isOwner || !activeEntry) && postType !== 'capsule' && (
                   <div className="pt-4 mt-auto">
-                    <div className={cn("grid gap-2", images.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
-                        {images.map((img, index) => (
+                    <div className={cn("grid gap-2", imagePreviews.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
+                        {imagePreviews.map((img, index) => (
                           <div key={index} className="relative group">
                               <Image src={img} alt={`Preview ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
                               <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeImage(index)}>
@@ -461,10 +469,10 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       />
                   </div>
                 )}
-                 { (!isOwner && activeEntry && images.length > 0) && (
+                 { (!isOwner && activeEntry && imagePreviews.length > 0) && (
                   <div className="pt-4 mt-auto">
-                    <div className={cn("grid gap-2", images.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
-                        {images.map((img, index) => (
+                    <div className={cn("grid gap-2", imagePreviews.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
+                        {imagePreviews.map((img, index) => (
                           <div key={index} className="relative">
                               <Image src={img} alt={`Image ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
                           </div>

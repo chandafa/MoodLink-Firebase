@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -68,7 +69,7 @@ export type JournalEntry = {
   likes: number;
   likedBy: string[];
   bookmarkedBy: string[];
-  images: string[]; // URLs from Firebase Storage
+  images: string[]; // URLs from Firebase Storage or cPanel hosting
   options: VoteOption[];
   votedBy: string[];
 };
@@ -221,9 +222,40 @@ export function useJournal() {
     }
   }, [toast]);
 
+  // --- IMAGE UPLOAD TO HOSTING ---
+  const uploadImageToHosting = useCallback(async (file: File): Promise<string | null> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadUrl = 'https://beruangrasa.academychan.my.id/upload.php';
+
+      try {
+          const response = await fetch(uploadUrl, {
+              method: 'POST',
+              body: formData,
+          });
+
+          const result = await response.json();
+
+          if (result.status === 'success' && result.url) {
+              console.log('Upload success, URL:', result.url);
+              toast({ title: 'Gambar Berhasil Diunggah', description: 'Gambar Anda telah diunggah ke hosting.' });
+              return result.url;
+          } else {
+              console.error('Upload failed:', result.message);
+              toast({ title: 'Gagal Mengunggah Gambar', description: result.message || 'Terjadi kesalahan di server.', variant: 'destructive' });
+              return null;
+          }
+      } catch (error) {
+          console.error('Error uploading image:', error);
+          toast({ title: 'Error Jaringan', description: 'Tidak dapat terhubung ke server upload.', variant: 'destructive' });
+          return null;
+      }
+  }, [toast]);
+
 
   // --- JOURNAL ACTIONS ---
-  const addEntry = useCallback(async (content: string, images: string[], postType: PostType, options: string[]) => {
+  const addEntry = useCallback(async (content: string, images: (File | string)[], postType: PostType, options: string[]) => {
     if (!currentAuthUser) {
         toast({ title: 'Anda harus masuk untuk memposting', variant: 'destructive'});
         return null;
@@ -238,22 +270,23 @@ export function useJournal() {
     }
 
     try {
-      // 1. Upload images to Firebase Storage (if any, and not for capsules)
+      // 1. Upload new images (File objects) to cPanel hosting
       const imageUrls = postType !== 'capsule' ? await Promise.all(
-          images.map(async (base64Image) => {
-              if (!base64Image.startsWith('data:image')) return base64Image; // It's already a URL
-              const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
-              const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
-              return getDownloadURL(uploadResult.ref);
+          images.map(async (image) => {
+              if (typeof image === 'string') return image; // It's already a URL
+              return await uploadImageToHosting(image);
           })
       ) : [];
+
+      const validImageUrls = imageUrls.filter((url): url is string => url !== null);
+
 
       // 2. Add new journal document to Firestore
       const newEntryData: any = {
         ownerId: currentAuthUser.uid,
         content,
         postType,
-        images: imageUrls,
+        images: validImageUrls,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         likes: 0,
@@ -281,9 +314,9 @@ export function useJournal() {
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
         return null;
     }
-  }, [currentAuthUser, toast, addPoints]);
+  }, [currentAuthUser, toast, addPoints, uploadImageToHosting]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: string[], options: string[]) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], options: string[]) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -294,20 +327,16 @@ export function useJournal() {
     }
     const postType = docSnap.data().postType;
 
-    // Separate new base64 images from existing URLs
-    const newImagesBase64 = images.filter(img => img.startsWith('data:image'));
-    const existingImageUrls = images.filter(img => !img.startsWith('data:image'));
+    const newImageFiles = images.filter((img): img is File => img instanceof File);
+    const existingImageUrls = images.filter((img): img is string => typeof img === 'string');
 
-    // Upload new images to Firebase Storage
+    // Upload new images to cPanel hosting
     const newImageUrls = postType !== 'capsule' ? await Promise.all(
-        newImagesBase64.map(async (base64Image) => {
-            const storageRef = ref(storage, `journals/${currentAuthUser.uid}/${Date.now()}`);
-            const uploadResult = await uploadString(storageRef, base64Image, 'data_url');
-            return getDownloadURL(uploadResult.ref);
-        })
+        newImageFiles.map(file => uploadImageToHosting(file))
     ) : [];
-
-    const allImageUrls = [...existingImageUrls, ...newImageUrls];
+    
+    const validNewImageUrls = newImageUrls.filter((url): url is string => url !== null);
+    const allImageUrls = [...existingImageUrls, ...validNewImageUrls];
     
     const updateData: any = {
       content,
@@ -325,7 +354,7 @@ export function useJournal() {
 
     await updateDoc(entryRef, updateData);
     toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
-  }, [currentAuthUser, toast]);
+  }, [currentAuthUser, toast, uploadImageToHosting]);
 
 
   const deleteEntry = useCallback(async (id: string) => {
@@ -335,14 +364,17 @@ export function useJournal() {
     const entrySnap = await getDoc(entryRef);
     const entryData = entrySnap.data();
 
-    // Delete images from Storage
+    // Note: Deleting images from cPanel hosting would require another PHP script or API endpoint.
+    // This implementation does not delete the image files from the hosting server.
     if (entryData?.images && entryData.images.length > 0) {
         entryData.images.forEach(async (url: string) => {
-            try {
-                const imageRef = ref(storage, url);
-                await deleteObject(imageRef);
-            } catch (error) {
-                console.error("Failed to delete image from storage:", error);
+            if (url.includes('firebasestorage')) {
+              try {
+                  const imageRef = ref(storage, url);
+                  await deleteObject(imageRef);
+              } catch (error) {
+                  console.error("Failed to delete image from storage:", error);
+              }
             }
         });
     }
@@ -526,7 +558,7 @@ export function useJournal() {
     }, [currentAuthUser]);
 
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage };
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting };
 }
 
 

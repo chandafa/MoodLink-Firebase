@@ -13,11 +13,19 @@ const navItems = [
 
 export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) {
   return (
-    <nav className={cn(
-      "fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-sm border-t z-20",
-      "md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:w-auto md:h-auto md:rounded-full md:border md:bg-zinc-800/20 md:backdrop-blur-lg md:shadow-lg md:p-2 md:dark:border-white/30"
+    // 1. Wrapper untuk positioning
+    // Div ini bertugas untuk menempatkan navigasi di bagian bawah dan tengah (pada desktop).
+    // `pointer-events-none` agar wrapper tidak menghalangi interaksi dengan elemen di belakangnya.
+    <div className={cn(
+      "fixed bottom-0 left-0 right-0 z-20 h-16", // Posisi di mobile
+      "md:bottom-6 md:flex md:justify-center pointer-events-none" // Posisi di desktop + flexbox untuk centering
     )}>
-      <div className="flex justify-around items-center h-full max-w-md mx-auto md:gap-2">
+      <nav className={cn(
+        // 2. Styling Navigasi
+        // `pointer-events-auto` mengaktifkan kembali interaksi khusus untuk nav bar ini.
+        "pointer-events-auto flex h-full w-full items-center justify-around bg-background/80 backdrop-blur-sm border-t",
+        "md:w-auto md:h-auto md:rounded-full md:border md:bg-zinc-800/20 md:backdrop-blur-lg md:shadow-lg md:p-2 md:gap-2 md:dark:border-white/30"
+      )}>
         {navItems.map((item) => (
           <button
             key={item.name}
@@ -34,7 +42,7 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
             <item.icon className="h-6 w-6 md:h-5 md:w-5" />
             <span className="text-xs mt-1 md:text-sm md:mt-0">{item.name}</span>
             
-            {/* Mobile indicator */}
+            {/* Mobile indicator (tetap sama) */}
             {activeTab === item.name && (
               <motion.div
                 layoutId="active-mobile-nav-indicator"
@@ -43,7 +51,7 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
               />
             )}
             
-            {/* Desktop indicator */}
+            {/* Desktop indicator (tetap sama) */}
             {activeTab === item.name && (
                 <motion.div
                     layoutId="active-desktop-nav-indicator"
@@ -53,7 +61,7 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
             )}
           </button>
         ))}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
