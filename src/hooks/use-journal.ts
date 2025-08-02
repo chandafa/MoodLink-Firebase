@@ -29,6 +29,7 @@ import {
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
+import { Notification, NotificationType } from './use-notifications';
 
 export type Visibility = 'public' | 'private' | 'restricted';
 
@@ -105,6 +106,19 @@ async function getCommentCount(journalId: string): Promise<number> {
     const commentsRef = collection(db, 'journals', journalId, 'comments');
     const snapshot = await getDocs(query(commentsRef));
     return snapshot.size;
+}
+
+async function createNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) {
+    if (notification.userId === notification.actorId) {
+        console.log("Skipping notification for user's own action.");
+        return;
+    }
+    const notificationsRef = collection(db, 'notifications');
+    await addDoc(notificationsRef, {
+        ...notification,
+        createdAt: serverTimestamp(),
+        isRead: false,
+    });
 }
 
 export function useJournal() {
@@ -415,6 +429,7 @@ export function useJournal() {
         const entryData = entryDoc.data();
         const likedBy = entryData.likedBy || [];
         const ownerId = entryData.ownerId;
+        const actor = users.find(u => u.id === currentAuthUser.uid);
         
         if (likedBy.includes(currentAuthUser.uid)) {
             transaction.update(entryRef, { 
@@ -429,10 +444,18 @@ export function useJournal() {
             // This is not transactionally safe, but a workaround for client-side logic
             if (ownerId !== currentAuthUser.uid) {
                 addPoints(ownerId, 1);
+                 createNotification({
+                    userId: ownerId,
+                    actorId: currentAuthUser.uid,
+                    actorName: actor?.displayName || 'Someone',
+                    type: 'like',
+                    journalId: entryId,
+                    journalContent: entryData.content,
+                });
             }
         }
     });
-  }, [currentAuthUser, addPoints]);
+  }, [currentAuthUser, addPoints, users]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
     if (!currentAuthUser) return;
@@ -493,9 +516,14 @@ export function useJournal() {
             // Follow
             batch.update(currentUserRef, { following: arrayUnion(targetUserId) });
             batch.update(targetUserRef, { followers: arrayUnion(currentAuthUser.uid) });
-            // Add points outside of batch, as it's a separate transaction logic
             addPoints(targetUserId, 2);
             toast({ title: 'Mulai Mengikuti' });
+             createNotification({
+                userId: targetUserId,
+                actorId: currentAuthUser.uid,
+                actorName: currentUserData?.displayName || 'Someone',
+                type: 'follow',
+            });
         }
         
         await batch.commit();
@@ -542,8 +570,21 @@ export function useJournal() {
         const commentsRef = collection(db, 'journals', entryId, 'comments');
         await addDoc(commentsRef, commentData);
         
+        const entryRef = doc(db, 'journals', entryId);
+        const entryDoc = await getDoc(entryRef);
+
         if (author.id !== entryOwnerId) {
            await addPoints(entryOwnerId, 2);
+            if(entryDoc.exists()) {
+                createNotification({
+                    userId: entryOwnerId,
+                    actorId: author.id,
+                    actorName: author.displayName || 'Someone',
+                    type: 'comment',
+                    journalId: entryId,
+                    journalContent: entryDoc.data().content,
+                });
+            }
         }
         
         setEntries(prevEntries =>
