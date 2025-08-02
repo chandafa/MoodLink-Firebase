@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { Icons } from './icons';
+import { useEffect } from 'react';
 
 type NotificationListPageProps = {
     onSelectEntry: (id: string | null) => void;
@@ -29,13 +30,18 @@ const NotificationIcon = ({ type }: { type: string }) => {
 export function NotificationListPage({ onSelectEntry }: NotificationListPageProps) {
     const { currentUser } = useJournal();
     const { notifications, isLoading, markNotificationsAsRead } = useNotifications(currentUser?.id || null);
+    
+    useEffect(() => {
+        // Mark notifications as read when the component mounts/becomes visible
+        if (notifications.length > 0) {
+            markNotificationsAsRead();
+        }
+    }, [notifications, markNotificationsAsRead]);
 
     const handleNotificationClick = (journalId: string | undefined) => {
         if (journalId) {
             onSelectEntry(journalId);
         }
-        // Mark all as read when opening the page
-        markNotificationsAsRead();
     };
 
     const getNotificationMessage = (notification: any) => {

@@ -109,6 +109,7 @@ async function getCommentCount(journalId: string): Promise<number> {
 }
 
 async function createNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) {
+    // Prevent self-notification
     if (notification.userId === notification.actorId) {
         console.log("Skipping notification for user's own action.");
         return;
@@ -419,7 +420,7 @@ export function useJournal() {
   }, [currentAuthUser, toast]);
 
   const toggleLike = useCallback(async (entryId: string) => {
-    if (!currentAuthUser) return;
+    if (!currentAuthUser || !currentUser) return;
     const entryRef = doc(db, 'journals', entryId);
     
     await runTransaction(db, async (transaction) => {
@@ -429,33 +430,40 @@ export function useJournal() {
         const entryData = entryDoc.data();
         const likedBy = entryData.likedBy || [];
         const ownerId = entryData.ownerId;
-        const actor = users.find(u => u.id === currentAuthUser.uid);
         
+        let isLiking = false;
         if (likedBy.includes(currentAuthUser.uid)) {
             transaction.update(entryRef, { 
                 likedBy: arrayRemove(currentAuthUser.uid),
                 likes: (entryData.likes || 1) - 1
             });
         } else {
+             isLiking = true;
              transaction.update(entryRef, { 
                 likedBy: arrayUnion(currentAuthUser.uid),
                 likes: (entryData.likes || 0) + 1
             });
-            // This is not transactionally safe, but a workaround for client-side logic
-            if (ownerId !== currentAuthUser.uid) {
-                addPoints(ownerId, 1);
-                 createNotification({
-                    userId: ownerId,
-                    actorId: currentAuthUser.uid,
-                    actorName: actor?.displayName || 'Someone',
-                    type: 'like',
-                    journalId: entryId,
-                    journalContent: entryData.content,
-                });
-            }
         }
+        
+        // Return necessary data for post-transaction logic
+        return { isLiking, ownerId, entryContent: entryData.content };
+    }).then(({ isLiking, ownerId, entryContent }) => {
+        // Post-transaction logic
+        if (isLiking && ownerId !== currentAuthUser.uid) {
+            addPoints(ownerId, 1);
+            createNotification({
+                userId: ownerId,
+                actorId: currentAuthUser.uid,
+                actorName: currentUser.displayName || 'Someone',
+                type: 'like',
+                journalId: entryId,
+                journalContent: entryContent,
+            });
+        }
+    }).catch(error => {
+        console.error("Like transaction failed: ", error);
     });
-  }, [currentAuthUser, addPoints, users]);
+  }, [currentAuthUser, currentUser, addPoints]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
     if (!currentAuthUser) return;
@@ -493,17 +501,12 @@ export function useJournal() {
   }, [currentAuthUser, toast]);
 
     const toggleFollow = useCallback(async (targetUserId: string) => {
-        if (!currentAuthUser || currentAuthUser.uid === targetUserId) return;
+        if (!currentAuthUser || !currentUser || currentAuthUser.uid === targetUserId) return;
 
         const currentUserRef = doc(db, 'users', currentAuthUser.uid);
         const targetUserRef = doc(db, 'users', targetUserId);
         
-        const currentUserSnap = await getDoc(currentUserRef);
-        if (!currentUserSnap.exists()) return;
-
-        const currentUserData = currentUserSnap.data() as User;
-        
-        const isFollowing = currentUserData.following.includes(targetUserId);
+        const isFollowing = currentUser.following.includes(targetUserId);
         
         const batch = writeBatch(db);
 
@@ -521,13 +524,13 @@ export function useJournal() {
              createNotification({
                 userId: targetUserId,
                 actorId: currentAuthUser.uid,
-                actorName: currentUserData?.displayName || 'Someone',
+                actorName: currentUser.displayName || 'Someone',
                 type: 'follow',
             });
         }
         
         await batch.commit();
-    }, [currentAuthUser, toast, addPoints]);
+    }, [currentAuthUser, currentUser, toast, addPoints]);
 
     const voteOnEntry = useCallback(async (entryId: string, optionIndex: number) => {
         if (!currentAuthUser) return;
