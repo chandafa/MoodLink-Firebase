@@ -17,13 +17,13 @@ type NotificationListPageProps = {
 const NotificationIcon = ({ type }: { type: string }) => {
     switch (type) {
         case 'like':
-            return <div className="h-8 w-8 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900"><Heart className="h-4 w-4 text-red-500" /></div>;
+            return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/50"><Heart className="h-5 w-5 text-red-500" /></div>;
         case 'comment':
-            return <div className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900"><MessageCircle className="h-4 w-4 text-blue-500" /></div>;
+            return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/50"><MessageCircle className="h-5 w-5 text-blue-500" /></div>;
         case 'follow':
-            return <div className="h-8 w-8 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900"><UserPlus className="h-4 w-4 text-green-500" /></div>;
+            return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/50"><UserPlus className="h-5 w-5 text-green-500" /></div>;
         default:
-            return <div className="h-8 w-8 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-900"><Bell className="h-4 w-4" /></div>;
+            return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-900/50"><Bell className="h-5 w-5" /></div>;
     }
 };
 
@@ -33,9 +33,14 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
     
     useEffect(() => {
         // Mark notifications as read when the component mounts/becomes visible
-        if (notifications.length > 0) {
-            markNotificationsAsRead();
-        }
+        // We add a small delay to avoid marking as read on a quick tab switch
+        const timer = setTimeout(() => {
+            if (notifications.some(n => !n.isRead)) {
+                markNotificationsAsRead();
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
     }, [notifications, markNotificationsAsRead]);
 
     const handleNotificationClick = (journalId: string | undefined) => {
@@ -48,11 +53,11 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
         const actorName = <span className="font-bold">{notification.actorName}</span>;
         switch (notification.type) {
             case 'like':
-                return <p>{actorName} menyukai postingan Anda: "{notification.journalContent?.substring(0, 30)}..."</p>;
+                return <p className="leading-relaxed">{actorName} menyukai postingan Anda: <span className="italic text-muted-foreground">"{notification.journalContent?.substring(0, 40)}..."</span></p>;
             case 'comment':
-                return <p>{actorName} mengomentari postingan Anda: "{notification.journalContent?.substring(0, 30)}..."</p>;
+                return <p className="leading-relaxed">{actorName} mengomentari postingan Anda: <span className="italic text-muted-foreground">"{notification.journalContent?.substring(0, 40)}..."</span></p>;
             case 'follow':
-                return <p>{actorName} mulai mengikuti Anda.</p>;
+                return <p className="leading-relaxed">{actorName} mulai mengikuti Anda.</p>;
             default:
                 return <p>Notifikasi baru.</p>;
         }
@@ -92,7 +97,7 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
             </header>
             <Card>
                 <CardContent className="p-0">
-                    <ul className="divide-y">
+                    <ul className="divide-y divide-border">
                         {notifications.length === 0 ? (
                            <li className="p-8 text-center text-muted-foreground">
                                 Tidak ada notifikasi.
@@ -102,20 +107,21 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
                                 <li
                                     key={notif.id}
                                     className={cn(
-                                        "p-4 flex items-start gap-4 transition-colors",
-                                        !notif.isRead && "bg-accent/50",
+                                        "p-4 flex items-start gap-4 transition-colors relative",
                                         notif.journalId ? "cursor-pointer hover:bg-accent" : "cursor-default"
                                     )}
                                     onClick={() => handleNotificationClick(notif.journalId)}
                                 >
-                                    <NotificationIcon type={notif.type} />
+                                    {!notif.isRead && <div className="absolute top-4 left-1 h-2.5 w-2.5 rounded-full bg-primary"></div>}
+                                    <div className="pl-5">
+                                        <NotificationIcon type={notif.type} />
+                                    </div>
                                     <div className="flex-1">
                                         <div className="text-sm">{getNotificationMessage(notif)}</div>
                                         <p className="text-xs text-muted-foreground mt-1">
                                             {formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true, locale: id })}
                                         </p>
                                     </div>
-                                    {!notif.isRead && <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1.5"></div>}
                                 </li>
                             ))
                         )}

@@ -423,46 +423,42 @@ export function useJournal() {
     if (!currentAuthUser || !currentUser) return;
     const entryRef = doc(db, 'journals', entryId);
     
-    await runTransaction(db, async (transaction) => {
-        const entryDoc = await transaction.get(entryRef);
+    try {
+        const entryDoc = await getDoc(entryRef);
         if (!entryDoc.exists()) throw "Document does not exist!";
 
         const entryData = entryDoc.data();
         const likedBy = entryData.likedBy || [];
         const ownerId = entryData.ownerId;
         
-        let isLiking = false;
         if (likedBy.includes(currentAuthUser.uid)) {
-            transaction.update(entryRef, { 
+            // Unlike
+            await updateDoc(entryRef, { 
                 likedBy: arrayRemove(currentAuthUser.uid),
                 likes: (entryData.likes || 1) - 1
             });
         } else {
-             isLiking = true;
-             transaction.update(entryRef, { 
+             // Like
+             await updateDoc(entryRef, { 
                 likedBy: arrayUnion(currentAuthUser.uid),
                 likes: (entryData.likes || 0) + 1
             });
+             // Post-transaction logic
+            if (ownerId !== currentAuthUser.uid) {
+                addPoints(ownerId, 1);
+                createNotification({
+                    userId: ownerId,
+                    actorId: currentAuthUser.uid,
+                    actorName: currentUser.displayName,
+                    type: 'like',
+                    journalId: entryId,
+                    journalContent: entryData.content,
+                });
+            }
         }
-        
-        // Return necessary data for post-transaction logic
-        return { isLiking, ownerId, entryContent: entryData.content };
-    }).then(({ isLiking, ownerId, entryContent }) => {
-        // Post-transaction logic
-        if (isLiking && ownerId !== currentAuthUser.uid) {
-            addPoints(ownerId, 1);
-            createNotification({
-                userId: ownerId,
-                actorId: currentAuthUser.uid,
-                actorName: currentUser.displayName || 'Someone',
-                type: 'like',
-                journalId: entryId,
-                journalContent: entryContent,
-            });
-        }
-    }).catch(error => {
+    } catch (error) {
         console.error("Like transaction failed: ", error);
-    });
+    }
   }, [currentAuthUser, currentUser, addPoints]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
@@ -524,7 +520,7 @@ export function useJournal() {
              createNotification({
                 userId: targetUserId,
                 actorId: currentAuthUser.uid,
-                actorName: currentUser.displayName || 'Someone',
+                actorName: currentUser.displayName,
                 type: 'follow',
             });
         }
@@ -557,7 +553,7 @@ export function useJournal() {
     }, [currentAuthUser, addPoints]);
 
     const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string) => {
-        if (!commentContent.trim()) {
+        if (!commentContent.trim() || !currentUser) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
@@ -581,8 +577,8 @@ export function useJournal() {
             if(entryDoc.exists()) {
                 createNotification({
                     userId: entryOwnerId,
-                    actorId: author.id,
-                    actorName: author.displayName || 'Someone',
+                    actorId: currentUser.id,
+                    actorName: currentUser.displayName,
                     type: 'comment',
                     journalId: entryId,
                     journalContent: entryDoc.data().content,
@@ -597,7 +593,7 @@ export function useJournal() {
         );
 
         toast({ title: 'Komentar ditambahkan' });
-    }, [toast, addPoints]);
+    }, [toast, addPoints, currentUser]);
     
     const getFollowersData = useCallback((followerIds: string[]): User[] => {
         return users.filter(user => followerIds.includes(user.id));
