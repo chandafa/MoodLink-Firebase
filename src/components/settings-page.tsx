@@ -103,6 +103,11 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="text-center mt-8 text-sm text-muted-foreground">
+        <p>Version 1.0.0</p>
+        <p>Copyright &copy; 2024 chandafa - chann</p>
+      </div>
     </div>
   );
 }
