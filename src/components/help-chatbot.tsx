@@ -28,7 +28,7 @@ export function HelpChatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm your friendly assistant. How can I help you use AnonJournal today?",
+      text: "Hello! I'm your friendly assistant. How can I help you use MoodLink today?",
       sender: 'bot',
     },
   ]);
@@ -72,10 +72,10 @@ export function HelpChatbot() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+        }
     }
   }, [messages]);
 
@@ -83,7 +83,7 @@ export function HelpChatbot() {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg"
+          className="fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-lg hidden md:flex"
           size="icon"
           aria-label="Open help chat"
         >
@@ -94,7 +94,7 @@ export function HelpChatbot() {
         <SheetHeader>
           <SheetTitle>Help Assistant</SheetTitle>
           <SheetDescription>
-            Ask me anything about using the AnonJournal app.
+            Ask me anything about using the MoodLink app.
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">
