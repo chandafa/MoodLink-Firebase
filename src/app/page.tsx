@@ -12,6 +12,7 @@ import { JournalListPage } from '@/components/journal-list-page';
 import { PostType, User } from '@/hooks/use-journal';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
+import { NotificationListPage } from '@/components/notification-list-page';
 
 function SplashScreen() {
   return (
@@ -122,6 +123,8 @@ export default function Home() {
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
         return <ProfilePage onSelectEntry={handleSelectEntry} />;
+      case 'Notifikasi':
+        return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         return <SettingsPage />;
       default:

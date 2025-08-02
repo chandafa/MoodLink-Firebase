@@ -1,5 +1,5 @@
 'use client';
-import { Bell, Heart, MessageCircle, UserPlus } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, ArrowLeft } from 'lucide-react';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useJournal } from '@/hooks/use-journal';
 import { formatDistanceToNow } from 'date-fns';
@@ -7,6 +7,7 @@ import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from './ui/card';
 import { Skeleton } from './ui/skeleton';
+import { Icons } from './icons';
 
 type NotificationListPageProps = {
     onSelectEntry: (id: string | null) => void;
@@ -53,11 +54,16 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
     
     if (isLoading) {
         return (
-            <div>
-                 <h2 className="text-2xl font-bold mb-4">Notifikasi</h2>
+            <div className="container mx-auto py-8 px-4">
+                 <header className="flex items-center gap-3 mb-8">
+                    <Bell className="h-8 w-8 text-primary" />
+                    <h1 className="text-3xl font-bold font-headline text-foreground">
+                        Notifikasi
+                    </h1>
+                 </header>
                  <div className="space-y-4">
                     {Array.from({length: 5}).map((_, i) => (
-                        <div key={i} className="flex items-center space-x-4">
+                        <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg">
                             <Skeleton className="h-12 w-12 rounded-full" />
                             <div className="space-y-2">
                                 <Skeleton className="h-4 w-[250px]" />
@@ -71,8 +77,13 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
     }
 
     return (
-        <div>
-            <h2 className="text-2xl font-bold mb-4">Notifikasi</h2>
+        <div className="container mx-auto py-8 px-4">
+            <header className="flex items-center gap-3 mb-8">
+                <Bell className="h-8 w-8 text-primary" />
+                <h1 className="text-3xl font-bold font-headline text-foreground">
+                    Notifikasi
+                </h1>
+            </header>
             <Card>
                 <CardContent className="p-0">
                     <ul className="divide-y">

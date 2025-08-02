@@ -25,11 +25,10 @@ import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookmarkPage } from './bookmark-page';
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Bookmark, Trophy, Hourglass, Bell } from 'lucide-react';
+import { User as UserIcon, Bookmark, Trophy, Hourglass } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
-import { NotificationListPage } from './notification-list-page';
 
 
 const profileSchema = z.object({
@@ -190,7 +189,7 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-4">
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
             </TabsTrigger>
@@ -199,9 +198,6 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
             </TabsTrigger>
              <TabsTrigger value="capsules">
                 <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
-            </TabsTrigger>
-             <TabsTrigger value="notifications">
-                <Bell className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Notifikasi</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
                 <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
@@ -215,9 +211,6 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
           </TabsContent>
            <TabsContent value="capsules" className="mt-6">
             <CapsuleListPage onSelectEntry={onSelectEntry} />
-          </TabsContent>
-          <TabsContent value="notifications" className="mt-6">
-            <NotificationListPage onSelectEntry={onSelectEntry} />
           </TabsContent>
           <TabsContent value="leaderboard" className="mt-6">
             <LeaderboardPage />
