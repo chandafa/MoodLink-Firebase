@@ -18,8 +18,6 @@ import { SupportBar } from './support-bar';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
-import { NotificationBell } from './notification-bell';
-
 
 const ITEMS_PER_PAGE = 6;
 
@@ -303,10 +301,8 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
                         </DropdownMenuGroup>
                     </DropdownMenuContent>
                  </DropdownMenu>
-
                 <div className="hidden md:flex items-center gap-2">
-                     <NotificationBell onSelectEntry={onSelectEntry} />
-                     <ThemeToggle />
+                    <ThemeToggle />
                 </div>
             </div>
         </header>

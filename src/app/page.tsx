@@ -10,7 +10,6 @@ import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { PostType, User } from '@/hooks/use-journal';
-import { CapsulePage } from '@/components/capsule-page';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 
@@ -121,8 +120,6 @@ export default function Home() {
         return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
-      case 'Capsule':
-        return <CapsulePage onSelectEntry={handleSelectEntry} />;
       case 'Profile':
         return <ProfilePage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
@@ -149,7 +146,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && activeTab !== 'Capsule' && !chattingWith && <HelpChatbot />}
+          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}

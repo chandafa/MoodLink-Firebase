@@ -25,9 +25,12 @@ import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookmarkPage } from './bookmark-page';
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Bookmark, Trophy } from 'lucide-react';
+import { User as UserIcon, Bookmark, Trophy, Hourglass, Bell } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { CapsuleListPage } from './capsule-list-page';
+import { NotificationListPage } from './notification-list-page';
+
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters.').max(50, 'Name must be at most 50 characters.'),
@@ -165,7 +168,7 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
           </Form>
         </CardContent>
       </Card>
-  )
+  );
 }
 
 export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
@@ -175,7 +178,6 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
     if (currentUser) {
         const userRef = doc(db, 'users', currentUser.id);
         await updateDoc(userRef, data);
-        // The onSnapshot listener in useJournal will update the state automatically
     }
   }
 
@@ -184,19 +186,25 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
       <header className="flex items-center gap-3 mb-8">
         <Icons.logo className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-bold font-headline text-foreground">
-          Profil & Lainnya
+          Profil & Aktivitas
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
             <TabsTrigger value="profile">
-                <UserIcon className="mr-2 h-4 w-4" /> Profil
+                <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
             </TabsTrigger>
             <TabsTrigger value="bookmarks">
-                <Bookmark className="mr-2 h-4 w-4" /> Tersimpan
+                <Bookmark className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Tersimpan</span>
+            </TabsTrigger>
+             <TabsTrigger value="capsules">
+                <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
+            </TabsTrigger>
+             <TabsTrigger value="notifications">
+                <Bell className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Notifikasi</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
-                <Trophy className="mr-2 h-4 w-4" /> Peringkat
+                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
@@ -204,6 +212,12 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
           </TabsContent>
           <TabsContent value="bookmarks" className="mt-6">
             <BookmarkPage onSelectEntry={onSelectEntry} />
+          </TabsContent>
+           <TabsContent value="capsules" className="mt-6">
+            <CapsuleListPage onSelectEntry={onSelectEntry} />
+          </TabsContent>
+          <TabsContent value="notifications" className="mt-6">
+            <NotificationListPage onSelectEntry={onSelectEntry} />
           </TabsContent>
           <TabsContent value="leaderboard" className="mt-6">
             <LeaderboardPage />
