@@ -13,6 +13,7 @@ import { PostType, User } from '@/hooks/use-journal';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
+import { BookmarkPage } from '@/components/bookmark-page';
 
 function SplashScreen() {
   return (
@@ -58,6 +59,7 @@ export default function Home() {
   const [isEditing, setIsEditing] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [chattingWith, setChattingWith] = useState<User | null>(null);
+  const [settingsView, setSettingsView] = useState<'main' | 'bookmarks'>('main');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -65,6 +67,13 @@ export default function Home() {
     }, 2500);
     return () => clearTimeout(timer);
   }, []);
+  
+  useEffect(() => {
+    // Reset settings view when changing tabs
+    if (activeTab !== 'Settings') {
+        setSettingsView('main');
+    }
+  }, [activeTab]);
 
   const handleSelectEntry = (id: string | null) => {
     setSelectedEntryId(id);
@@ -126,7 +135,10 @@ export default function Home() {
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
-        return <SettingsPage />;
+        if (settingsView === 'bookmarks') {
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} />;
+        }
+        return <SettingsPage onNavigate={setSettingsView} />;
       default:
         return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
     }

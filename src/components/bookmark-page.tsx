@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
-import { Edit, Flag, Trash2, MoreVertical, Bookmark } from 'lucide-react';
+import { Edit, Flag, Trash2, MoreVertical, Bookmark, ArrowLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -135,7 +135,7 @@ function EmptyState() {
   );
 }
 
-export function BookmarkPage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
+export function BookmarkPage({ onSelectEntry, onBack }: { onSelectEntry: (id: string | null) => void; onBack: () => void; }) {
   const { entries, isLoaded, currentAuthUserId } = useJournal();
 
   const bookmarkedEntries = useMemo(() => {
@@ -149,6 +149,9 @@ export function BookmarkPage({ onSelectEntry }: { onSelectEntry: (id: string | n
     <div className="container mx-auto py-8 px-4">
       <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div className="flex items-center gap-3">
+          <Button onClick={onBack} size="icon" variant="ghost" className="mr-2">
+              <ArrowLeft />
+          </Button>
           <Icons.logo className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold font-headline text-foreground">
             Jurnal Tersimpan

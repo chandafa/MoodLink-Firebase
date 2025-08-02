@@ -23,9 +23,8 @@ import { useJournal, User } from '@/hooks/use-journal';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookmarkPage } from './bookmark-page';
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Bookmark, Trophy, Hourglass } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -189,12 +188,9 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
-            </TabsTrigger>
-            <TabsTrigger value="bookmarks">
-                <Bookmark className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Tersimpan</span>
             </TabsTrigger>
              <TabsTrigger value="capsules">
                 <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
@@ -205,9 +201,6 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
           </TabsList>
           <TabsContent value="profile" className="mt-6">
             <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} />
-          </TabsContent>
-          <TabsContent value="bookmarks" className="mt-6">
-            <BookmarkPage onSelectEntry={onSelectEntry} />
           </TabsContent>
            <TabsContent value="capsules" className="mt-6">
             <CapsuleListPage onSelectEntry={onSelectEntry} />

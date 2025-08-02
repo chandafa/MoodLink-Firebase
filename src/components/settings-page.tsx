@@ -19,8 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
 import { useTheme } from "./theme-provider";
+import { Bookmark, ChevronRight } from "lucide-react";
 
-export default function SettingsPage() {
+export default function SettingsPage({ onNavigate }: { onNavigate: (view: 'main' | 'bookmarks') => void }) {
   const { toast } = useToast();
   const { theme } = useTheme();
 
@@ -58,6 +59,22 @@ export default function SettingsPage() {
               <Label htmlFor="language">Language</Label>
               <Button variant="outline" disabled>English</Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Content</CardTitle>
+            <CardDescription>Manage your content and data.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <button onClick={() => onNavigate('bookmarks')} className="flex items-center justify-between w-full p-4 rounded-lg hover:bg-accent transition-colors">
+                <div className="flex items-center gap-4">
+                    <Bookmark className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Jurnal Tersimpan</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
           </CardContent>
         </Card>
 
