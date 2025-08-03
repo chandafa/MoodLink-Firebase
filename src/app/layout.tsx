@@ -4,8 +4,38 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'MoodLink',
-  description: 'Find your peace, share your thoughts.',
+  title: 'Moodlink – Ekspresikan Emosi, Temukan Ketenangan',
+  description: 'Moodlink adalah tempat menulis jurnal, menyimpan rahasia, dan menemukan ketenangan hati melalui fitur jurnal pribadi, misi harian, dan eksplorasi hashtag emosi.',
+  keywords: ['jurnal emosi', 'catatan harian', 'mood tracker', 'self healing', 'overthinking', 'rahasia pribadi', 'misi harian', 'hashtag emosi', 'moodlink'],
+  authors: [{ name: 'Moodlink Team' }],
+  robots: {
+    index: true,
+    follow: true,
+  },
+  metadataBase: new URL('https://mood-link.vercel.app'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    url: 'https://mood-link.vercel.app',
+    title: 'Moodlink – Ekspresikan Emosi, Temukan Ketenangan',
+    description: 'Tulis jurnal emosimu, simpan rahasia, buka dengan kode. Temukan teman seperasaan lewat hashtag seperti #overthinking, #selfhealing, dan lainnya.',
+    images: [
+      {
+        url: 'https://mood-link.vercel.app/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Moodlink OG Image',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Moodlink – Ekspresikan Emosi, Temukan Ketenangan',
+    description: 'Tulis jurnal, ekspresikan emosi, dan buka postingan rahasia dengan kode. Moodlink, tempat healing dan refleksi pribadi.',
+    images: ['https://mood-link.vercel.app/og-image.png'],
+  },
 };
 
 export default function RootLayout({
@@ -14,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
