@@ -40,6 +40,9 @@ export type Comment = {
   authorAvatar: string; // denormalized
   content: string;
   createdAt: any; // Firestore Timestamp
+  parentId: string | null; // For threading
+  likes: number;
+  likedBy: string[];
 };
 
 export type User = {
@@ -424,38 +427,47 @@ export function useJournal() {
     const entryRef = doc(db, 'journals', entryId);
     
     try {
-        const entryDoc = await getDoc(entryRef);
-        if (!entryDoc.exists()) throw "Document does not exist!";
+        await runTransaction(db, async (transaction) => {
+            const entryDoc = await transaction.get(entryRef);
+            if (!entryDoc.exists()) throw "Document does not exist!";
 
-        const entryData = entryDoc.data();
-        const likedBy = entryData.likedBy || [];
-        const ownerId = entryData.ownerId;
-        
-        if (likedBy.includes(currentAuthUser.uid)) {
-            // Unlike
-            await updateDoc(entryRef, { 
-                likedBy: arrayRemove(currentAuthUser.uid),
-                likes: (entryData.likes || 1) - 1
-            });
-        } else {
-             // Like
-             await updateDoc(entryRef, { 
-                likedBy: arrayUnion(currentAuthUser.uid),
-                likes: (entryData.likes || 0) + 1
-            });
+            const entryData = entryDoc.data();
+            const isLiked = entryData.likedBy?.includes(currentAuthUser.uid);
+            
+            if (isLiked) {
+                // Unlike
+                transaction.update(entryRef, { 
+                    likedBy: arrayRemove(currentAuthUser.uid),
+                    likes: (entryData.likes || 1) - 1
+                });
+            } else {
+                 // Like
+                 transaction.update(entryRef, { 
+                    likedBy: arrayUnion(currentAuthUser.uid),
+                    likes: (entryData.likes || 0) + 1
+                });
+                
+                // Prepare data for notification after transaction
+                return {
+                    ownerId: entryData.ownerId,
+                    content: entryData.content
+                };
+            }
+            return null;
+        }).then((notificationData) => {
              // Post-transaction logic
-            if (ownerId !== currentAuthUser.uid) {
-                addPoints(ownerId, 1);
+            if (notificationData) {
+                addPoints(notificationData.ownerId, 1);
                 createNotification({
-                    userId: ownerId,
+                    userId: notificationData.ownerId,
                     actorId: currentAuthUser.uid,
                     actorName: currentUser.displayName,
                     type: 'like',
                     journalId: entryId,
-                    journalContent: entryData.content,
+                    journalContent: notificationData.content,
                 });
             }
-        }
+        });
     } catch (error) {
         console.error("Like transaction failed: ", error);
     }
@@ -552,7 +564,7 @@ export function useJournal() {
         addPoints(currentAuthUser.uid, 1);
     }, [currentAuthUser, addPoints]);
 
-    const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string) => {
+    const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string, parentId: string | null = null) => {
         if (!commentContent.trim() || !currentUser) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
@@ -564,6 +576,9 @@ export function useJournal() {
             authorAvatar: author.avatar,
             content: commentContent,
             createdAt: serverTimestamp(),
+            parentId,
+            likes: 0,
+            likedBy: [],
         };
 
         const commentsRef = collection(db, 'journals', entryId, 'comments');
@@ -594,6 +609,31 @@ export function useJournal() {
 
         toast({ title: 'Komentar ditambahkan' });
     }, [toast, addPoints, currentUser]);
+    
+    const toggleCommentLike = useCallback(async (entryId: string, commentId: string) => {
+        if (!currentAuthUser) return;
+        const commentRef = doc(db, 'journals', entryId, 'comments', commentId);
+
+        await runTransaction(db, async (transaction) => {
+            const commentDoc = await transaction.get(commentRef);
+            if (!commentDoc.exists()) throw "Comment does not exist!";
+
+            const data = commentDoc.data();
+            const isLiked = data.likedBy?.includes(currentAuthUser.uid);
+
+            if (isLiked) {
+                transaction.update(commentRef, {
+                    likedBy: arrayRemove(currentAuthUser.uid),
+                    likes: (data.likes || 1) - 1,
+                });
+            } else {
+                transaction.update(commentRef, {
+                    likedBy: arrayUnion(currentAuthUser.uid),
+                    likes: (data.likes || 0) + 1,
+                });
+            }
+        });
+    }, [currentAuthUser]);
     
     const getFollowersData = useCallback((followerIds: string[]): User[] => {
         return users.filter(user => followerIds.includes(user.id));
@@ -657,7 +697,7 @@ export function useJournal() {
     }, [currentAuthUser, currentUser, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData };
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike };
 }
 
 
@@ -674,7 +714,7 @@ export function useComments(entryId: string) {
             return;
         };
         const commentsRef = collection(db, 'journals', entryId, 'comments');
-        const q = query(commentsRef, orderBy("createdAt", "desc"));
+        const q = query(commentsRef, orderBy("createdAt", "asc"));
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const commentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];

@@ -21,9 +21,11 @@ import {
   Lock,
   Globe,
   Users,
+  Heart,
+  CornerDownRight,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType, useComments, User, Visibility } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,7 +43,222 @@ import { Progress } from './ui/progress';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
+import { AnimatePresence, motion } from 'framer-motion';
 
+// --- START: Threaded Comment Section ---
+
+type CommentWithReplies = Comment & { replies: CommentWithReplies[] };
+
+function buildCommentTree(comments: Comment[]): CommentWithReplies[] {
+    const commentMap = new Map<string, CommentWithReplies>();
+    const rootComments: CommentWithReplies[] = [];
+
+    comments.forEach(comment => {
+        commentMap.set(comment.id, { ...comment, replies: [] });
+    });
+
+    commentMap.forEach(comment => {
+        if (comment.parentId && commentMap.has(comment.parentId)) {
+            commentMap.get(comment.parentId)!.replies.push(comment);
+        } else {
+            rootComments.push(comment);
+        }
+    });
+
+    // Sort replies by creation date as well
+    commentMap.forEach(comment => {
+        comment.replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+    });
+    
+    // Sort root comments
+    return rootComments.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+}
+
+
+function CommentThread({
+  comment,
+  entryId,
+  entryOwnerId,
+  level = 0,
+}: {
+  comment: CommentWithReplies;
+  entryId: string;
+  entryOwnerId: string;
+  level?: number;
+}) {
+  const { currentUser, addComment, toggleCommentLike, currentAuthUserId } = useJournal();
+  const [replyContent, setReplyContent] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const isLiked = comment.likedBy.includes(currentAuthUserId);
+
+  const handleReplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyContent.trim() || !currentUser) {
+      toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await addComment(entryId, replyContent, currentUser, entryOwnerId, comment.id);
+      setReplyContent('');
+      setIsReplying(false);
+    } catch (error) {
+      console.error("Error submitting reply:", error);
+      toast({ title: 'Gagal mengirim balasan', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleLikeClick = async () => {
+    await toggleCommentLike(entryId, comment.id);
+  }
+
+  return (
+    <div className={cn("flex flex-col", level > 0 && "ml-4 md:ml-8 mt-3 pt-3 border-l-2 border-border")}>
+      <div className="flex gap-3">
+        <Avatar>
+          <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <div className="bg-muted rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <p className="font-bold">{comment.authorName}</p>
+              <p className="text-xs text-muted-foreground">
+                {comment.createdAt?.toDate().toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}
+              </p>
+            </div>
+            <p className="text-sm mt-1">{comment.content}</p>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick}>
+              <Heart className={cn("h-3 w-3 mr-1", isLiked && "fill-red-500 text-red-500")} />
+              {comment.likes}
+            </Button>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setIsReplying(!isReplying)}>
+              Balas
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <AnimatePresence>
+        {isReplying && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="ml-8 md:ml-16 mt-2 overflow-hidden"
+          >
+            <form onSubmit={handleReplySubmit} className="flex flex-col gap-2">
+              <Textarea
+                placeholder={`Membalas ${comment.authorName}...`}
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                disabled={isSubmitting}
+                className="text-sm"
+                rows={2}
+              />
+              <div className="flex justify-end gap-2">
+                 <Button type="button" variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Batal</Button>
+                 <Button type="submit" size="sm" disabled={isSubmitting}>
+                   {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
+                 </Button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="mt-2">
+          {comment.replies.map(reply => (
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              entryId={entryId}
+              entryOwnerId={entryOwnerId}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function CommentSection({ entryId, entryOwnerId }: { entryId: string, entryOwnerId: string }) {
+    const { comments, isLoading: isLoadingComments } = useComments(entryId);
+    const { currentUser, addComment } = useJournal();
+    const [newComment, setNewComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
+
+    const commentTree = useMemo(() => {
+        return buildCommentTree(comments);
+    }, [comments]);
+
+    const handleCommentSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newComment.trim() || !currentUser) {
+            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await addComment(entryId, newComment, currentUser, entryOwnerId);
+            setNewComment('');
+        } catch (error) {
+            console.error("Error submitting comment:", error);
+            toast({ title: 'Gagal mengirim komentar', variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+    
+    if (isLoadingComments) return <Skeleton className="h-40 w-full mt-6" />;
+
+    return (
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <MessageSquare />
+                    Komentar ({comments.length})
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleCommentSubmit} className="flex flex-col gap-4 mb-6">
+                     <Textarea 
+                        placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Anonim'}...`}
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        disabled={isSubmitting}
+                     />
+                     <Button type="submit" disabled={isSubmitting} className="self-end">
+                        {isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Send className="mr-2" />}
+                        Kirim
+                     </Button>
+                </form>
+                <Separator />
+                 <ScrollArea className="h-[40rem] mt-4 pr-4">
+                    <div className="space-y-4">
+                        {commentTree.length > 0 ? commentTree.map(comment => (
+                            <CommentThread key={comment.id} comment={comment} entryId={entryId} entryOwnerId={entryOwnerId} />
+                        )) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
+                        )}
+                    </div>
+                </ScrollArea>
+            </CardContent>
+        </Card>
+    )
+}
+
+// --- END: Threaded Comment Section ---
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
@@ -78,86 +295,6 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
     </div>
   );
 }
-
-
-function CommentSection({ entryId, entryOwnerId }: { entryId: string, entryOwnerId: string }) {
-    const { comments, isLoading: isLoadingComments } = useComments(entryId);
-    const { currentUser, addComment } = useJournal();
-    const [newComment, setNewComment] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { toast } = useToast();
-
-    const sortedComments = useMemo(() => {
-        return [...comments].sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis())
-    }, [comments]);
-
-    const handleCommentSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newComment.trim() || !currentUser) {
-            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            await addComment(entryId, newComment, currentUser, entryOwnerId);
-            setNewComment('');
-        } catch (error) {
-            console.error("Error submitting comment:", error);
-            toast({ title: 'Gagal mengirim komentar', variant: 'destructive' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    }
-    
-    if (isLoadingComments) return <Skeleton className="h-40 w-full mt-6" />;
-
-    return (
-        <Card className="mt-6">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <MessageSquare />
-                    Komentar ({sortedComments.length})
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleCommentSubmit} className="flex flex-col gap-4 mb-6">
-                     <Textarea 
-                        placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Anonim'}...`}
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        disabled={isSubmitting}
-                     />
-                     <Button type="submit" disabled={isSubmitting} className="self-end">
-                        {isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Send className="mr-2" />}
-                        Kirim
-                     </Button>
-                </form>
-                <Separator />
-                 <ScrollArea className="h-64 mt-4 pr-4">
-                    <div className="space-y-4">
-                        {sortedComments.length > 0 ? sortedComments.map(comment => (
-                            <div key={comment.id} className="flex gap-3">
-                                <Avatar>
-                                    <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <div className="flex items-center justify-between">
-                                        <p className="font-bold">{comment.authorName}</p>
-                                        <p className="text-xs text-muted-foreground">{comment.createdAt?.toDate().toLocaleString()}</p>
-                                    </div>
-                                    <p className="text-sm mt-1">{comment.content}</p>
-                                </div>
-                            </div>
-                        )) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
-                        )}
-                    </div>
-                </ScrollArea>
-            </CardContent>
-        </Card>
-    )
-}
-
 
 type JournalAppProps = {
   selectedEntryId: string | null;
