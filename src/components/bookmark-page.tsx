@@ -14,8 +14,9 @@ import { SupportBar } from './support-bar';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import HashtagRenderer from './hashtag-renderer';
 
-function JournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onSelect: () => void; }) {
+function JournalEntryCard({ entry, onSelect, onViewHashtag }: { entry: JournalEntry; onSelect: () => void; onViewHashtag: (tag: string) => void; }) {
   const { toast } = useToast();
   const { toggleBookmark, currentAuthUserId, deleteEntry } = useJournal();
   const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
@@ -27,7 +28,6 @@ function JournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onSelect: 
   }) || 'Just now';
 
   const title = entry.content.split('\n')[0];
-  const excerpt = entry.content.substring(entry.content.indexOf('\n') + 1).slice(0, 100) + '...' || title.slice(0, 100);
   const isOwner = entry.ownerId === currentAuthUserId;
 
   const handleReport = () => {
@@ -110,7 +110,7 @@ function JournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onSelect: 
           <CardDescription>{formattedDate}</CardDescription>
         </CardHeader>
         <CardContent className="flex-1">
-          <p className="text-sm text-muted-foreground line-clamp-3">{excerpt}</p>
+          <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
         </CardContent>
         <Separator className="my-2" />
         <CardFooter className="p-2 pt-0">
@@ -135,7 +135,7 @@ function EmptyState() {
   );
 }
 
-export function BookmarkPage({ onSelectEntry, onBack }: { onSelectEntry: (id: string | null) => void; onBack: () => void; }) {
+export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag }: { onSelectEntry: (id: string | null) => void; onBack: () => void; onViewHashtag: (tag: string) => void; }) {
   const { entries, isLoaded, currentAuthUserId } = useJournal();
 
   const bookmarkedEntries = useMemo(() => {
@@ -188,6 +188,7 @@ export function BookmarkPage({ onSelectEntry, onBack }: { onSelectEntry: (id: st
                 key={entry.id}
                 entry={entry}
                 onSelect={() => onSelectEntry(entry.id)}
+                onViewHashtag={onViewHashtag}
               />
             ))}
           </motion.div>

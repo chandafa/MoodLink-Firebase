@@ -44,6 +44,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
+import HashtagRenderer from './hashtag-renderer';
 
 // --- START: Threaded Comment Section ---
 
@@ -79,11 +80,13 @@ function CommentThread({
   comment,
   entryId,
   entryOwnerId,
+  onViewHashtag,
   level = 0,
 }: {
   comment: CommentWithReplies;
   entryId: string;
   entryOwnerId: string;
+  onViewHashtag: (tag: string) => void;
   level?: number;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId } = useJournal();
@@ -131,7 +134,7 @@ function CommentThread({
                 {comment.createdAt?.toDate().toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}
               </p>
             </div>
-            <p className="text-sm mt-1">{comment.content}</p>
+            <HashtagRenderer text={comment.content} onViewHashtag={onViewHashtag} />
           </div>
           <div className="flex items-center gap-2 mt-1">
             <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick}>
@@ -181,6 +184,7 @@ function CommentThread({
               comment={reply}
               entryId={entryId}
               entryOwnerId={entryOwnerId}
+              onViewHashtag={onViewHashtag}
               level={level + 1}
             />
           ))}
@@ -191,7 +195,7 @@ function CommentThread({
 }
 
 
-function CommentSection({ entryId, entryOwnerId }: { entryId: string, entryOwnerId: string }) {
+function CommentSection({ entryId, entryOwnerId, onViewHashtag }: { entryId: string, entryOwnerId: string, onViewHashtag: (tag: string) => void }) {
     const { comments, isLoading: isLoadingComments } = useComments(entryId);
     const { currentUser, addComment } = useJournal();
     const [newComment, setNewComment] = useState('');
@@ -247,7 +251,7 @@ function CommentSection({ entryId, entryOwnerId }: { entryId: string, entryOwner
                  <ScrollArea className="h-[40rem] mt-4 pr-4">
                     <div className="space-y-4">
                         {commentTree.length > 0 ? commentTree.map(comment => (
-                            <CommentThread key={comment.id} comment={comment} entryId={entryId} entryOwnerId={entryOwnerId} />
+                            <CommentThread key={comment.id} comment={comment} entryId={entryId} entryOwnerId={entryOwnerId} onViewHashtag={onViewHashtag}/>
                         )) : (
                             <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
                         )}
@@ -302,9 +306,10 @@ type JournalAppProps = {
   setSelectedEntryId: (id: string | null) => void;
   newPostType: PostType;
   onViewProfile: (userId: string) => void;
+  onViewHashtag: (tag: string) => void;
 }
 
-export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile }: JournalAppProps) {
+export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile, onViewHashtag }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId, getFollowersData } = useJournal();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<(File | string)[]>([]); // Can hold File objects for new uploads or string URLs for existing
@@ -564,17 +569,22 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                      </Button>
                    </div>
                  )}
-                <Textarea
-                  placeholder={
-                    postType === 'journal' ? "Mulai menulis jurnal..." :
-                    postType === 'voting' ? "Tulis pertanyaan voting..." :
-                    "Tulis pesan untuk masa depan..."
-                  }
-                  className="flex-1 text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
-                  value={editorContent}
-                  onChange={e => setEditorContent(e.target.value)}
-                  readOnly={!isOwner && !!activeEntry}
-                />
+                {isOwner || !activeEntry ? (
+                    <Textarea
+                        placeholder={
+                            postType === 'journal' ? "Mulai menulis jurnal... Gunakan # untuk topik." :
+                            postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
+                            "Tulis pesan untuk masa depan... Gunakan # untuk topik."
+                        }
+                        className="flex-1 text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                        value={editorContent}
+                        onChange={e => setEditorContent(e.target.value)}
+                    />
+                ) : (
+                    <div className="flex-1 text-base py-2">
+                       <HashtagRenderer text={editorContent} onViewHashtag={onViewHashtag} />
+                    </div>
+                )}
                  { (isOwner || !activeEntry) && postType === 'voting' && (
                     <div className="space-y-2 mt-4">
                         <h3 className="text-sm font-medium">Opsi Voting</h3>
@@ -700,7 +710,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                 </>
                 )}
             </Card>
-            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} />}
+            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag}/>}
             </>
           )}
         </main>

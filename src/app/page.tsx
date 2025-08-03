@@ -14,6 +14,9 @@ import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
 import { BookmarkPage } from '@/components/bookmark-page';
+import { ExplorePage } from '@/components/explore-page';
+import HashtagPage from '@/components/hashtag-page';
+
 
 function SplashScreen() {
   return (
@@ -60,6 +63,7 @@ export default function Home() {
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [chattingWith, setChattingWith] = useState<User | null>(null);
   const [settingsView, setSettingsView] = useState<'main' | 'bookmarks'>('main');
+  const [viewingHashtag, setViewingHashtag] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -75,43 +79,47 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  const handleSelectEntry = (id: string | null) => {
-    setSelectedEntryId(id);
-    setIsEditing(true);
+  const resetViews = () => {
+    setIsEditing(false);
+    setSelectedEntryId(null);
     setViewingProfileId(null);
     setChattingWith(null);
+    setViewingHashtag(null);
+  }
+
+  const handleSelectEntry = (id: string | null) => {
+    resetViews();
+    setSelectedEntryId(id);
+    setIsEditing(true);
     if (id === null) {
-      setNewPostType('journal'); // Default for new post
+      setNewPostType('journal');
     }
   };
 
   const handleNewPost = (type: PostType) => {
+    resetViews();
     setNewPostType(type);
     setSelectedEntryId(null);
     setIsEditing(true);
-    setViewingProfileId(null);
-    setChattingWith(null);
   }
   
   const handleBackToList = () => {
-    setIsEditing(false);
-    setSelectedEntryId(null);
-    setViewingProfileId(null);
-    setChattingWith(null);
+    resetViews();
   };
   
   const handleViewProfile = (userId: string) => {
+    resetViews();
     setViewingProfileId(userId);
-    setIsEditing(false);
-    setSelectedEntryId(null);
-    setChattingWith(null);
   };
 
   const handleStartChat = (user: User) => {
+    resetViews();
     setChattingWith(user);
-    setViewingProfileId(null);
-    setIsEditing(false);
-    setSelectedEntryId(null);
+  }
+
+  const handleViewHashtag = (tag: string) => {
+    resetViews();
+    setViewingHashtag(tag);
   }
 
   const renderContent = () => {
@@ -119,15 +127,20 @@ export default function Home() {
       return <PrivateChatPage targetUser={chattingWith} onBack={handleBackToList} />
     }
     if (viewingProfileId) {
-      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onStartChat={handleStartChat} />;
+      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onStartChat={handleStartChat} onViewHashtag={handleViewHashtag}/>;
     }
     if (isEditing) {
-      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} />;
+      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} onViewHashtag={handleViewHashtag}/>;
+    }
+    if (viewingHashtag) {
+        return <HashtagPage hashtag={viewingHashtag} onBack={handleBackToList} onSelectEntry={handleSelectEntry} />;
     }
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag} />;
+      case 'Explore':
+        return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
@@ -136,11 +149,11 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} />;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag}/>;
     }
   };
 
@@ -161,7 +174,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <HelpChatbot />}
+          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <div className="hidden md:flex"><HelpChatbot /></div>}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}

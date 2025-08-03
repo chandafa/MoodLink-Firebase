@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { SupportBar } from './support-bar';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-
+import HashtagRenderer from './hashtag-renderer';
 
 const POINTS_PER_LEVEL = 50;
 
@@ -33,7 +33,7 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
     }
 };
 
-function ProfileJournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onSelect: (id: string) => void; }) {
+function ProfileJournalEntryCard({ entry, onSelect, onViewHashtag }: { entry: JournalEntry; onSelect: (id: string) => void; onViewHashtag: (tag: string) => void; }) {
   const { toggleBookmark, currentAuthUserId } = useJournal();
   const { toast } = useToast();
   const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
@@ -45,7 +45,6 @@ function ProfileJournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onS
   }) || 'Just now';
 
   const title = entry.content.split('\n')[0];
-  const excerpt = entry.content.substring(entry.content.indexOf('\n') + 1).slice(0, 100) + '...' || title.slice(0, 100);
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -109,7 +108,7 @@ function ProfileJournalEntryCard({ entry, onSelect }: { entry: JournalEntry; onS
             <CardDescription>{formattedDate}</CardDescription>
         </CardHeader>
         <CardContent className="flex-1">
-          <p className="text-sm text-muted-foreground line-clamp-3">{excerpt}</p>
+          <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt={true} />
         </CardContent>
         <Separator className="my-2" />
         <CardFooter className="p-2 pt-0">
@@ -126,11 +125,13 @@ export default function PublicProfilePage({
   onBack,
   onSelectEntry,
   onStartChat,
+  onViewHashtag
 }: {
   userId: string;
   onBack: () => void;
   onSelectEntry: (id: string | null) => void;
   onStartChat: (user: User) => void;
+  onViewHashtag: (tag: string) => void;
 }) {
   const { users, isLoaded, currentUser, toggleFollow, getUserEntries } = useJournal();
 
@@ -266,7 +267,7 @@ export default function PublicProfilePage({
              {userEntries.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                    {userEntries.map(entry => (
-                       <ProfileJournalEntryCard key={entry.id} entry={entry} onSelect={onSelectEntry} />
+                       <ProfileJournalEntryCard key={entry.id} entry={entry} onSelect={onSelectEntry} onViewHashtag={onViewHashtag} />
                    ))}
                 </div>
              ) : (

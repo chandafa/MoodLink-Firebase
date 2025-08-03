@@ -21,6 +21,8 @@ import {
   orderBy,
   Timestamp,
   setDoc,
+  increment,
+  limit,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -64,4 +66,6 @@ export {
     orderBy,
     Timestamp,
     setDoc,
+    increment,
+    limit,
 };

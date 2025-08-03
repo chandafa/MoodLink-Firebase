@@ -25,11 +25,13 @@ import {
   orderBy,
   Timestamp,
   setDoc,
+  increment
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
+import { Hashtag } from './use-hashtags';
 
 export type Visibility = 'public' | 'private' | 'restricted';
 
@@ -80,6 +82,7 @@ export type JournalEntry = {
   votedBy: string[];
   visibility: Visibility;
   allowedUserIds: string[];
+  hashtags: string[];
 };
 
 export type ChatMessage = {
@@ -104,6 +107,15 @@ export type Conversation = {
 
 
 const POINTS_PER_LEVEL = 50;
+
+// Utility to extract hashtags from text
+const extractHashtags = (text: string): string[] => {
+  const hashtagRegex = /#(\w+)/g;
+  const matches = text.match(hashtagRegex);
+  if (!matches) return [];
+  // Return unique, lowercase hashtags without the '#' prefix
+  return Array.from(new Set(matches.map(tag => tag.substring(1).toLowerCase())));
+};
 
 async function getCommentCount(journalId: string): Promise<number> {
     const commentsRef = collection(db, 'journals', journalId, 'comments');
@@ -288,6 +300,26 @@ export function useJournal() {
       }
   }, [toast]);
 
+  // --- HASHTAG ACTIONS ---
+  const updateHashtagCounts = useCallback(async (tags: string[], operation: 'increment' | 'decrement') => {
+    const batch = writeBatch(db);
+    const amount = operation === 'increment' ? 1 : -1;
+
+    tags.forEach(tag => {
+        const tagRef = doc(db, 'hashtags', tag);
+        batch.set(tagRef, { 
+            name: tag, 
+            count: increment(amount),
+            updatedAt: serverTimestamp() 
+        }, { merge: true });
+    });
+
+    try {
+        await batch.commit();
+    } catch (error) {
+        console.error("Error updating hashtag counts:", error);
+    }
+  }, []);
 
   // --- JOURNAL ACTIONS ---
   const addEntry = useCallback(async (content: string, images: (File | string)[], postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[]) => {
@@ -314,7 +346,11 @@ export function useJournal() {
       ) : [];
 
       const validImageUrls = imageUrls.filter((url): url is string => url !== null);
-
+      
+      const hashtags = extractHashtags(content);
+      if (hashtags.length > 0) {
+          await updateHashtagCounts(hashtags, 'increment');
+      }
 
       // 2. Add new journal document to Firestore
       const newEntryData: any = {
@@ -331,6 +367,7 @@ export function useJournal() {
         votedBy: [],
         visibility,
         allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
+        hashtags,
       };
 
       if (postType === 'capsule') {
@@ -351,7 +388,7 @@ export function useJournal() {
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
         return null;
     }
-  }, [currentAuthUser, toast, addPoints, uploadImageToHosting]);
+  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
 
   const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], options: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) return;
@@ -362,7 +399,19 @@ export function useJournal() {
         toast({ title: 'Error', description: 'Postingan tidak ditemukan.', variant: 'destructive'});
         return;
     }
-    const postType = docSnap.data().postType;
+    const oldEntryData = docSnap.data() as JournalEntry;
+    const postType = oldEntryData.postType;
+
+    // Handle hashtag count updates
+    const oldHashtags = oldEntryData.hashtags || [];
+    const newHashtags = extractHashtags(content);
+    
+    const tagsToAdd = newHashtags.filter(tag => !oldHashtags.includes(tag));
+    const tagsToRemove = oldHashtags.filter(tag => !newHashtags.includes(tag));
+
+    if (tagsToAdd.length > 0) await updateHashtagCounts(tagsToAdd, 'increment');
+    if (tagsToRemove.length > 0) await updateHashtagCounts(tagsToRemove, 'decrement');
+
 
     const newImageFiles = images.filter((img): img is File => img instanceof File);
     const existingImageUrls = images.filter((img): img is string => typeof img === 'string');
@@ -381,19 +430,19 @@ export function useJournal() {
       updatedAt: serverTimestamp(),
       visibility,
       allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
+      hashtags: newHashtags,
     };
 
     if (postType === 'voting' && options.length > 0) {
-      const entry = docSnap.data() as JournalEntry;
       updateData.options = options.map((optText, index) => ({
         text: optText,
-        votes: entry.options[index]?.votes || 0,
+        votes: oldEntryData.options[index]?.votes || 0,
       }));
     }
 
     await updateDoc(entryRef, updateData);
     toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
-  }, [currentAuthUser, toast, uploadImageToHosting]);
+  }, [currentAuthUser, toast, uploadImageToHosting, updateHashtagCounts]);
 
 
   const deleteEntry = useCallback(async (id: string) => {
@@ -401,11 +450,18 @@ export function useJournal() {
     
     const entryRef = doc(db, 'journals', id);
     const entrySnap = await getDoc(entryRef);
-    const entryData = entrySnap.data();
+    const entryData = entrySnap.data() as JournalEntry | undefined;
+
+    if (!entryData) return;
+    
+    // Decrement hashtag counts
+    if (entryData.hashtags && entryData.hashtags.length > 0) {
+        await updateHashtagCounts(entryData.hashtags, 'decrement');
+    }
 
     // Note: Deleting images from cPanel hosting would require another PHP script or API endpoint.
     // This implementation does not delete the image files from the hosting server.
-    if (entryData?.images && entryData.images.length > 0) {
+    if (entryData.images && entryData.images.length > 0) {
         entryData.images.forEach(async (url: string) => {
             if (url.includes('firebasestorage')) {
               try {
@@ -420,14 +476,14 @@ export function useJournal() {
 
     await deleteDoc(entryRef);
     toast({ title: 'Postingan Dihapus', variant: 'destructive' });
-  }, [currentAuthUser, toast]);
+  }, [currentAuthUser, toast, updateHashtagCounts]);
 
   const toggleLike = useCallback(async (entryId: string) => {
     if (!currentAuthUser || !currentUser) return;
     const entryRef = doc(db, 'journals', entryId);
     
     try {
-        await runTransaction(db, async (transaction) => {
+        const notificationData = await runTransaction(db, async (transaction) => {
             const entryDoc = await transaction.get(entryRef);
             if (!entryDoc.exists()) throw "Document does not exist!";
 
@@ -454,20 +510,20 @@ export function useJournal() {
                 };
             }
             return null;
-        }).then((notificationData) => {
-             // Post-transaction logic
-            if (notificationData) {
-                addPoints(notificationData.ownerId, 1);
-                createNotification({
-                    userId: notificationData.ownerId,
-                    actorId: currentAuthUser.uid,
-                    actorName: currentUser.displayName,
-                    type: 'like',
-                    journalId: entryId,
-                    journalContent: notificationData.content,
-                });
-            }
         });
+
+        // Post-transaction logic
+        if (notificationData) {
+            await addPoints(notificationData.ownerId, 1);
+            await createNotification({
+                userId: notificationData.ownerId,
+                actorId: currentAuthUser.uid,
+                actorName: currentUser.displayName,
+                type: 'like',
+                journalId: entryId,
+                journalContent: notificationData.content,
+            });
+        }
     } catch (error) {
         console.error("Like transaction failed: ", error);
     }
@@ -590,7 +646,7 @@ export function useJournal() {
         if (author.id !== entryOwnerId) {
            await addPoints(entryOwnerId, 2);
             if(entryDoc.exists()) {
-                createNotification({
+                await createNotification({
                     userId: entryOwnerId,
                     actorId: currentUser.id,
                     actorName: currentUser.displayName,
@@ -619,7 +675,7 @@ export function useJournal() {
             if (!commentDoc.exists()) throw "Comment does not exist!";
 
             const data = commentDoc.data();
-            const isLiked = data.likedBy?.includes(currentAuthUser.uid);
+            const isLiked = (data.likedBy || []).includes(currentAuthUser.uid);
 
             if (isLiked) {
                 transaction.update(commentRef, {

@@ -18,6 +18,8 @@ import { SupportBar } from './support-bar';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
+import HashtagRenderer from './hashtag-renderer';
+
 
 const ITEMS_PER_PAGE = 6;
 
@@ -82,7 +84,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 }
 
 
-function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; }) {
+function JournalEntryCard({ entry, onSelect, onDelete, onViewHashtag }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; }) {
   const { toast } = useToast();
   const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
   const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
@@ -94,7 +96,6 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
   }) || 'Just now';
 
   const title = entry.content.split('\n')[0];
-  const excerpt = entry.content.substring(entry.content.indexOf('\n') + 1).slice(0, 100) + '...' || title.slice(0, 100);
   const isOwner = entry.ownerId === currentAuthUserId;
 
   const handleReport = () => {
@@ -187,7 +188,7 @@ function JournalEntryCard({ entry, onSelect, onDelete }: { entry: JournalEntry; 
             </CardHeader>
             <CardContent className="flex-1">
                 {entry.postType === 'journal' ? (
-                  <p className="text-sm text-muted-foreground line-clamp-3">{excerpt}</p>
+                  <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
                 ) : (
                   <VotingSection entry={entry} onVote={voteOnEntry} />
                 )}
@@ -219,7 +220,7 @@ function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
     );
   }
 
-export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; }) {
+export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; onViewHashtag: (tag: string) => void; }) {
   const { entries, deleteEntry, isLoaded, currentAuthUserId } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -227,7 +228,7 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
   const filteredEntries = useMemo(() => {
     return entries
       .filter(entry => {
-        const isMatch = entry.content.toLowerCase().includes(searchTerm.toLowerCase()) && entry.postType !== 'capsule';
+        const isMatch = (entry.content.toLowerCase().includes(searchTerm.toLowerCase()) || entry.hashtags?.some(h => h.includes(searchTerm.toLowerCase()))) && entry.postType !== 'capsule';
         if (!isMatch) return false;
 
         const isOwner = entry.ownerId === currentAuthUserId;
@@ -271,7 +272,7 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
                 <div className="relative flex-1 min-w-40">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                        placeholder="Cari postingan..."
+                        placeholder="Cari postingan atau #tag..."
                         className="pl-10"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -338,6 +339,7 @@ export function JournalListPage({ onSelectEntry, onNewPost }: { onSelectEntry: (
                                 entry={entry} 
                                 onSelect={() => onSelectEntry(entry.id)}
                                 onDelete={deleteEntry}
+                                onViewHashtag={onViewHashtag}
                             />
                         ))}
                     </motion.div>
