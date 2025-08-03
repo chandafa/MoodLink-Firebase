@@ -92,7 +92,7 @@ function CommentThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const isLiked = comment.likedBy.includes(currentAuthUserId);
+  const isLiked = (comment.likedBy || []).includes(currentAuthUserId);
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +136,7 @@ function CommentThread({
           <div className="flex items-center gap-2 mt-1">
             <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick}>
               <Heart className={cn("h-3 w-3 mr-1", isLiked && "fill-red-500 text-red-500")} />
-              {comment.likes}
+              {comment.likes || 0}
             </Button>
             <Button variant="ghost" size="sm" className="text-xs" onClick={() => setIsReplying(!isReplying)}>
               Balas
