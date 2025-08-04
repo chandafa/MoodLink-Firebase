@@ -642,6 +642,8 @@ export function useJournal() {
         
         const entryRef = doc(db, 'journals', entryId);
         const entryDoc = await getDoc(entryRef);
+        await updateDoc(entryRef, { commentCount: increment(1) });
+
 
         if (author.id !== entryOwnerId) {
            await addPoints(entryOwnerId, 2);
@@ -657,12 +659,6 @@ export function useJournal() {
             }
         }
         
-        setEntries(prevEntries =>
-            prevEntries.map(e =>
-                e.id === entryId ? { ...e, commentCount: e.commentCount + 1 } : e
-            )
-        );
-
         toast({ title: 'Komentar ditambahkan' });
     }, [toast, addPoints, currentUser]);
     
@@ -689,6 +685,42 @@ export function useJournal() {
                 });
             }
         });
+    }, [currentAuthUser]);
+
+    const updateComment = useCallback(async (entryId: string, commentId: string, newContent: string) => {
+        if (!currentAuthUser) return;
+        const commentRef = doc(db, 'journals', entryId, 'comments', commentId);
+        await updateDoc(commentRef, {
+            content: newContent
+        });
+        toast({ title: 'Komentar diperbarui' });
+    }, [currentAuthUser, toast]);
+
+    const deleteComment = useCallback(async (entryId: string, commentId: string) => {
+        if (!currentAuthUser) return;
+
+        // Recursive function to delete a comment and all its replies
+        const recursiveDelete = async (id: string) => {
+            const batch = writeBatch(db);
+            const repliesQuery = query(collection(db, `journals/${entryId}/comments`), where('parentId', '==', id));
+            const repliesSnapshot = await getDocs(repliesQuery);
+            
+            // Recursively delete all replies first
+            for (const replyDoc of repliesSnapshot.docs) {
+                await recursiveDelete(replyDoc.id);
+            }
+            
+            // After all children are deleted, delete the parent comment
+            batch.delete(doc(db, `journals/${entryId}/comments`, id));
+            await batch.commit();
+
+            // Decrement the main entry's comment count
+            const entryRef = doc(db, 'journals', entryId);
+            await updateDoc(entryRef, { commentCount: increment(-1) });
+        };
+        
+        await recursiveDelete(commentId);
+        
     }, [currentAuthUser]);
     
     const getFollowersData = useCallback((followerIds: string[]): User[] => {
@@ -753,7 +785,7 @@ export function useJournal() {
     }, [currentAuthUser, currentUser, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike };
+  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment };
 }
 
 

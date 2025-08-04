@@ -23,6 +23,8 @@ import {
   Users,
   Heart,
   CornerDownRight,
+  MoreVertical,
+  Edit,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
@@ -45,6 +47,24 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
 import HashtagRenderer from './hashtag-renderer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 
 // --- START: Threaded Comment Section ---
 
@@ -89,13 +109,16 @@ function CommentThread({
   onViewHashtag: (tag: string) => void;
   level?: number;
 }) {
-  const { currentUser, addComment, toggleCommentLike, currentAuthUserId } = useJournal();
+  const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
   const [replyContent, setReplyContent] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const isLiked = (comment.likedBy || []).includes(currentAuthUserId);
+  const isOwner = comment.authorId === currentAuthUserId;
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +143,34 @@ function CommentThread({
     await toggleCommentLike(entryId, comment.id);
   }
 
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editContent.trim()) {
+      toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+        await updateComment(entryId, comment.id, editContent);
+        setIsEditing(false);
+    } catch (error) {
+        console.error("Error updating comment:", error);
+        toast({ title: 'Gagal memperbarui komentar', variant: 'destructive' });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  const handleDelete = async () => {
+      try {
+          await deleteComment(entryId, comment.id);
+          toast({ title: 'Komentar dihapus' });
+      } catch (error) {
+          console.error("Error deleting comment:", error);
+          toast({ title: 'Gagal menghapus komentar', variant: 'destructive' });
+      }
+  }
+
   return (
     <div className={cn("flex flex-col", level > 0 && "ml-4 md:ml-8 mt-3 pt-3 border-l-2 border-border")}>
       <div className="flex gap-3">
@@ -130,21 +181,78 @@ function CommentThread({
           <div className="bg-muted rounded-lg p-3">
             <div className="flex items-center justify-between">
               <p className="font-bold">{comment.authorName}</p>
-              <p className="text-xs text-muted-foreground">
-                {comment.createdAt?.toDate().toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-muted-foreground">
+                    {comment.createdAt?.toDate().toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}
+                </p>
+                {isOwner && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => { setIsEditing(true); setEditContent(comment.content); }}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                            </DropdownMenuItem>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>Hapus</span>
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Anda yakin ingin menghapus komentar ini?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Tindakan ini tidak dapat diurungkan. Ini akan menghapus komentar secara permanen beserta semua balasannya.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+              </div>
             </div>
-            <HashtagRenderer text={comment.content} onViewHashtag={onViewHashtag} />
+            {isEditing ? (
+                 <form onSubmit={handleEditSubmit} className="mt-2">
+                    <Textarea 
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        disabled={isSubmitting}
+                        className="text-sm"
+                        rows={2}
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Batal</Button>
+                        <Button type="submit" size="sm" disabled={isSubmitting}>
+                            {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Simpan'}
+                        </Button>
+                    </div>
+                </form>
+            ) : (
+                <HashtagRenderer text={comment.content} onViewHashtag={onViewHashtag} />
+            )}
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick}>
-              <Heart className={cn("h-3 w-3 mr-1", isLiked && "fill-red-500 text-red-500")} />
-              {comment.likes || 0}
-            </Button>
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setIsReplying(!isReplying)}>
-              Balas
-            </Button>
-          </div>
+          {!isEditing && (
+            <div className="flex items-center gap-2 mt-1">
+                <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick}>
+                <Heart className={cn("h-3 w-3 mr-1", isLiked && "fill-red-500 text-red-500")} />
+                {comment.likes || 0}
+                </Button>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => setIsReplying(!isReplying)}>
+                Balas
+                </Button>
+            </div>
+          )}
         </div>
       </div>
       
