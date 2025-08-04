@@ -56,6 +56,7 @@ export type User = {
   following: string[];
   points: number;
   level: number;
+  bannerUrl?: string;
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule';
@@ -167,6 +168,7 @@ export function useJournal() {
                     following: [],
                     points: 0,
                     level: 1,
+                    bannerUrl: '',
                 };
                 runTransaction(db, async (transaction) => {
                     transaction.set(userRef, newUser);
@@ -879,3 +881,5 @@ export function useConversations(userId: string | null) {
 
     return { conversations, isLoading };
 }
+
+    

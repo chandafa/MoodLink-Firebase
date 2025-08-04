@@ -214,37 +214,48 @@ export default function PublicProfilePage({
         </header>
 
         <Card>
-            <CardHeader>
-              <div className="flex flex-col items-center sm:flex-row gap-6">
-                <Avatar style={{ height: '8rem', width: '8rem' }}>
-                  <AvatarFallback style={{ fontSize: '4rem' }} className="bg-secondary text-secondary-foreground">
-                    {userProfile.avatar}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-center sm:text-left w-full">
-                    <CardTitle>{userProfile.displayName}</CardTitle>
-                    <CardDescription>{userProfile.bio}</CardDescription>
-                     <div className="flex justify-center sm:justify-start gap-6 mt-4">
-                        <div>
-                            <p className="text-lg font-bold">{userProfile.followers.length}</p>
-                            <p className="text-sm text-muted-foreground">Followers</p>
-                        </div>
-                        <div>
-                            <p className="text-lg font-bold">{userProfile.following.length}</p>
-                            <p className="text-sm text-muted-foreground">Following</p>
-                        </div>
-                         <div>
-                            <p className="text-lg font-bold">{userProfile.points}</p>
-                            <p className="text-sm text-muted-foreground">Poin</p>
-                        </div>
+            <CardHeader className="p-0">
+               <div className="relative h-48 bg-secondary flex items-center justify-center rounded-t-lg">
+                 {userProfile.bannerUrl && (
+                    <Image
+                        src={userProfile.bannerUrl}
+                        alt="User Banner"
+                        layout="fill"
+                        objectFit="cover"
+                        className="rounded-t-lg"
+                    />
+                 )}
+                 <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
+                    <Avatar style={{ height: '8rem', width: '8rem' }} className="border-4 border-background">
+                      <AvatarFallback style={{ fontSize: '4rem' }} className="bg-secondary text-secondary-foreground">
+                        {userProfile.avatar}
+                      </AvatarFallback>
+                    </Avatar>
+                 </div>
+              </div>
+              <div className="pt-20 p-6 flex flex-col items-center">
+                 <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
+                 <CardDescription className="mt-1 text-center">{userProfile.bio}</CardDescription>
+                 <div className="flex justify-center gap-6 mt-4 w-full">
+                    <div>
+                        <p className="text-lg font-bold">{userProfile.followers.length}</p>
+                        <p className="text-sm text-muted-foreground">Followers</p>
                     </div>
-                     <div className="mt-4">
-                        <div className="flex justify-between items-center mb-1">
-                            <p className="text-sm font-semibold">Level {userProfile.level}</p>
-                            <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin ke level berikutnya</p>
-                        </div>
-                        <Progress value={progressToNextLevel} className="h-2" />
+                    <div>
+                        <p className="text-lg font-bold">{userProfile.following.length}</p>
+                        <p className="text-sm text-muted-foreground">Following</p>
                     </div>
+                     <div>
+                        <p className="text-lg font-bold">{userProfile.points}</p>
+                        <p className="text-sm text-muted-foreground">Poin</p>
+                    </div>
+                </div>
+                 <div className="mt-4 w-full max-w-sm">
+                    <div className="flex justify-between items-center mb-1">
+                        <p className="text-sm font-semibold">Level {userProfile.level}</p>
+                        <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin ke level berikutnya</p>
+                    </div>
+                    <Progress value={progressToNextLevel} className="h-2" />
                 </div>
               </div>
             </CardHeader>
@@ -277,3 +288,5 @@ export default function PublicProfilePage({
     </motion.div>
   );
 }
+
+    

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,10 +25,12 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 
 const profileSchema = z.object({
@@ -39,8 +42,10 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUpdate: (data: ProfileFormValues) => void; }) {
+function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; }) {
   const { toast } = useToast();
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -68,6 +73,21 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
       description: 'Your profile has been successfully saved.',
     });
   };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onUpdate(form.getValues(), file);
+    }
+  };
+  
+  const handleRemoveBanner = () => {
+    if(currentUser) {
+       const userRef = doc(db, 'users', currentUser.id);
+       updateDoc(userRef, { bannerUrl: null });
+       toast({ title: 'Banner dihapus' });
+    }
+  }
   
   const avatarDisplay = form.watch('avatar') || '👤';
 
@@ -76,37 +96,59 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
 
   return (
      <Card>
-        <CardHeader>
-          <div className="flex flex-col items-center sm:flex-row gap-6">
-            <Avatar style={{ height: '8rem', width: '8rem' }}>
-              <AvatarFallback style={{ fontSize: '4rem' }} className="bg-secondary text-secondary-foreground">
-                {avatarDisplay}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 text-center sm:text-left w-full">
-                <CardTitle>{currentUser?.displayName || 'Anonymous User'}</CardTitle>
-                <CardDescription>{currentUser?.bio || 'No bio yet.'}</CardDescription>
-                 <div className="flex justify-center sm:justify-start gap-6 mt-4">
-                    <div>
-                        <p className="text-lg font-bold">{currentUser?.followers.length || 0}</p>
-                        <p className="text-sm text-muted-foreground">Followers</p>
-                    </div>
-                    <div>
-                        <p className="text-lg font-bold">{currentUser?.following.length || 0}</p>
-                        <p className="text-sm text-muted-foreground">Following</p>
-                    </div>
-                     <div>
-                        <p className="text-lg font-bold">{currentUser?.points || 0}</p>
-                        <p className="text-sm text-muted-foreground">Poin</p>
-                    </div>
+        <CardHeader className="p-0">
+          <div className="relative h-48 bg-secondary flex items-center justify-center">
+             {currentUser?.bannerUrl && (
+                <Image
+                    src={currentUser.bannerUrl}
+                    alt="User Banner"
+                    layout="fill"
+                    objectFit="cover"
+                    className="rounded-t-lg"
+                />
+             )}
+            <div className="absolute top-2 right-2 flex gap-2">
+                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => bannerInputRef.current?.click()}>
+                    <Camera className="h-4 w-4" />
+                </Button>
+                <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={handleBannerChange}/>
+                 {currentUser?.bannerUrl && (
+                    <Button size="icon" variant="destructive" className="h-8 w-8 rounded-full" onClick={handleRemoveBanner}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                 )}
+            </div>
+             <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
+                <Avatar style={{ height: '8rem', width: '8rem' }} className="border-4 border-background">
+                  <AvatarFallback style={{ fontSize: '4rem' }} className="bg-secondary text-secondary-foreground">
+                    {avatarDisplay}
+                  </AvatarFallback>
+                </Avatar>
+             </div>
+          </div>
+          <div className="pt-20 p-6 flex flex-col items-center">
+             <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
+             <CardDescription className="mt-1 text-center">{currentUser?.bio || 'No bio yet.'}</CardDescription>
+             <div className="flex justify-center gap-6 mt-4 w-full">
+                <div>
+                    <p className="text-lg font-bold">{currentUser?.followers.length || 0}</p>
+                    <p className="text-sm text-muted-foreground">Followers</p>
                 </div>
-                 <div className="mt-4">
-                    <div className="flex justify-between items-center mb-1">
-                        <p className="text-sm font-semibold">Level {currentUser?.level || 1}</p>
-                        <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin ke level berikutnya</p>
-                    </div>
-                    <Progress value={progressToNextLevel} className="h-2" />
+                <div>
+                    <p className="text-lg font-bold">{currentUser?.following.length || 0}</p>
+                    <p className="text-sm text-muted-foreground">Following</p>
                 </div>
+                 <div>
+                    <p className="text-lg font-bold">{currentUser?.points || 0}</p>
+                    <p className="text-sm text-muted-foreground">Poin</p>
+                </div>
+            </div>
+             <div className="mt-4 w-full max-w-sm">
+                <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm font-semibold">Level {currentUser?.level || 1}</p>
+                    <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin ke level berikutnya</p>
+                </div>
+                <Progress value={progressToNextLevel} className="h-2" />
             </div>
           </div>
         </CardHeader>
@@ -170,12 +212,21 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
 }
 
 export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
-  const { currentUser, isLoaded } = useJournal();
+  const { currentUser, isLoaded, uploadImageToHosting } = useJournal();
 
-  const handleUpdateUser = async (data: ProfileFormValues) => {
+  const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
     if (currentUser) {
         const userRef = doc(db, 'users', currentUser.id);
-        await updateDoc(userRef, data);
+        const updateData: any = { ...data };
+
+        if (bannerFile) {
+            const bannerUrl = await uploadImageToHosting(bannerFile);
+            if (bannerUrl) {
+                updateData.bannerUrl = bannerUrl;
+            }
+        }
+
+        await updateDoc(userRef, updateData);
     }
   }
 
@@ -212,3 +263,5 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
     </div>
   );
 }
+
+    
