@@ -117,7 +117,7 @@ function CommentThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const isLiked = (comment.likedBy || []).includes(currentAuthUserId);
+  const isLiked = (comment.likedBy || []).includes(currentAuthUserId || '');
   const isOwner = comment.authorId === currentAuthUserId;
 
   const handleReplySubmit = async (e: React.FormEvent) => {
@@ -140,6 +140,7 @@ function CommentThread({
   };
   
   const handleLikeClick = async () => {
+    if (!currentAuthUserId) return;
     await toggleCommentLike(entryId, comment.id);
   }
 
@@ -244,7 +245,7 @@ function CommentThread({
           </div>
           {!isEditing && (
             <div className="flex items-center gap-2 mt-1">
-                <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick}>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick} disabled={!currentAuthUserId}>
                 <Heart className={cn("h-3 w-3 mr-1", isLiked && "fill-red-500 text-red-500")} />
                 {comment.likes || 0}
                 </Button>
@@ -374,7 +375,7 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag }: { entryId: str
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const hasVoted = entry.votedBy?.includes(currentAuthUserId);
+  const hasVoted = entry.votedBy?.includes(currentAuthUserId || '');
   const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const handleVote = (index: number) => {
@@ -415,9 +416,10 @@ type JournalAppProps = {
   newPostType: PostType;
   onViewProfile: (userId: string) => void;
   onViewHashtag: (tag: string) => void;
+  onViewImage: (url: string) => void;
 }
 
-export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile, onViewHashtag }: JournalAppProps) {
+export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile, onViewHashtag, onViewImage }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId, getFollowersData } = useJournal();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<(File | string)[]>([]); // Can hold File objects for new uploads or string URLs for existing
@@ -774,9 +776,9 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                   <div className="pt-4 mt-auto">
                     <div className={cn("grid gap-2", imagePreviews.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
                         {imagePreviews.map((img, index) => (
-                          <div key={index} className="relative group">
+                          <div key={index} className="relative group cursor-pointer" onClick={() => onViewImage(img)}>
                               <Image src={img} alt={`Preview ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
-                              <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeImage(index)}>
+                              <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); removeImage(index);}}>
                                   <XCircle className="h-4 w-4" />
                               </Button>
                           </div>
@@ -801,7 +803,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                   <div className="pt-4 mt-auto">
                     <div className={cn("grid gap-2", imagePreviews.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
                         {imagePreviews.map((img, index) => (
-                          <div key={index} className="relative">
+                          <div key={index} className="relative cursor-pointer" onClick={() => onViewImage(img)}>
                               <Image src={img} alt={`Image ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
                           </div>
                         ))}

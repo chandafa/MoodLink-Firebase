@@ -33,10 +33,10 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
     }
 };
 
-function ProfileJournalEntryCard({ entry, onSelect, onViewHashtag }: { entry: JournalEntry; onSelect: (id: string) => void; onViewHashtag: (tag: string) => void; }) {
+function ProfileJournalEntryCard({ entry, onSelect, onViewHashtag, onViewImage }: { entry: JournalEntry; onSelect: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toggleBookmark, currentAuthUserId } = useJournal();
   const { toast } = useToast();
-  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
+  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId || '');
 
   const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -86,7 +86,7 @@ function ProfileJournalEntryCard({ entry, onSelect, onViewHashtag }: { entry: Jo
             </DropdownMenu>
         </div>
         {entry.images && entry.images.length > 0 && (
-          <div className="relative w-full h-40">
+          <div className="relative w-full h-40 cursor-pointer" onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}>
             <Image
               src={entry.images[0]}
               alt={title}
@@ -125,13 +125,15 @@ export default function PublicProfilePage({
   onBack,
   onSelectEntry,
   onStartChat,
-  onViewHashtag
+  onViewHashtag,
+  onViewImage,
 }: {
   userId: string;
   onBack: () => void;
   onSelectEntry: (id: string | null) => void;
   onStartChat: (user: User) => void;
   onViewHashtag: (tag: string) => void;
+  onViewImage: (url: string) => void;
 }) {
   const { users, isLoaded, currentUser, toggleFollow, getUserEntries } = useJournal();
 
@@ -278,7 +280,7 @@ export default function PublicProfilePage({
              {userEntries.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                    {userEntries.map(entry => (
-                       <ProfileJournalEntryCard key={entry.id} entry={entry} onSelect={onSelectEntry} onViewHashtag={onViewHashtag} />
+                       <ProfileJournalEntryCard key={entry.id} entry={entry} onSelect={onSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />
                    ))}
                 </div>
              ) : (
@@ -288,5 +290,3 @@ export default function PublicProfilePage({
     </motion.div>
   );
 }
-
-    

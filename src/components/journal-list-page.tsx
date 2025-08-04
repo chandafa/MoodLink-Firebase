@@ -38,7 +38,7 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const hasVoted = entry.votedBy?.includes(currentAuthUserId);
+  const hasVoted = entry.votedBy?.includes(currentAuthUserId || '');
   const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const handleVote = (e: React.MouseEvent, index: number) => {
@@ -84,10 +84,10 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 }
 
 
-function JournalEntryCard({ entry, onSelect, onDelete, onViewHashtag }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; }) {
+function JournalEntryCard({ entry, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toast } = useToast();
   const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
-  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
+  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId || '');
   
   const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -164,7 +164,7 @@ function JournalEntryCard({ entry, onSelect, onDelete, onViewHashtag }: { entry:
                 </DropdownMenu>
             </div>
             {entry.images && entry.images.length > 0 && (
-              <div className="relative w-full h-40">
+              <div className="relative w-full h-40 cursor-pointer" onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}>
                 <Image
                   src={entry.images[0]}
                   alt={title}
@@ -220,7 +220,7 @@ function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
     );
   }
 
-export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; onViewHashtag: (tag: string) => void; }) {
+export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { entries, deleteEntry, isLoaded, currentAuthUserId } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -340,6 +340,7 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag }: { o
                                 onSelect={() => onSelectEntry(entry.id)}
                                 onDelete={deleteEntry}
                                 onViewHashtag={onViewHashtag}
+                                onViewImage={onViewImage}
                             />
                         ))}
                     </motion.div>

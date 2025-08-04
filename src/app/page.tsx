@@ -16,6 +16,7 @@ import { NotificationListPage } from '@/components/notification-list-page';
 import { BookmarkPage } from '@/components/bookmark-page';
 import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
+import { ImageViewer } from '@/components/image-viewer';
 
 
 function SplashScreen() {
@@ -64,6 +65,7 @@ export default function Home() {
   const [chattingWith, setChattingWith] = useState<User | null>(null);
   const [settingsView, setSettingsView] = useState<'main' | 'bookmarks'>('main');
   const [viewingHashtag, setViewingHashtag] = useState<string | null>(null);
+  const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -121,16 +123,20 @@ export default function Home() {
     resetViews();
     setViewingHashtag(tag);
   }
+  
+  const handleViewImage = (url: string) => {
+    setViewingImageUrl(url);
+  }
 
   const renderContent = () => {
     if (chattingWith) {
       return <PrivateChatPage targetUser={chattingWith} onBack={handleBackToList} />
     }
     if (viewingProfileId) {
-      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onStartChat={handleStartChat} onViewHashtag={handleViewHashtag}/>;
+      return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onStartChat={handleStartChat} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
     }
     if (isEditing) {
-      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} onViewHashtag={handleViewHashtag}/>;
+      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
     }
     if (viewingHashtag) {
         return <HashtagPage hashtag={viewingHashtag} onBack={handleBackToList} onSelectEntry={handleSelectEntry} />;
@@ -138,7 +144,7 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
         return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
@@ -153,7 +159,7 @@ export default function Home() {
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
     }
   };
 
@@ -171,6 +177,7 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="flex flex-col h-screen"
         >
+          {viewingImageUrl && <ImageViewer imageUrl={viewingImageUrl} onClose={() => setViewingImageUrl(null)} />}
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
