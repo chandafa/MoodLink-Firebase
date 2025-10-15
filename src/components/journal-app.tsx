@@ -175,7 +175,7 @@ function CommentThread({
   }
 
   return (
-    <div className={cn("flex gap-3", level > 0 && "ml-4 mt-3 pt-3 border-l-2 border-border")}>
+    <div className={cn("flex gap-3", level > 0 && "ml-2 md:ml-4 mt-3 pt-3 border-l-2 border-border")}>
       <Avatar className="cursor-pointer" onClick={() => onViewProfile(comment.authorId)}>
         <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
       </Avatar>
