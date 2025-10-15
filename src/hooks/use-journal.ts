@@ -186,14 +186,18 @@ export function useJournal() {
 
         const userRef = doc(db, 'users', user.uid);
         
-        const userDocUnsub = onSnapshot(userRef, (doc) => {
-            if (doc.exists()) {
-                const userData = { id: doc.id, ...doc.data() } as User;
+        const userDocUnsub = onSnapshot(userRef, async (docSnap) => {
+            if (docSnap.exists()) {
+                const userData = { id: docSnap.id, ...docSnap.data() } as User;
                 setCurrentUser(userData);
             } else if (!user.isAnonymous) { // Create doc for non-anonymous users if it doesn't exist
                  // New user, or anonymous user who just linked.
+                const usersCollectionRef = collection(db, 'users');
+                const usersSnapshot = await getDocs(usersCollectionRef);
+                const userCount = usersSnapshot.size;
+
                 const newUser: Omit<User, 'id'> = {
-                    displayName: user.displayName || user.email?.split('@')[0] || `Anonim${Math.floor(Math.random() * 1000)}`,
+                    displayName: `Anonim#${userCount + 1}`,
                     avatar: user.photoURL || '👤',
                     bio: 'Pengguna baru MoodLink!',
                     followers: [],
@@ -1015,7 +1019,7 @@ export function useConversations(userId: string | null) {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const convos = snapshot.docs.map(doc => doc.data() as Conversation);
             setConversations(convos);
-            setIsLoading(false);
+setIsLoading(false);
         }, (error) => {
             console.error("Error fetching conversations:", error);
             setIsLoading(false);
