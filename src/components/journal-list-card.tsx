@@ -171,6 +171,14 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                       </>
                     )}
                 </div>
+
+                {entry.musicUrl && (
+                  <div className="mt-4">
+                      <audio controls src={entry.musicUrl} className="w-full h-10">
+                          Browser Anda tidak mendukung elemen audio.
+                      </audio>
+                  </div>
+                )}
                 
                 {entry.images && entry.images.length > 0 && (
                   <div className="relative w-full aspect-video mt-2 rounded-lg border overflow-hidden">

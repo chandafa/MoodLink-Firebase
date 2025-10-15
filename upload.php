@@ -16,8 +16,15 @@ if (isset($_FILES['file'])) {
 
     // --- Konfigurasi ---
     $uploadDir = 'images/';
-    $maxFileSize = 2 * 1024 * 1024; // 2 MB
-    $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    $maxFileSize = 10 * 1024 * 1024; // 10 MB
+    $allowedMimeTypes = [
+        'image/jpeg', 
+        'image/png', 
+        'image/webp',
+        'audio/mpeg', // for MP3
+        'audio/wav',
+        'audio/ogg'
+    ];
     
     // Pastikan direktori upload ada
     if (!file_exists($uploadDir)) {
@@ -38,7 +45,7 @@ if (isset($_FILES['file'])) {
 
     // Cek ukuran file
     if ($file['size'] > $maxFileSize) {
-        $response['message'] = "File is too large. Maximum size is 2MB.";
+        $response['message'] = "File is too large. Maximum size is 10MB.";
         echo json_encode($response);
         exit;
     }
@@ -49,14 +56,15 @@ if (isset($_FILES['file'])) {
     finfo_close($finfo);
 
     if (!in_array($mimeType, $allowedMimeTypes)) {
-        $response['message'] = "Invalid file type. Only JPG, PNG, and WEBP are allowed.";
+        $response['message'] = "Invalid file type. Only images (JPG, PNG, WEBP) and audio (MP3, WAV, OGG) are allowed.";
         echo json_encode($response);
         exit;
     }
 
     // --- Proses Upload ---
     $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $newFileName = uniqid('img_', true) . '.' . strtolower($fileExtension);
+    $prefix = strpos($mimeType, 'image/') === 0 ? 'img_' : 'aud_';
+    $newFileName = uniqid($prefix, true) . '.' . strtolower($fileExtension);
     $uploadPath = $uploadDir . $newFileName;
 
     if (move_uploaded_file($file['tmp_name'], $uploadPath)) {

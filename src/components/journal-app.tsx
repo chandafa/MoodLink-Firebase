@@ -25,6 +25,7 @@ import {
   Heart,
   MoreVertical,
   Edit,
+  Music,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
@@ -421,11 +422,14 @@ type JournalAppProps = {
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile, onViewHashtag, onViewImage }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId, getFollowersData } = useJournal();
   const [editorContent, setEditorContent] = useState('');
-  const [images, setImages] = useState<(File | string)[]>([]); // Can hold File objects for new uploads or string URLs for existing
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]); // For displaying previews
+  const [images, setImages] = useState<(File | string)[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>('journal');
   const [voteOptions, setVoteOptions] = useState<string[]>(['', '']);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const musicInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [visibility, setVisibility] = useState<Visibility>('public');
   const [allowedUsers, setAllowedUsers] = useState<string[]>([]);
@@ -460,6 +464,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setEditorContent(activeEntry.content);
       setImages(activeEntry.images || []);
       setImagePreviews(activeEntry.images || []);
+      setMusicUrl(activeEntry.musicUrl || null);
+      setMusicFile(null);
       setPostType(activeEntry.postType);
       setVisibility(activeEntry.visibility || 'public');
       setAllowedUsers(activeEntry.allowedUserIds || []);
@@ -472,6 +478,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setEditorContent('');
       setImages([]);
       setImagePreviews([]);
+      setMusicFile(null);
+      setMusicUrl(null);
       setVoteOptions(['', '']);
       setVisibility('public');
       setAllowedUsers([]);
@@ -488,7 +496,6 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       const newFiles = Array.from(e.target.files);
       setImages(prev => [...prev, ...newFiles]);
 
-      // Create previews for new files
       newFiles.forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -504,6 +511,26 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
   
+  const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+          toast({ title: 'Ukuran Musik Terlalu Besar', description: 'Ukuran file musik maksimal 10MB.', variant: 'destructive' });
+          return;
+      }
+      setMusicFile(file);
+      setMusicUrl(URL.createObjectURL(file)); // Create a temporary URL for preview
+    }
+  };
+
+  const removeMusic = () => {
+      setMusicFile(null);
+      setMusicUrl(null);
+      if (musicInputRef.current) {
+          musicInputRef.current.value = '';
+      }
+  };
+
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...voteOptions];
     newOptions[index] = value;
@@ -536,11 +563,11 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   const handleSave = async () => {
     if (activeEntry) {
       if(isOwner) {
-         await updateEntry(activeEntry.id, editorContent, images, voteOptions, visibility, allowedUsers);
+         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, voteOptions, visibility, allowedUsers);
       }
     } else {
        let optionsForEntry = postType === 'voting' ? voteOptions.filter(o => o.trim() !== '') : [];
-       const newEntry = await addEntry(editorContent, images, postType, optionsForEntry, visibility, allowedUsers);
+       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -699,6 +726,17 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             </div>
                         )}
                       </div>
+                      
+                       {musicUrl && (
+                        <div className="mt-4">
+                          <audio controls src={musicUrl} className="w-full">
+                            Browser Anda tidak mendukung elemen audio.
+                          </audio>
+                           {isOwner && (
+                               <Button variant="link" size="sm" className="text-destructive" onClick={removeMusic}>Hapus musik</Button>
+                           )}
+                        </div>
+                      )}
 
                       { imagePreviews.length > 0 && (
                         <div className={cn("grid gap-2 mt-4", imagePreviews.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
@@ -716,21 +754,36 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       )}
                       
                        {isOwner && postType !== 'capsule' && (
-                          <div className="mt-4">
-                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={images.length >= 3}>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={images.length >= 3}>
                                 <ImageIcon className="mr-2 h-4 w-4" />
-                                Tambah Gambar ({images.length}/3)
+                                Gambar ({images.length}/3)
                             </Button>
                              <Input 
                                 type="file" 
-                                ref={fileInputRef} 
+                                ref={imageInputRef} 
                                 className="hidden" 
                                 onChange={handleImageUpload} 
                                 accept="image/*" 
                                 multiple 
                               />
+                            <Button variant="outline" size="sm" onClick={() => musicInputRef.current?.click()} disabled={!!musicFile || !!musicUrl}>
+                                <Music className="mr-2 h-4 w-4" />
+                                Musik
+                            </Button>
+                            <Input
+                                type="file"
+                                ref={musicInputRef}
+                                className="hidden"
+                                onChange={handleMusicUpload}
+                                accept="audio/*"
+                            />
                           </div>
                         )}
+                        {musicFile && isOwner && (
+                             <div className="text-sm text-muted-foreground mt-2">File musik dipilih: {musicFile.name}</div>
+                        )}
+
 
                         { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
                         
@@ -779,7 +832,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                         <p className="text-sm mt-1">Postingan ini akan disegel dan baru bisa dibuka dalam 30 hari.</p>
                                     </div>
                                 )}
-                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-4">
+                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-x-4 gap-y-2">
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="public" id="v-public" />
                                        <Label htmlFor="v-public" className="flex items-center gap-2"><Globe className="h-4 w-4" /> Publik</Label>

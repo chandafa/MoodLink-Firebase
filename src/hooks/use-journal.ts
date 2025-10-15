@@ -79,6 +79,7 @@ export type JournalEntry = {
   likedBy: string[];
   bookmarkedBy: string[];
   images: string[]; // URLs from Firebase Storage or cPanel hosting
+  musicUrl?: string | null; // URL for the music file
   options: VoteOption[];
   votedBy: string[];
   visibility: Visibility;
@@ -332,11 +333,11 @@ export function useJournal() {
 
           if (result.status === 'success' && result.url) {
               console.log('Upload success, URL:', result.url);
-              toast({ title: 'Gambar Berhasil Diunggah', description: 'Gambar Anda telah diunggah ke hosting.' });
+              toast({ title: 'File Berhasil Diunggah', description: 'File Anda telah diunggah.' });
               return result.url;
           } else {
               console.error('Upload failed:', result.message);
-              toast({ title: 'Gagal Mengunggah Gambar', description: result.message || 'Terjadi kesalahan di server.', variant: 'destructive' });
+              toast({ title: 'Gagal Mengunggah File', description: result.message || 'Terjadi kesalahan di server.', variant: 'destructive' });
               return null;
           }
       } catch (error) {
@@ -368,7 +369,7 @@ export function useJournal() {
   }, []);
 
   // --- JOURNAL ACTIONS ---
-  const addEntry = useCallback(async (content: string, images: (File | string)[], postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[]) => {
+  const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) {
         toast({ title: 'Anda harus masuk untuk memposting', variant: 'destructive'});
         return null;
@@ -394,20 +395,27 @@ export function useJournal() {
               return await uploadImageToHosting(image);
           })
       ) : [];
-
       const validImageUrls = imageUrls.filter((url): url is string => url !== null);
+
+      // 2. Upload music file
+      let musicUrl: string | null = null;
+      if (musicFile && postType !== 'capsule') {
+          musicUrl = await uploadImageToHosting(musicFile); // Reusing the same upload function
+      }
       
+      // 3. Handle hashtags
       const hashtags = extractHashtags(content);
       if (hashtags.length > 0) {
           await updateHashtagCounts(hashtags, 'increment');
       }
 
-      // 2. Add new journal document to Firestore
+      // 4. Add new journal document to Firestore
       const newEntryData: any = {
         ownerId: currentAuthUser.uid,
         content,
         postType,
         images: validImageUrls,
+        musicUrl: musicUrl,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         likes: 0,
@@ -440,7 +448,7 @@ export function useJournal() {
     }
   }, [currentAuthUser, isAnonymous, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], options: string[], visibility: Visibility, allowedUserIds: string[]) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -473,18 +481,25 @@ export function useJournal() {
     
     const validNewImageUrls = newImageUrls.filter((url): url is string => url !== null);
     const allImageUrls = [...existingImageUrls, ...validNewImageUrls];
+
+    // Handle music file
+    let finalMusicUrl = musicUrl;
+    if (musicFile) {
+        finalMusicUrl = await uploadImageToHosting(musicFile);
+    }
     
     const updateData: any = {
       content,
       images: allImageUrls,
+      musicUrl: finalMusicUrl,
       updatedAt: serverTimestamp(),
       visibility,
       allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
       hashtags: newHashtags,
     };
 
-    if (postType === 'voting' && options.length > 0) {
-      updateData.options = options.map((optText, index) => ({
+    if (postType === 'voting' && voteOptions.length > 0) {
+      updateData.options = voteOptions.map((optText, index) => ({
         text: optText,
         votes: oldEntryData.options[index]?.votes || 0,
       }));
@@ -509,8 +524,8 @@ export function useJournal() {
         await updateHashtagCounts(entryData.hashtags, 'decrement');
     }
 
-    // Note: Deleting images from cPanel hosting would require another PHP script or API endpoint.
-    // This implementation does not delete the image files from the hosting server.
+    // Note: Deleting images/music from cPanel hosting would require another PHP script or API endpoint.
+    // This implementation does not delete the files from the hosting server.
     if (entryData.images && entryData.images.length > 0) {
         entryData.images.forEach(async (url: string) => {
             if (url.includes('firebasestorage')) {
@@ -951,5 +966,3 @@ export function useConversations(userId: string | null) {
 
     return { conversations, isLoading };
 }
-
-    
