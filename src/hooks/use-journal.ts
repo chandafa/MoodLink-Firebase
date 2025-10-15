@@ -157,23 +157,16 @@ export function useJournal() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // User is signed in.
-        const wasAnonymous = isAnonymous;
         setCurrentAuthUser(user);
         setIsAnonymous(user.isAnonymous);
-
-        let isNewUserAfterLink = false;
 
         // Handle redirect result from Google sign-in
         try {
             const result = await getRedirectResult(auth);
-            if (result && wasAnonymous && !user.isAnonymous) {
-                // This means a user who was anonymous just came back from a redirect.
-                // Firebase automatically links the accounts.
-                isNewUserAfterLink = true;
-                toast({ title: 'Berhasil Masuk', description: 'Akun Anda telah ditautkan dengan Google.' });
-            } else if (result) {
-                // This means a returning user signed in.
-                toast({ title: `Selamat datang kembali, ${result.user.displayName}!` });
+            if (result) {
+                // This means a user just came back from a redirect.
+                // Could be a new user or a linking user.
+                toast({ title: `Selamat datang, ${result.user.displayName || 'Pengguna Baru'}!` });
             }
         } catch (error: any) {
             console.error("Error getting redirect result:", error);
@@ -191,10 +184,9 @@ export function useJournal() {
                 const userData = { id: docSnap.id, ...docSnap.data() } as User;
                 setCurrentUser(userData);
             } else if (!user.isAnonymous) { // Create doc for non-anonymous users if it doesn't exist
-                 // New user, or anonymous user who just linked.
-                const usersCollectionRef = collection(db, 'users');
-                const usersSnapshot = await getDocs(usersCollectionRef);
-                const userCount = usersSnapshot.size;
+                 const usersCollectionRef = collection(db, 'users');
+                 const usersSnapshot = await getDocs(usersCollectionRef);
+                 const userCount = usersSnapshot.size;
 
                 const newUser: Omit<User, 'id'> = {
                     displayName: `Anonim#${userCount + 1}`,
@@ -206,9 +198,8 @@ export function useJournal() {
                     level: 1,
                     bannerUrl: '',
                 };
-                setDoc(userRef, newUser).then(() => {
-                    setCurrentUser({ ...newUser, id: user.uid });
-                });
+                await setDoc(userRef, newUser);
+                // The snapshot listener will automatically update setCurrentUser
             } else if (user.isAnonymous) {
                 // Handle case for new anonymous user if needed, or just let them be null
                 setCurrentUser(null);
@@ -236,17 +227,23 @@ export function useJournal() {
     });
 
     return () => unsubscribe();
-  }, [toast, isAnonymous]);
+  }, [toast]);
   
   const linkWithGoogle = async () => {
-    if (!currentAuthUser || !currentAuthUser.isAnonymous) {
-      toast({ title: 'Anda sudah masuk' });
-      return false;
+    if (!currentAuthUser) {
+        toast({ title: 'Harap tunggu', description: 'Otentikasi sedang dimuat...', variant: 'destructive' });
+        return false;
     }
     const provider = new GoogleAuthProvider();
     try {
-        // We use signInWithRedirect which is more robust than popups.
-        await signInWithRedirect(auth, provider);
+        if (currentAuthUser.isAnonymous) {
+            // For anonymous users, we link their account. signInWithRedirect handles this.
+            await signInWithRedirect(auth, provider);
+        } else {
+            // For already signed-in (e.g. email) users wanting to link Google, this flow is different.
+            // For now, we just handle the primary sign-in flow.
+            await signInWithRedirect(auth, provider);
+        }
         // The result is handled by getRedirectResult in the onAuthStateChanged listener.
         return true; 
     } catch (error: any) {
