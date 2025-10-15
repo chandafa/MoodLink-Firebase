@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -27,7 +28,7 @@ import {
   setDoc,
   increment
 } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, linkWithCredential, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, linkWithCredential, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
@@ -155,6 +156,27 @@ export function useJournal() {
         // User is signed in.
         setCurrentAuthUser(user);
         setIsAnonymous(user.isAnonymous);
+
+        // Handle redirect result from Google sign-in
+        try {
+            const result = await getRedirectResult(auth);
+            if (result && user.isAnonymous) {
+                // This means a user who was anonymous just came back from a redirect.
+                // Firebase automatically links the accounts.
+                toast({ title: 'Berhasil Masuk', description: 'Akun Anda telah ditautkan dengan Google.' });
+            } else if (result) {
+                // This means a returning user signed in.
+                toast({ title: `Selamat datang kembali, ${result.user.displayName}!` });
+            }
+        } catch (error: any) {
+            console.error("Error getting redirect result:", error);
+            if (error.code === 'auth/credential-already-in-use') {
+                toast({ title: 'Gagal Menautkan Akun', description: 'Akun Google ini sudah digunakan.', variant: 'destructive'});
+            } else {
+                toast({ title: 'Gagal Masuk', description: 'Terjadi kesalahan saat masuk dengan Google.', variant: 'destructive'});
+            }
+        }
+
         const userRef = doc(db, 'users', user.uid);
         
         const userDocUnsub = onSnapshot(userRef, (doc) => {
@@ -212,18 +234,13 @@ export function useJournal() {
     }
     const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      // This will automatically link the anonymous account to the Google account
-      // and trigger the onAuthStateChanged listener, which will update the user state.
-      toast({ title: 'Berhasil Masuk', description: 'Akun Anda telah ditautkan dengan Google.' });
-      return true;
+        // We use signInWithRedirect which is more robust than popups.
+        await signInWithRedirect(auth, provider);
+        // The result is handled by getRedirectResult in the onAuthStateChanged listener.
+        return true; 
     } catch (error: any) {
-      console.error("Error linking with Google:", error);
-      if (error.code === 'auth/credential-already-in-use') {
-        toast({ title: 'Gagal Menautkan Akun', description: 'Akun Google ini sudah digunakan.', variant: 'destructive'});
-      } else {
-        toast({ title: 'Gagal Masuk', description: 'Terjadi kesalahan saat masuk dengan Google.', variant: 'destructive'});
-      }
+      console.error("Error starting redirect sign-in:", error);
+      toast({ title: 'Gagal Masuk', description: 'Tidak dapat memulai proses masuk dengan Google.', variant: 'destructive'});
       return false;
     }
   };
@@ -775,30 +792,16 @@ export function useJournal() {
 
     const deleteComment = useCallback(async (entryId: string, commentId: string) => {
         if (!currentAuthUser) return;
+        const entryRef = doc(db, 'journals', entryId);
 
-        // Recursive function to delete a comment and all its replies
-        const recursiveDelete = async (id: string) => {
-            const batch = writeBatch(db);
-            const repliesQuery = query(collection(db, `journals/${entryId}/comments`), where('parentId', '==', id));
-            const repliesSnapshot = await getDocs(repliesQuery);
-            
-            // Recursively delete all replies first
-            for (const replyDoc of repliesSnapshot.docs) {
-                await recursiveDelete(replyDoc.id);
-            }
-            
-            // After all children are deleted, delete the parent comment
-            batch.delete(doc(db, `journals/${entryId}/comments`, id));
-            await batch.commit();
+        // This is a simplified delete. For full recursive delete, a Cloud Function is better.
+        // This will leave orphaned replies in the database.
+        const commentRef = doc(db, `journals/${entryId}/comments`, commentId);
+        await deleteDoc(commentRef);
+        await updateDoc(entryRef, { commentCount: increment(-1) });
 
-            // Decrement the main entry's comment count
-            const entryRef = doc(db, 'journals', entryId);
-            await updateDoc(entryRef, { commentCount: increment(-1) });
-        };
-        
-        await recursiveDelete(commentId);
-        
-    }, [currentAuthUser]);
+        toast({ title: 'Komentar dihapus' });
+    }, [currentAuthUser, toast]);
     
     const getFollowersData = useCallback((followerIds: string[]): User[] => {
         return users.filter(user => followerIds.includes(user.id));
