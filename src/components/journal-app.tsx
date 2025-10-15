@@ -738,7 +738,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             <div className="space-y-4 mt-6 pt-4 border-t">
                               <h3 className="text-sm font-medium">Pengaturan Postingan</h3>
                                { !activeEntry && (
-                               <div className="flex gap-2 mb-4">
+                               <div className="flex flex-wrap gap-2 mb-4">
                                  <Button size="sm" variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
                                    <Type className="mr-2 h-4 w-4" />Jurnal
                                  </Button>
@@ -779,7 +779,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                         <p className="text-sm mt-1">Postingan ini akan disegel dan baru bisa dibuka dalam 30 hari.</p>
                                     </div>
                                 )}
-                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex gap-4">
+                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-4">
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="public" id="v-public" />
                                        <Label htmlFor="v-public" className="flex items-center gap-2"><Globe className="h-4 w-4" /> Publik</Label>
@@ -817,7 +817,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                    )}
                                  </div>
                                )}
-                               <div className="flex justify-end">
+                               <div className="flex justify-end mt-4">
                                 <Button onClick={handleSave} size="lg">
                                   <Save className="mr-2 h-5 w-5" />
                                   Simpan
