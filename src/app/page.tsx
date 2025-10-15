@@ -19,8 +19,7 @@ import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, FilePlus, BookText, Vote, Hourglass } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
+import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle } from 'lucide-react';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -77,9 +76,19 @@ function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: 
   );
 }
 
+function LoadingScreen() {
+    return (
+        <div className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50">
+            <LoaderCircle className="h-12 w-12 text-primary animate-spin" />
+            <p className="mt-4 text-muted-foreground">Memuat data...</p>
+        </div>
+    );
+}
+
 export default function Home() {
   const { isLoaded, isAnonymous, linkWithGoogle } = useJournal();
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [newPostType, setNewPostType] = useState<PostType>('journal');
@@ -92,9 +101,17 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoaded) {
+      setIsLoading(false); // Hide main loading screen
       if (isAnonymous) {
-        setShowOnboarding(true);
+        const lastShown = localStorage.getItem('onboardingLastShown');
+        const today = new Date().toDateString();
+        if (lastShown !== today) {
+          setShowOnboarding(true);
+        } else {
+          setShowOnboarding(false);
+        }
       } else {
+        // User is logged in, never show onboarding
         setShowOnboarding(false);
       }
     }
@@ -114,6 +131,8 @@ export default function Home() {
   };
 
   const handleGuest = () => {
+    const today = new Date().toDateString();
+    localStorage.setItem('onboardingLastShown', today);
     setShowOnboarding(false);
   };
 
@@ -182,7 +201,7 @@ export default function Home() {
       case 'Home':
         return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
-        return <ExplorePage onViewHashtag={handleViewHashtag} />;
+        return <ExplorePage onViewHashtag={onViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
@@ -191,7 +210,7 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={onViewImage}/>;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
@@ -203,10 +222,13 @@ export default function Home() {
   return (
     <>
       <AnimatePresence>
+        {isLoading && <LoadingScreen />}
+      </AnimatePresence>
+      <AnimatePresence>
         {showOnboarding && <OnboardingScreen onLogin={handleLogin} onGuest={handleGuest} />}
       </AnimatePresence>
       <AnimatePresence>
-      {!showOnboarding && isLoaded && (
+      {!isLoading && !showOnboarding && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
