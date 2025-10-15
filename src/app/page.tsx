@@ -9,7 +9,7 @@ import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
-import { PostType, User } from '@/hooks/use-journal';
+import { PostType, User, useJournal } from '@/hooks/use-journal';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
@@ -17,46 +17,67 @@ import { BookmarkPage } from '@/components/bookmark-page';
 import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
+import { Button } from '@/components/ui/button';
+import { ShieldCheck } from 'lucide-react';
 
 
-function SplashScreen() {
+function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
   return (
     <motion.div
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 1 }}
-      className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50"
+      transition={{ duration: 0.5 }}
+      className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50 p-8 text-center"
     >
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.8 }}
+        transition={{ delay: 0.3, duration: 0.8 }}
       >
-        <Icons.logo className="h-24 w-24 text-primary" />
+        <Icons.logo className="h-24 w-24 text-primary mx-auto" />
       </motion.div>
       <motion.h1
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.8 }}
-        className="text-3xl font-bold mt-4"
+        transition={{ delay: 0.5, duration: 0.8 }}
+        className="text-4xl font-bold mt-6"
       >
-        Welcome to MoodLink 👋
+        Selamat Datang di MoodLink
       </motion.h1>
       <motion.p
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1.1, duration: 0.8 }}
-        className="text-muted-foreground mt-2"
+        transition={{ delay: 0.7, duration: 0.8 }}
+        className="text-muted-foreground mt-4 max-w-md mx-auto"
       >
-        Find your peace, share your thoughts.
+        Jaga datamu tetap aman dengan masuk. Kami menjamin privasi dan semua postingan publikmu akan tetap anonim.
       </motion.p>
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.9, duration: 0.8 }}
+        className="flex flex-col sm:flex-row gap-4 mt-8 w-full max-w-sm"
+      >
+        <Button onClick={onLogin} size="lg" className="w-full">Masuk dengan Google</Button>
+        <Button onClick={onGuest} size="lg" variant="outline" className="w-full">Lanjutkan sebagai Tamu</Button>
+      </motion.div>
+       <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 1.1, duration: 0.8 }}
+        className="flex items-center gap-2 mt-8 text-sm text-muted-foreground"
+      >
+        <ShieldCheck className="h-4 w-4 text-green-500" />
+        <span>Privasi Anda adalah prioritas kami.</span>
+      </motion.div>
     </motion.div>
   );
 }
 
 export default function Home() {
-  const [showSplash, setShowSplash] = useState(true);
+  const { isLoaded, isAnonymous, linkWithGoogle } = useJournal();
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [newPostType, setNewPostType] = useState<PostType>('journal');
@@ -68,18 +89,31 @@ export default function Home() {
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (isLoaded) {
+      if (isAnonymous) {
+        setShowOnboarding(true);
+      } else {
+        setShowOnboarding(false);
+      }
+    }
+  }, [isLoaded, isAnonymous]);
   
   useEffect(() => {
-    // Reset settings view when changing tabs
     if (activeTab !== 'Settings') {
         setSettingsView('main');
     }
   }, [activeTab]);
+
+  const handleLogin = async () => {
+    const success = await linkWithGoogle();
+    if (success) {
+      setShowOnboarding(false);
+    }
+  };
+
+  const handleGuest = () => {
+    setShowOnboarding(false);
+  };
 
   const resetViews = () => {
     setIsEditing(false);
@@ -155,7 +189,7 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag}/>;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={onViewHashtag}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
@@ -167,10 +201,10 @@ export default function Home() {
   return (
     <>
       <AnimatePresence>
-        {showSplash && <SplashScreen />}
+        {showOnboarding && <OnboardingScreen onLogin={handleLogin} onGuest={handleGuest} />}
       </AnimatePresence>
       <AnimatePresence>
-      {!showSplash && (
+      {!showOnboarding && isLoaded && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -181,7 +215,7 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
-          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <div className="hidden md:flex"><HelpChatbot /></div>}
+          {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
       )}

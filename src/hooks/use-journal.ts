@@ -27,7 +27,7 @@ import {
   setDoc,
   increment
 } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, linkWithCredential, signInWithPopup, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
@@ -67,7 +67,7 @@ export type VoteOption = {
 };
 
 export type JournalEntry = {
-  id: string;
+  id:string;
   ownerId: string;
   postType: PostType;
   content: string;
@@ -145,6 +145,7 @@ export function useJournal() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentAuthUser, setCurrentAuthUser] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(true);
 
   // --- AUTHENTICATION ---
   useEffect(() => {
@@ -152,17 +153,18 @@ export function useJournal() {
       if (user) {
         // User is signed in.
         setCurrentAuthUser(user);
+        setIsAnonymous(user.isAnonymous);
         const userRef = doc(db, 'users', user.uid);
         
         const userDocUnsub = onSnapshot(userRef, (doc) => {
             if (doc.exists()) {
                 const userData = { id: doc.id, ...doc.data() } as User;
                 setCurrentUser(userData);
-            } else {
+            } else if (!user.isAnonymous) { // Only create doc for non-anonymous new users
                  // New user, create a document for them.
                 const newUser: Omit<User, 'id'> = {
-                    displayName: `Anonim${Math.floor(Math.random() * 1000)}`,
-                    avatar: '👤',
+                    displayName: user.displayName || `Anonim${Math.floor(Math.random() * 1000)}`,
+                    avatar: user.photoURL || '👤',
                     bio: 'Pengguna baru MoodLink!',
                     followers: [],
                     following: [],
@@ -170,14 +172,15 @@ export function useJournal() {
                     level: 1,
                     bannerUrl: '',
                 };
-                runTransaction(db, async (transaction) => {
-                    transaction.set(userRef, newUser);
-                }).then(() => {
+                setDoc(userRef, newUser).then(() => {
                     setCurrentUser({ ...newUser, id: user.uid });
                 });
+            } else if (user.isAnonymous) {
+                // Handle case for new anonymous user if needed, or just let them be null
+                setCurrentUser(null);
             }
         });
-
+        
         return () => userDocUnsub();
 
       } else {
@@ -200,9 +203,45 @@ export function useJournal() {
 
     return () => unsubscribe();
   }, [toast]);
+  
+  const linkWithGoogle = async () => {
+    if (!currentAuthUser || !currentAuthUser.isAnonymous) {
+      toast({ title: 'Anda sudah masuk' });
+      return false;
+    }
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      // This will automatically link the anonymous account to the Google account
+      // and trigger the onAuthStateChanged listener, which will update the user state.
+      toast({ title: 'Berhasil Masuk', description: 'Akun Anda telah ditautkan dengan Google.' });
+      return true;
+    } catch (error: any) {
+      console.error("Error linking with Google:", error);
+      if (error.code === 'auth/credential-already-in-use') {
+        toast({ title: 'Gagal Menautkan Akun', description: 'Akun Google ini sudah digunakan.', variant: 'destructive'});
+      } else {
+        toast({ title: 'Gagal Masuk', description: 'Terjadi kesalahan saat masuk dengan Google.', variant: 'destructive'});
+      }
+      return false;
+    }
+  };
+
+  const signOutUser = async () => {
+    try {
+      await signOut(auth);
+      // onAuthStateChanged will handle signing in anonymously again.
+      toast({ title: 'Berhasil Keluar' });
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({ title: 'Gagal Keluar', variant: 'destructive' });
+    }
+  };
+
 
   // --- DATA LOADING ---
   useEffect(() => {
+    // We only start loading data once we have an authenticated user (even an anonymous one)
     if (!currentAuthUser) return;
     
     // Fetch all users
@@ -223,7 +262,6 @@ export function useJournal() {
         });
         
         setEntries(entriesData);
-        setIsLoaded(true);
         
         // Asynchronously fetch comment counts
         entriesData.forEach(async (entry) => {
@@ -233,13 +271,17 @@ export function useJournal() {
                 prevEntries.map(e => e.id === entry.id ? { ...e, commentCount: count } : e)
             );
         });
+        
+        // Mark as loaded only after the first batch of data is set
+        if (!isLoaded) setIsLoaded(true);
+
     });
 
     return () => {
         usersUnsub();
         entriesUnsub();
     };
-  }, [currentAuthUser]);
+  }, [currentAuthUser, isLoaded]); // Rerun when auth user changes
   
   // --- POINTS & LEVEL ---
   const addPoints = useCallback(async (userId: string, amount: number) => {
@@ -249,7 +291,9 @@ export function useJournal() {
       await runTransaction(db, async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists()) {
-          throw 'Document does not exist!';
+          // If the user doc doesn't exist, we can't add points.
+          console.warn(`User document ${userId} does not exist. Cannot add points.`);
+          return;
         }
         const oldPoints = userDoc.data().points || 0;
         const oldLevel = userDoc.data().level || 1;
@@ -329,6 +373,10 @@ export function useJournal() {
         toast({ title: 'Anda harus masuk untuk memposting', variant: 'destructive'});
         return null;
     }
+    if (isAnonymous) {
+        toast({ title: 'Masuk untuk Memposting', description: 'Silakan masuk dengan Google untuk membuat postingan.', variant: 'destructive'});
+        return null;
+    }
     if (!content.trim()) {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
         return null;
@@ -390,7 +438,7 @@ export function useJournal() {
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
         return null;
     }
-  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
+  }, [currentAuthUser, isAnonymous, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
 
   const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], options: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) return;
@@ -481,7 +529,10 @@ export function useJournal() {
   }, [currentAuthUser, toast, updateHashtagCounts]);
 
   const toggleLike = useCallback(async (entryId: string) => {
-    if (!currentAuthUser || !currentUser) return;
+    if (!currentAuthUser || isAnonymous || !currentUser) {
+        toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk menyukai postingan.', variant: 'destructive'});
+        return;
+    }
     const entryRef = doc(db, 'journals', entryId);
     
     try {
@@ -515,7 +566,7 @@ export function useJournal() {
         });
 
         // Post-transaction logic
-        if (notificationData) {
+        if (notificationData && currentUser) {
             await addPoints(notificationData.ownerId, 1);
             await createNotification({
                 userId: notificationData.ownerId,
@@ -529,10 +580,13 @@ export function useJournal() {
     } catch (error) {
         console.error("Like transaction failed: ", error);
     }
-  }, [currentAuthUser, currentUser, addPoints]);
+  }, [currentAuthUser, currentUser, isAnonymous, toast, addPoints]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
-    if (!currentAuthUser) return;
+    if (!currentAuthUser || isAnonymous) {
+        toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk menyimpan postingan.', variant: 'destructive'});
+        return;
+    }
     const entryRef = doc(db, 'journals', entryId);
     
     try {
@@ -564,10 +618,10 @@ export function useJournal() {
         console.error("Error toggling bookmark:", error);
         toast({ title: 'Gagal memproses bookmark', variant: 'destructive' });
     }
-  }, [currentAuthUser, toast]);
+  }, [currentAuthUser, isAnonymous, toast]);
 
     const toggleFollow = useCallback(async (targetUserId: string) => {
-        if (!currentAuthUser || !currentUser || currentAuthUser.uid === targetUserId) return;
+        if (!currentAuthUser || isAnonymous || !currentUser || currentAuthUser.uid === targetUserId) return;
 
         const currentUserRef = doc(db, 'users', currentAuthUser.uid);
         const targetUserRef = doc(db, 'users', targetUserId);
@@ -596,10 +650,13 @@ export function useJournal() {
         }
         
         await batch.commit();
-    }, [currentAuthUser, currentUser, toast, addPoints]);
+    }, [currentAuthUser, isAnonymous, currentUser, toast, addPoints]);
 
     const voteOnEntry = useCallback(async (entryId: string, optionIndex: number) => {
-        if (!currentAuthUser) return;
+        if (!currentAuthUser || isAnonymous) {
+            toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk memberi suara.', variant: 'destructive'});
+            return;
+        }
         const entryRef = doc(db, 'journals', entryId);
 
         await runTransaction(db, async (transaction) => {
@@ -620,11 +677,11 @@ export function useJournal() {
             });
         });
         addPoints(currentAuthUser.uid, 1);
-    }, [currentAuthUser, addPoints]);
+    }, [currentAuthUser, isAnonymous, toast, addPoints]);
 
     const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string, parentId: string | null = null) => {
-        if (!commentContent.trim() || !currentUser) {
-            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
+        if (!commentContent.trim() || !currentUser || isAnonymous) {
+            toast({ title: 'Harus Masuk', description: 'Masuk untuk berkomentar', variant: 'destructive' });
             return;
         }
         
@@ -662,10 +719,13 @@ export function useJournal() {
         }
         
         toast({ title: 'Komentar ditambahkan' });
-    }, [toast, addPoints, currentUser]);
+    }, [toast, addPoints, currentUser, isAnonymous]);
     
     const toggleCommentLike = useCallback(async (entryId: string, commentId: string) => {
-        if (!currentAuthUser) return;
+        if (!currentAuthUser || isAnonymous) {
+            toast({ title: 'Harus Masuk', description: 'Masuk untuk menyukai komentar.', variant: 'destructive'});
+            return;
+        }
         const commentRef = doc(db, 'journals', entryId, 'comments', commentId);
 
         await runTransaction(db, async (transaction) => {
@@ -687,7 +747,7 @@ export function useJournal() {
                 });
             }
         });
-    }, [currentAuthUser]);
+    }, [currentAuthUser, isAnonymous, toast]);
 
     const updateComment = useCallback(async (entryId: string, commentId: string, newContent: string) => {
         if (!currentAuthUser) return;
@@ -732,12 +792,19 @@ export function useJournal() {
     const getUserEntries = useCallback((userId: string) => {
         return entries.filter(entry => {
             if (entry.ownerId !== userId) return false;
-            if (entry.visibility === 'public') return true;
+            // A user can always see their own private/restricted posts
             if (entry.ownerId === currentAuthUser?.uid) return true;
+            
+            // Others can see public posts
+            if (entry.visibility === 'public') return true;
+            
+            // Others can see restricted posts if they are allowed
             if (entry.visibility === 'restricted' && entry.allowedUserIds.includes(currentAuthUser?.uid || '')) return true;
+
             return false;
         });
     }, [entries, currentAuthUser]);
+
 
     // --- CHAT ACTIONS ---
     const getChatRoomId = (user1Id: string, user2Id: string) => {
@@ -745,7 +812,10 @@ export function useJournal() {
     };
 
     const sendMessage = useCallback(async (targetUserId: string, text: string) => {
-        if (!currentUser || !currentAuthUser || !text.trim()) return;
+        if (!currentUser || !currentAuthUser || !text.trim() || isAnonymous) {
+             toast({ title: 'Harus Masuk', description: 'Masuk untuk mengirim pesan.', variant: 'destructive'});
+             return;
+        }
         
         const targetUser = users.find(u => u.id === targetUserId);
         if (!targetUser) {
@@ -784,10 +854,10 @@ export function useJournal() {
 
         await setDoc(chatDocRef, conversationData, { merge: true });
 
-    }, [currentAuthUser, currentUser, users, toast]);
+    }, [currentAuthUser, currentUser, isAnonymous, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment };
+  return { entries, users, currentUser, isLoaded, isAnonymous, linkWithGoogle, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment };
 }
 
 

@@ -92,9 +92,9 @@ export function HelpChatbot() {
       </SheetTrigger>
       <SheetContent className="flex flex-col">
         <SheetHeader>
-          <SheetTitle>Help Assistant</SheetTitle>
+          <SheetTitle>Bantuan Asisten</SheetTitle>
           <SheetDescription>
-            Ask me anything about using the MoodLink app.
+            Tanyakan apa saja tentang cara menggunakan aplikasi MoodLink.
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">
@@ -146,7 +146,7 @@ export function HelpChatbot() {
         <form onSubmit={handleSendMessage} className="p-4 border-t">
           <div className="relative">
             <Input
-              placeholder="Type your question..."
+              placeholder="Ketik pertanyaanmu..."
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               disabled={isLoading}
