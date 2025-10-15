@@ -621,6 +621,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                 <Skeleton className="h-20 mt-4" />
              </Card>
           ) : (
+            <>
             <Card className="shadow-lg p-4 md:p-6">
               <div className="flex gap-4 items-start">
                   { (entryOwner || isOwner) && (
