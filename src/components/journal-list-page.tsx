@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
 import { ArrowLeft, ArrowRight, BookText, FilePlus, Search, Hourglass, Vote } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { JournalEntryCard } from './journal-list-card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -33,13 +33,74 @@ function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
       </div>
     );
   }
+  
+function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry, getUserForEntry }: { entries: JournalEntry[], onSelectEntry: (id: string | null) => void, onNewPost: (type: PostType) => void, onViewHashtag: (tag: string) => void, onViewImage: (url: string) => void, deleteEntry: (id: string) => void, getUserForEntry: (ownerId: string) => any }) {
+    const [currentPage, setCurrentPage] = useState(1);
+    
+    const totalPages = Math.ceil(entries.length / ITEMS_PER_PAGE);
+    const paginatedEntries = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return entries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [entries, currentPage]);
+
+    const handleNextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+    
+    if (entries.length === 0) {
+        return <p className="text-muted-foreground text-center py-10">Tidak ada postingan untuk ditampilkan.</p>
+    }
+
+    return (
+        <>
+            <motion.div 
+                layout
+                className="space-y-4"
+            >
+                {paginatedEntries.map(entry => (
+                    <JournalEntryCard 
+                        key={entry.id} 
+                        entry={entry}
+                        author={getUserForEntry(entry.ownerId)}
+                        onSelect={() => onSelectEntry(entry.id)}
+                        onDelete={deleteEntry}
+                        onViewHashtag={onViewHashtag}
+                        onViewImage={onViewImage}
+                    />
+                ))}
+            </motion.div>
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-8">
+                    <Button onClick={handlePrevPage} disabled={currentPage === 1} variant="outline">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Sebelumnya
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Halaman {currentPage} dari {totalPages}
+                    </span>
+                    <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
+                        Berikutnya
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+        </>
+    )
+}
 
 export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
-  const { entries, users, deleteEntry, isLoaded, currentAuthUserId } = useJournal();
+  const { entries, users, deleteEntry, isLoaded, currentAuthUserId, currentUser } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredEntries = useMemo(() => {
+  const forYouEntries = useMemo(() => {
     return entries
       .filter(entry => {
         const isMatch = (entry.content.toLowerCase().includes(searchTerm.toLowerCase()) || entry.hashtags?.some(h => h.includes(searchTerm.toLowerCase()))) && entry.postType !== 'capsule';
@@ -55,23 +116,26 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
       .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
   }, [entries, searchTerm, currentAuthUserId]);
 
-  const totalPages = Math.ceil(filteredEntries.length / ITEMS_PER_PAGE);
-  const paginatedEntries = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredEntries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredEntries, currentPage]);
+  const followingEntries = useMemo(() => {
+    if (!currentUser) return [];
+    return entries
+      .filter(entry => {
+          const isFollowing = currentUser.following.includes(entry.ownerId);
+          if (!isFollowing) return false;
 
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
+          const isMatch = (entry.content.toLowerCase().includes(searchTerm.toLowerCase()) || entry.hashtags?.some(h => h.includes(searchTerm.toLowerCase()))) && entry.postType !== 'capsule';
+          if (!isMatch) return false;
+          
+          const isOwner = entry.ownerId === currentAuthUserId;
+          if (entry.visibility === 'public') return true;
+          if (isOwner) return true;
+          if (entry.visibility === 'restricted' && entry.allowedUserIds?.includes(currentAuthUserId || '')) return true;
 
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
+          return false;
+      })
+      .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+
+  }, [entries, searchTerm, currentUser, currentAuthUserId]);
 
   const getUserForEntry = (ownerId: string) => users.find(u => u.id === ownerId);
 
@@ -79,9 +143,9 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
     <div className="container mx-auto py-8 px-4">
         <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
             <div className="flex items-center gap-3">
-                <Icons.logo className="h-8 w-8 text-primary" />
+                <BookText className="h-8 w-8 text-primary" />
                 <h1 className="text-3xl font-bold font-headline text-foreground">
-                    Linimasa
+                    MoodLink
                 </h1>
             </div>
             <div className="flex items-center gap-2">
@@ -124,58 +188,57 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
             </div>
         </header>
 
-        {!isLoaded ? (
-            <div className="space-y-4">
-                 {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
-                    <Card key={i} className="p-4">
-                      <div className="flex gap-4">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-1/4" />
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-4 w-1/2" />
-                        </div>
-                      </div>
-                    </Card>
-                ))}
-            </div>
-        ) : filteredEntries.length === 0 ? (
-            <EmptyState onNewPost={onNewPost} />
-        ) : (
-            <>
-                <motion.div 
-                    layout
-                    className="space-y-4"
-                >
-                    {paginatedEntries.map(entry => (
-                        <JournalEntryCard 
-                            key={entry.id} 
-                            entry={entry}
-                            author={getUserForEntry(entry.ownerId)}
-                            onSelect={() => onSelectEntry(entry.id)}
-                            onDelete={deleteEntry}
-                            onViewHashtag={onViewHashtag}
-                            onViewImage={onViewImage}
-                        />
+        <Tabs defaultValue="for-you" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="for-you">For You</TabsTrigger>
+            <TabsTrigger value="following">Following</TabsTrigger>
+          </TabsList>
+          <div className="mt-6">
+            {!isLoaded ? (
+                <div className="space-y-4">
+                     {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+                        <Card key={i} className="p-4">
+                          <div className="flex gap-4">
+                            <Skeleton className="h-12 w-12 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <Skeleton className="h-4 w-1/4" />
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-4 w-1/2" />
+                            </div>
+                          </div>
+                        </Card>
                     ))}
-                </motion.div>
-                {totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-4 mt-8">
-                        <Button onClick={handlePrevPage} disabled={currentPage === 1} variant="outline">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Sebelumnya
-                        </Button>
-                        <span className="text-sm text-muted-foreground">
-                            Halaman {currentPage} dari {totalPages}
-                        </span>
-                        <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
-                            Berikutnya
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-            </>
-        )}
+                </div>
+            ) : forYouEntries.length === 0 && searchTerm === '' ? (
+                <EmptyState onNewPost={onNewPost} />
+            ) : (
+                <>
+                  <TabsContent value="for-you">
+                    <Feed 
+                      entries={forYouEntries}
+                      onSelectEntry={onSelectEntry}
+                      onNewPost={onNewPost}
+                      onViewHashtag={onViewHashtag}
+                      onViewImage={onViewImage}
+                      deleteEntry={deleteEntry}
+                      getUserForEntry={getUserForEntry}
+                    />
+                  </TabsContent>
+                  <TabsContent value="following">
+                    <Feed 
+                      entries={followingEntries}
+                      onSelectEntry={onSelectEntry}
+                      onNewPost={onNewPost}
+                      onViewHashtag={onViewHashtag}
+                      onViewImage={onViewImage}
+                      deleteEntry={deleteEntry}
+                      getUserForEntry={getUserForEntry}
+                    />
+                  </TabsContent>
+                </>
+            )}
+          </div>
+        </Tabs>
     </div>
   );
 }
