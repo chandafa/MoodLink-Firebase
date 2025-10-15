@@ -138,8 +138,8 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
     <div className="container mx-auto py-8 px-4">
         <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
             <div className="flex items-center gap-3">
-                <BookText className="h-8 w-8 text-primary" />
-                <h1 className="text-3xl font-bold font-headline text-foreground">
+                <BookText className="h-7 w-7 text-primary" />
+                <h1 className="text-2xl font-bold font-headline text-foreground">
                     MoodLink
                 </h1>
             </div>
