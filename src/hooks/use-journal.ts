@@ -26,7 +26,10 @@ import {
   orderBy,
   Timestamp,
   setDoc,
-  increment
+  increment,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  EmailAuthProvider,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, linkWithCredential, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -190,7 +193,7 @@ export function useJournal() {
             } else if (!user.isAnonymous) { // Create doc for non-anonymous users if it doesn't exist
                  // New user, or anonymous user who just linked.
                 const newUser: Omit<User, 'id'> = {
-                    displayName: user.displayName || `Anonim${Math.floor(Math.random() * 1000)}`,
+                    displayName: user.displayName || user.email?.split('@')[0] || `Anonim${Math.floor(Math.random() * 1000)}`,
                     avatar: user.photoURL || '👤',
                     bio: 'Pengguna baru MoodLink!',
                     followers: [],
@@ -259,6 +262,41 @@ export function useJournal() {
       toast({ title: 'Gagal Keluar', variant: 'destructive' });
     }
   };
+  
+    const signUpWithEmail = async (email: string, password: string) => {
+        if (!currentAuthUser || !currentAuthUser.isAnonymous) {
+            toast({ title: 'Anda sudah masuk', description: 'Keluar terlebih dahulu untuk mendaftar akun baru.' });
+            return;
+        }
+        try {
+            const credential = EmailAuthProvider.credential(email, password);
+            await linkWithCredential(currentAuthUser, credential);
+            // The onAuthStateChanged listener will handle creating the user document.
+            toast({ title: 'Pendaftaran Berhasil', description: 'Selamat datang di MoodLink!' });
+        } catch (error: any) {
+            console.error("Error signing up with email:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                toast({ title: 'Gagal Mendaftar', description: 'Email ini sudah terdaftar. Silakan coba masuk.', variant: 'destructive' });
+            } else {
+                toast({ title: 'Gagal Mendaftar', description: error.message, variant: 'destructive' });
+            }
+        }
+    };
+
+    const signInWithEmail = async (email: string, password: string) => {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            // onAuthStateChanged will handle the rest.
+            toast({ title: 'Berhasil Masuk' });
+        } catch (error: any) {
+            console.error("Error signing in with email:", error);
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                toast({ title: 'Gagal Masuk', description: 'Email atau kata sandi salah.', variant: 'destructive' });
+            } else {
+                toast({ title: 'Gagal Masuk', description: error.message, variant: 'destructive' });
+            }
+        }
+    };
 
 
   // --- DATA LOADING ---
@@ -719,12 +757,17 @@ export function useJournal() {
     }, [currentAuthUser, isAnonymous, toast, addPoints]);
 
     const addComment = useCallback(async (entryId: string, commentContent: string, author: User | null, entryOwnerId: string, parentId: string | null = null) => {
-        if (!commentContent.trim() || !currentAuthUser) {
+        if (!commentContent.trim()) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
+        if (!currentAuthUser) {
+            toast({ title: 'Otentikasi Gagal', variant: 'destructive' });
+            return;
+        }
+        
         if (isAnonymous) {
-            toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk dengan Google untuk menyimpan komentar Anda secara permanen.' });
+            toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk untuk menyimpan komentar Anda.' });
         }
         
         const authorId = currentAuthUser.uid;
@@ -889,7 +932,7 @@ export function useJournal() {
     }, [currentAuthUser, currentUser, isAnonymous, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, isAnonymous, linkWithGoogle, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment };
+  return { entries, users, currentUser, isLoaded, isAnonymous, linkWithGoogle, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail };
 }
 
 
@@ -983,3 +1026,5 @@ export function useConversations(userId: string | null) {
 
     return { conversations, isLoading };
 }
+
+    

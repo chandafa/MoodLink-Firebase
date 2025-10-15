@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -211,21 +212,109 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
   );
 }
 
+const emailAuthSchema = z.object({
+  email: z.string().email('Alamat email tidak valid.'),
+  password: z.string().min(6, 'Kata sandi minimal 6 karakter.'),
+});
+type EmailAuthFormValues = z.infer<typeof emailAuthSchema>;
+
 function GuestProfileView() {
-    const { linkWithGoogle } = useJournal();
+    const { linkWithGoogle, signInWithEmail, signUpWithEmail } = useJournal();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const form = useForm<EmailAuthFormValues>({
+        resolver: zodResolver(emailAuthSchema),
+        defaultValues: {
+            email: '',
+            password: '',
+        },
+    });
+
+    const handleEmailSubmit = async (data: EmailAuthFormValues, isSignUp: boolean) => {
+        setIsSubmitting(true);
+        if (isSignUp) {
+            await signUpWithEmail(data.email, data.password);
+        } else {
+            await signInWithEmail(data.email, data.password);
+        }
+        setIsSubmitting(false);
+    };
+
+
     return (
-        <Card className="text-center">
-            <CardHeader>
+        <Card>
+            <CardHeader className="text-center">
                 <CardTitle>Anda adalah Tamu</CardTitle>
                 <CardDescription>
-                    Masuk untuk menyimpan profil, poin, dan aktivitas Anda secara permanen.
+                    Masuk atau Daftar untuk menyimpan profil, poin, dan aktivitas Anda secara permanen.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <Button onClick={linkWithGoogle} size="lg">
+            <CardContent className="space-y-6">
+                <Button onClick={linkWithGoogle} size="lg" className="w-full">
                     <LogIn className="mr-2 h-5 w-5" />
                     Masuk dengan Google
                 </Button>
+
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                        Atau lanjutkan dengan
+                        </span>
+                    </div>
+                </div>
+
+                <Form {...form}>
+                    <form className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input type="email" placeholder="email@anda.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Kata Sandi</FormLabel>
+                                <FormControl>
+                                    <Input type="password" placeholder="******" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="flex flex-col sm:flex-row gap-2">
+                             <Button 
+                                type="button" 
+                                onClick={form.handleSubmit(d => handleEmailSubmit(d, false))}
+                                disabled={isSubmitting}
+                                className="w-full"
+                            >
+                                {isSubmitting ? 'Memproses...' : 'Masuk'}
+                            </Button>
+                             <Button 
+                                type="button" 
+                                onClick={form.handleSubmit(d => handleEmailSubmit(d, true))}
+                                disabled={isSubmitting}
+                                variant="secondary"
+                                className="w-full"
+                             >
+                                {isSubmitting ? 'Memproses...' : 'Daftar'}
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
             </CardContent>
         </Card>
     )
@@ -288,3 +377,5 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
     </div>
   );
 }
+
+    
