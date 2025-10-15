@@ -166,7 +166,7 @@ export function useJournal() {
             if (result) {
                 // This means a user just came back from a redirect.
                 // Could be a new user or a linking user.
-                toast({ title: `Selamat datang, ${result.user.displayName || 'Pengguna Baru'}!` });
+                toast({ title: `Selamat datang!` });
             }
         } catch (error: any) {
             console.error("Error getting redirect result:", error);
@@ -190,7 +190,7 @@ export function useJournal() {
 
                 const newUser: Omit<User, 'id'> = {
                     displayName: `Anonim#${userCount + 1}`,
-                    avatar: user.photoURL || '👤',
+                    avatar: '👤',
                     bio: 'Pengguna baru MoodLink!',
                     followers: [],
                     following: [],
@@ -229,30 +229,6 @@ export function useJournal() {
     return () => unsubscribe();
   }, [toast]);
   
-  const linkWithGoogle = async () => {
-    if (!currentAuthUser) {
-        toast({ title: 'Harap tunggu', description: 'Otentikasi sedang dimuat...', variant: 'destructive' });
-        return false;
-    }
-    const provider = new GoogleAuthProvider();
-    try {
-        if (currentAuthUser.isAnonymous) {
-            // For anonymous users, we link their account. signInWithRedirect handles this.
-            await signInWithRedirect(auth, provider);
-        } else {
-            // For already signed-in (e.g. email) users wanting to link Google, this flow is different.
-            // For now, we just handle the primary sign-in flow.
-            await signInWithRedirect(auth, provider);
-        }
-        // The result is handled by getRedirectResult in the onAuthStateChanged listener.
-        return true; 
-    } catch (error: any) {
-      console.error("Error starting redirect sign-in:", error);
-      toast({ title: 'Gagal Masuk', description: 'Tidak dapat memulai proses masuk dengan Google.', variant: 'destructive'});
-      return false;
-    }
-  };
-
   const signOutUser = async () => {
     try {
       await signOut(auth);
@@ -435,7 +411,7 @@ export function useJournal() {
         return null;
     }
     if (isAnonymous) {
-        toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk dengan Google untuk menyimpan postingan Anda secara permanen.'});
+        toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk untuk menyimpan postingan Anda secara permanen.'});
     }
     if (!content.trim()) {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
@@ -608,7 +584,7 @@ export function useJournal() {
 
   const toggleLike = useCallback(async (entryId: string) => {
     if (!currentAuthUser || isAnonymous) {
-        toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk menyukai postingan.', variant: 'destructive'});
+        toast({ title: 'Harus Masuk', description: 'Masuk untuk menyukai postingan.', variant: 'destructive'});
         return;
     }
     const entryRef = doc(db, 'journals', entryId);
@@ -662,7 +638,7 @@ export function useJournal() {
 
   const toggleBookmark = useCallback(async (entryId: string) => {
     if (!currentAuthUser || isAnonymous) {
-        toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk menyimpan postingan.', variant: 'destructive'});
+        toast({ title: 'Harus Masuk', description: 'Masuk untuk menyimpan postingan.', variant: 'destructive'});
         return;
     }
     const entryRef = doc(db, 'journals', entryId);
@@ -732,7 +708,7 @@ export function useJournal() {
 
     const voteOnEntry = useCallback(async (entryId: string, optionIndex: number) => {
         if (!currentAuthUser || isAnonymous) {
-            toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk memberi suara.', variant: 'destructive'});
+            toast({ title: 'Harus Masuk', description: 'Masuk untuk memberi suara.', variant: 'destructive'});
             return;
         }
         const entryRef = doc(db, 'journals', entryId);
@@ -933,7 +909,7 @@ export function useJournal() {
     }, [currentAuthUser, currentUser, isAnonymous, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, isAnonymous, linkWithGoogle, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail };
+  return { entries, users, currentUser, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail };
 }
 
 

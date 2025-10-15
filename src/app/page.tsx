@@ -61,7 +61,7 @@ function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: 
         transition={{ delay: 0.9, duration: 0.8 }}
         className="flex flex-col sm:flex-row gap-4 mt-8 w-full max-w-sm"
       >
-        <Button onClick={onLogin} size="lg" className="w-full">Masuk dengan Google</Button>
+        <Button onClick={onLogin} size="lg" className="w-full">Masuk dengan Email</Button>
         <Button onClick={onGuest} size="lg" variant="outline" className="w-full">Lanjutkan sebagai Tamu</Button>
       </motion.div>
        <motion.div
@@ -87,7 +87,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { isLoaded, isAnonymous, linkWithGoogle } = useJournal();
+  const { isLoaded, isAnonymous } = useJournal();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
@@ -124,11 +124,9 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  const handleLogin = async () => {
-    const success = await linkWithGoogle();
-    if (success) {
-      setShowOnboarding(false);
-    }
+  const handleLogin = () => {
+    setShowOnboarding(false);
+    setActiveTab('Profile');
   };
 
   const handleGuest = () => {
@@ -200,9 +198,9 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />;
       case 'Explore':
-        return <ExplorePage onViewHashtag={handleViewHashtag} />;
+        return <ExplorePage onViewHashtag={onViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
@@ -211,11 +209,11 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={onViewImage}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage}/>;
     }
   };
 
