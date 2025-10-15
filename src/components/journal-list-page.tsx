@@ -144,12 +144,12 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
   const getUserForEntry = (ownerId: string) => users.find(u => u.id === ownerId);
 
   return (
-    <div className="container mx-auto py-8 px-4">
-        <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div className="container mx-auto px-4">
+        <header className="sticky top-0 z-10 flex items-center justify-between py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
             <div className="flex items-center gap-3">
                 <BookText className="h-7 w-7 text-primary" />
             </div>
-            <div className="flex-1 flex justify-end items-center gap-2">
+            <div className="flex flex-1 justify-end items-center gap-2">
                  <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
                     <Search className="h-5 w-5" />
                 </Button>
