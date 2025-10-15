@@ -12,6 +12,14 @@ import { ThemeToggle } from './theme-toggle';
 import { ArrowLeft, ArrowRight, BookText, FilePlus, Search, Hourglass, Vote } from 'lucide-react';
 import { JournalEntryCard } from './journal-list-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
 
 const ITEMS_PER_PAGE = 12;
 
@@ -94,6 +102,7 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
 export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { entries, users, deleteEntry, isLoaded, currentAuthUserId, currentUser } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const forYouEntries = useMemo(() => {
     return entries
@@ -141,20 +150,34 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
                 <BookText className="h-7 w-7 text-primary" />
             </div>
             <div className="flex-1 flex justify-end items-center gap-2">
-                <div className="relative w-full max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                        placeholder="Cari postingan atau #tag..."
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
+                 <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
+                    <Search className="h-5 w-5" />
+                </Button>
                 <div className="hidden md:flex items-center gap-2">
                     <ThemeToggle />
                 </div>
             </div>
         </header>
+
+        <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cari Postingan</DialogTitle>
+              <DialogDescription>
+                Cari berdasarkan konten atau tagar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Cari postingan atau #tag..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Tabs defaultValue="for-you" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
