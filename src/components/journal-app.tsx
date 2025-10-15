@@ -252,7 +252,7 @@ function CommentThread({
             <HashtagRenderer
               text={displayContent}
               onViewHashtag={onViewHashtag}
-              mentionTarget={level >= 1 ? parentAuthorName : undefined}
+              mentionTarget={parentAuthorName}
             />
           )}
 
@@ -629,7 +629,6 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       onViewProfile(id);
     }
   };
-
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
