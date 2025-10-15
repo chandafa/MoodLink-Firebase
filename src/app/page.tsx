@@ -198,9 +198,9 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
-        return <ExplorePage onViewHashtag={onViewHashtag} />;
+        return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
@@ -209,11 +209,11 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={onViewImage}/>;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
     }
   };
 
