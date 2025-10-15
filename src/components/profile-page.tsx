@@ -19,19 +19,30 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './ui/card';
 import { Icons } from './icons';
 import { useJournal, User } from '@/hooks/use-journal';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogIn } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogIn, LogOut } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 const profileSchema = z.object({
@@ -43,7 +54,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; }) {
+function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; }) {
   const { toast } = useToast();
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +100,15 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
        toast({ title: 'Banner dihapus' });
     }
   }
+
+  const handleResetData = () => {
+    localStorage.clear();
+    toast({
+      title: 'Data Dihapus',
+      description: 'Semua data lokal Anda telah dihapus. Aplikasi akan dimuat ulang.',
+    });
+    setTimeout(() => window.location.reload(), 1500);
+  };
   
   const avatarDisplay = form.watch('avatar') || '👤';
 
@@ -208,6 +228,45 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
             </form>
           </Form>
         </CardContent>
+        <CardFooter className="flex-col sm:flex-row gap-2 justify-end bg-muted/50 p-4 border-t">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> Keluar</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Anda yakin ingin keluar?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Anda akan kembali ke akun anonim. Anda dapat masuk kembali nanti untuk mengakses data Anda.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={onSignOut}>Ya, Keluar</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Hapus Data Lokal</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tindakan ini tidak dapat dibatalkan. Ini akan menghapus semua
+                    data sesi dan postingan tamu dari perangkat ini. Data akun Anda yang tersimpan di server akan tetap aman.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetData} className="bg-destructive hover:bg-destructive/90">
+                    Ya, hapus data lokal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+        </CardFooter>
       </Card>
   );
 }
@@ -321,7 +380,7 @@ function GuestProfileView() {
 }
 
 export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
-  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, linkWithGoogle } = useJournal();
+  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, linkWithGoogle, signOutUser } = useJournal();
   const { toast } = useToast();
 
   const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
@@ -364,7 +423,7 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
             {isAnonymous ? (
                 <GuestProfileView />
             ) : (
-                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} />
+                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} />
             )}
           </TabsContent>
            <TabsContent value="capsules" className="mt-6">

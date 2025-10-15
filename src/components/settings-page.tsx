@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -72,28 +73,9 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (view: 'main'
                             <Avatar><AvatarFallback>{currentUser?.avatar}</AvatarFallback></Avatar>
                             <div>
                                 <p className="font-semibold">{currentUser?.displayName}</p>
-                                <p className="text-sm text-muted-foreground">Masuk dengan Google</p>
+                                <p className="text-sm text-muted-foreground">Masuk sebagai {currentUser?.displayName}</p>
                             </div>
                            </div>
-                           <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                  <Button variant="outline"><LogOut className="mr-2" /> Keluar</Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Anda yakin ingin keluar?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                       Anda akan kembali ke akun anonim. Anda dapat masuk kembali nanti untuk mengakses data Anda.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={signOutUser}>
-                                        Ya, Keluar
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                           </AlertDialog>
                         </div>
                     </>
                 )}
@@ -133,34 +115,6 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (view: 'main'
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Manajemen Data</CardTitle>
-            <CardDescription>Kelola data aplikasi Anda.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">Hapus Semua Data Lokal</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tindakan ini tidak dapat dibatalkan. Ini akan menghapus semua
-                    entri jurnal, informasi profil, dan pengaturan dari perangkat ini. Jika Anda sudah masuk, data Anda akan tetap aman di cloud.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleResetData}>
-                    Ya, hapus data saya
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="text-center mt-8 text-sm text-muted-foreground">
