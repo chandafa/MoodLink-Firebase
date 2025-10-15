@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -22,14 +23,13 @@ import {
   Globe,
   Users,
   Heart,
-  CornerDownRight,
   MoreVertical,
   Edit,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ThemeToggle } from './theme-toggle';
@@ -62,9 +62,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
+import { formatDistanceToNow } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 // --- START: Threaded Comment Section ---
 
@@ -101,12 +101,14 @@ function CommentThread({
   entryId,
   entryOwnerId,
   onViewHashtag,
+  onViewProfile,
   level = 0,
 }: {
   comment: CommentWithReplies;
   entryId: string;
   entryOwnerId: string;
   onViewHashtag: (tag: string) => void;
+  onViewProfile: (userId: string) => void;
   level?: number;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
@@ -173,138 +175,137 @@ function CommentThread({
   }
 
   return (
-    <div className={cn("flex flex-col", level > 0 && "ml-4 md:ml-8 mt-3 pt-3 border-l-2 border-border")}>
-      <div className="flex gap-3">
-        <Avatar>
-          <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <div className="bg-muted rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <p className="font-bold">{comment.authorName}</p>
-              <div className="flex items-center gap-1">
+    <div className={cn("flex gap-3", level > 0 && "ml-4 mt-3 pt-3 border-l-2 border-border")}>
+      <Avatar className="cursor-pointer" onClick={() => onViewProfile(comment.authorId)}>
+        <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
                 <p className="text-xs text-muted-foreground">
-                    {comment.createdAt?.toDate().toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}
+                    {comment.createdAt ? `· ${formatDistanceToNow(comment.createdAt.toDate(), { locale: id, addSuffix: true })}` : ''}
                 </p>
-                {isOwner && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setIsEditing(true); setEditContent(comment.content); }}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit</span>
-                            </DropdownMenuItem>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>Hapus</span>
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Anda yakin ingin menghapus komentar ini?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Tindakan ini tidak dapat diurungkan. Ini akan menghapus komentar secara permanen beserta semua balasannya.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
-              </div>
             </div>
-            {isEditing ? (
-                 <form onSubmit={handleEditSubmit} className="mt-2">
-                    <Textarea 
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        disabled={isSubmitting}
-                        className="text-sm"
-                        rows={2}
-                    />
-                    <div className="flex justify-end gap-2 mt-2">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Batal</Button>
-                        <Button type="submit" size="sm" disabled={isSubmitting}>
-                            {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Simpan'}
+            {isOwner && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreVertical className="h-4 w-4" />
                         </Button>
-                    </div>
-                </form>
-            ) : (
-                <HashtagRenderer text={comment.content} onViewHashtag={onViewHashtag} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => { setIsEditing(true); setEditContent(comment.content); }}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit</span>
+                        </DropdownMenuItem>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Hapus</span>
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Anda yakin ingin menghapus komentar ini?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Tindakan ini tidak dapat diurungkan. Ini akan menghapus komentar secara permanen beserta semua balasannya.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             )}
           </div>
-          {!isEditing && (
-            <div className="flex items-center gap-2 mt-1">
-                <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick} disabled={!currentAuthUserId}>
+        
+          {isEditing ? (
+               <form onSubmit={handleEditSubmit} className="mt-2">
+                  <Textarea 
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      disabled={isSubmitting}
+                      className="text-sm"
+                      rows={2}
+                  />
+                  <div className="flex justify-end gap-2 mt-2">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Batal</Button>
+                      <Button type="submit" size="sm" disabled={isSubmitting}>
+                          {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Simpan'}
+                      </Button>
+                  </div>
+              </form>
+          ) : (
+              <HashtagRenderer text={comment.content} onViewHashtag={onViewHashtag} />
+          )}
+
+        {!isEditing && (
+          <div className="flex items-center gap-2 mt-1 -ml-2">
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setIsReplying(!isReplying)}>
+                Balas
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={handleLikeClick} disabled={!currentAuthUserId}>
                 <Heart className={cn("h-3 w-3 mr-1", isLiked && "fill-red-500 text-red-500")} />
                 {comment.likes || 0}
-                </Button>
-                <Button variant="ghost" size="sm" className="text-xs" onClick={() => setIsReplying(!isReplying)}>
-                Balas
-                </Button>
+              </Button>
+          </div>
+        )}
+      
+          <AnimatePresence>
+            {isReplying && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-2 overflow-hidden"
+              >
+                <form onSubmit={handleReplySubmit} className="flex flex-col gap-2">
+                  <Textarea
+                    placeholder={`Membalas ${comment.authorName}...`}
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                    disabled={isSubmitting}
+                    className="text-sm"
+                    rows={2}
+                  />
+                  <div className="flex justify-end gap-2">
+                     <Button type="button" variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Batal</Button>
+                     <Button type="submit" size="sm" disabled={isSubmitting}>
+                       {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
+                     </Button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {comment.replies && comment.replies.length > 0 && (
+            <div className="mt-2">
+              {comment.replies.map(reply => (
+                <CommentThread
+                  key={reply.id}
+                  comment={reply}
+                  entryId={entryId}
+                  entryOwnerId={entryOwnerId}
+                  onViewHashtag={onViewHashtag}
+                  onViewProfile={onViewProfile}
+                  level={level + 1}
+                />
+              ))}
             </div>
           )}
-        </div>
       </div>
-      
-      <AnimatePresence>
-        {isReplying && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="ml-8 md:ml-16 mt-2 overflow-hidden"
-          >
-            <form onSubmit={handleReplySubmit} className="flex flex-col gap-2">
-              <Textarea
-                placeholder={`Membalas ${comment.authorName}...`}
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                disabled={isSubmitting}
-                className="text-sm"
-                rows={2}
-              />
-              <div className="flex justify-end gap-2">
-                 <Button type="button" variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Batal</Button>
-                 <Button type="submit" size="sm" disabled={isSubmitting}>
-                   {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
-                 </Button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2">
-          {comment.replies.map(reply => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              entryId={entryId}
-              entryOwnerId={entryOwnerId}
-              onViewHashtag={onViewHashtag}
-              level={level + 1}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
 
-function CommentSection({ entryId, entryOwnerId, onViewHashtag }: { entryId: string, entryOwnerId: string, onViewHashtag: (tag: string) => void }) {
+function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }: { entryId: string, entryOwnerId: string, onViewHashtag: (tag: string) => void, onViewProfile: (userId: string) => void }) {
     const { comments, isLoading: isLoadingComments } = useComments(entryId);
     const { currentUser, addComment } = useJournal();
     const [newComment, setNewComment] = useState('');
@@ -333,41 +334,38 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag }: { entryId: str
         }
     }
     
-    if (isLoadingComments) return <Skeleton className="h-40 w-full mt-6" />;
-
     return (
-        <Card className="mt-6">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <MessageSquare />
-                    Komentar ({comments.length})
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleCommentSubmit} className="flex flex-col gap-4 mb-6">
-                     <Textarea 
-                        placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Anonim'}...`}
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        disabled={isSubmitting}
-                     />
-                     <Button type="submit" disabled={isSubmitting} className="self-end">
-                        {isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Send className="mr-2" />}
-                        Kirim
-                     </Button>
-                </form>
-                <Separator />
-                 <ScrollArea className="h-[40rem] mt-4 pr-4">
-                    <div className="space-y-4">
-                        {commentTree.length > 0 ? commentTree.map(comment => (
-                            <CommentThread key={comment.id} comment={comment} entryId={entryId} entryOwnerId={entryOwnerId} onViewHashtag={onViewHashtag}/>
-                        )) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
-                        )}
-                    </div>
-                </ScrollArea>
-            </CardContent>
-        </Card>
+        <div className="mt-6 border-t pt-6">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <MessageSquare />
+                Komentar ({comments.length})
+            </h2>
+            
+            <form onSubmit={handleCommentSubmit} className="flex gap-4 mb-6">
+                 <Avatar><AvatarFallback>{currentUser?.avatar}</AvatarFallback></Avatar>
+                 <Textarea 
+                    placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Anonim'}...`}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    disabled={isSubmitting || !currentUser}
+                    rows={1}
+                    className="flex-1"
+                 />
+                 <Button type="submit" disabled={isSubmitting || !currentUser}>
+                    {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
+                 </Button>
+            </form>
+            
+            <div className="space-y-4">
+              {isLoadingComments ? (
+                 <Skeleton className="h-40 w-full" />
+              ) : commentTree.length > 0 ? commentTree.map(comment => (
+                    <CommentThread key={comment.id} comment={comment} entryId={entryId} entryOwnerId={entryOwnerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} />
+                )) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
+                )}
+            </div>
+        </div>
     )
 }
 
@@ -441,7 +439,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     return users.find(u => u.id === activeEntry.ownerId);
   }, [activeEntry, users]);
   
-  const isOwner = activeEntry?.ownerId === currentAuthUserId;
+  const isOwner = activeEntry ? activeEntry.ownerId === currentAuthUserId : true;
   
   const isFollowing = useMemo(() => {
       if (!currentUser || !activeEntry) return false;
@@ -554,9 +552,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
 
   const handleDelete = async () => {
     if (activeEntry && isOwner) {
-      const entryIndex = sortedEntries.findIndex(e => e.id === selectedEntryId);
       await deleteEntry(activeEntry.id);
-      
       onBack();
     }
   };
@@ -589,11 +585,11 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     }
   };
 
-  const handleProfileClick = () => {
-    if (entryOwner && !isOwner) {
-      onViewProfile(entryOwner.id);
+  const handleProfileClick = (id: string) => {
+    if (id !== currentAuthUserId) {
+      onViewProfile(id);
     }
-  }
+  };
 
 
   return (
@@ -603,9 +599,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
             <Button onClick={onBack} size="icon" variant="ghost" className="mr-2">
                 <ArrowLeft />
             </Button>
-          <Icons.logo className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold font-headline text-foreground">
-            {activeEntry ? (isOwner ? 'Edit Post' : 'Lihat Post') : `Post ${postType} Baru`}
+            Postingan
           </h1>
         </div>
         <div className="hidden md:flex items-center gap-2">
@@ -614,216 +609,233 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       </header>
 
       <main className="flex-1 p-4 md:p-6 flex flex-col">
-          { !isLoaded && !activeEntry ? (
-             <Card className="flex-1 flex flex-col">
-                <CardHeader> <Skeleton className="h-8 w-48" /> </CardHeader>
-                <CardContent className="flex-1"> <Skeleton className="h-full w-full" /> </CardContent>
+          { !isLoaded && selectedEntryId ? (
+             <Card className="flex-1 flex flex-col p-6">
+                <div className="flex gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+                <Skeleton className="h-20 mt-4" />
              </Card>
           ) : (
-            <>
-            <Card className="flex-1 flex flex-col shadow-lg">
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                     {entryOwner && (
-                        <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={handleProfileClick}>
-                            <AvatarFallback className="text-xl">{entryOwner.avatar}</AvatarFallback>
-                        </Avatar>
-                     )}
-                     <div>
-                        <CardTitle className={cn("font-headline mb-1", !isOwner && "cursor-pointer hover:underline")} onClick={handleProfileClick}>
-                          {entryOwner?.displayName || 'Anonim'}
-                        </CardTitle>
-                        <CardDescription>
-                            {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString()}`: 'Entri baru'}
-                        </CardDescription>
-                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(isOwner || !activeEntry) && (
-                    <Button onClick={handleSave} size="lg">
-                      <Save className="mr-2 h-5 w-5" />
-                      Simpan
-                    </Button>
-                  )}
-                  {!isOwner && activeEntry && (
-                    <Button onClick={() => toggleFollow(activeEntry.ownerId)} variant={isFollowing ? 'secondary' : 'default'} disabled={!currentUser}>
-                      <UserPlus className="mr-2 h-5 w-5" />
-                      {isFollowing ? 'Diikuti' : 'Ikuti'}
-                    </Button>
-                  )}
-                  {activeEntry && (
-                    <>
-                      <Button onClick={handlePrint} variant="outline" size="icon" aria-label="Print entry" className="hidden md:inline-flex">
-                        <Printer className="h-5 w-5" />
-                      </Button>
-                      {isOwner && (
-                        <Button onClick={handleDelete} variant="destructive" size="icon" aria-label="Delete entry">
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col pt-4">
-                 { (isOwner || !activeEntry) && !activeEntry && (
-                   <div className="flex gap-2 mb-4">
-                     <Button variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
-                       <Type className="mr-2 h-4 w-4" />Jurnal
-                     </Button>
-                     <Button variant={postType === 'voting' ? 'default' : 'outline'} onClick={() => setPostType('voting')}>
-                       <Vote className="mr-2 h-4 w-4" />Voting
-                     </Button>
-                     <Button variant={postType === 'capsule' ? 'default' : 'outline'} onClick={() => setPostType('capsule')}>
-                       <Hourglass className="mr-2 h-4 w-4" />Kapsul
-                     </Button>
-                   </div>
-                 )}
-                {isOwner || !activeEntry ? (
-                    <Textarea
-                        placeholder={
-                            postType === 'journal' ? "Mulai menulis jurnal... Gunakan # untuk topik." :
-                            postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
-                            "Tulis pesan untuk masa depan... Gunakan # untuk topik."
-                        }
-                        className="flex-1 text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
-                        value={editorContent}
-                        onChange={e => setEditorContent(e.target.value)}
-                    />
-                ) : (
-                    <div className="flex-1 text-base py-2">
-                       <HashtagRenderer text={editorContent} onViewHashtag={onViewHashtag} />
-                    </div>
-                )}
-                 { (isOwner || !activeEntry) && postType === 'voting' && (
-                    <div className="space-y-2 mt-4">
-                        <h3 className="text-sm font-medium">Opsi Voting</h3>
-                        {voteOptions.map((option, index) => (
-                           <div key={index} className="flex items-center gap-2">
-                               <Input 
-                                   value={option}
-                                   onChange={(e) => handleOptionChange(index, e.target.value)}
-                                   placeholder={`Opsi ${index + 1}`}
-                               />
-                               <Button variant="ghost" size="icon" onClick={() => removeVoteOption(index)}>
-                                   <X className="h-4 w-4" />
-                               </Button>
-                           </div>
-                        ))}
-                        <Button variant="outline" size="sm" onClick={addVoteOption}>
-                           <PlusCircle className="mr-2 h-4 w-4" /> Tambah Opsi
-                        </Button>
-                    </div>
-                )}
-                 { (isOwner || !activeEntry) && postType === 'capsule' && (
-                    <div className="mt-4 p-4 bg-accent rounded-lg text-accent-foreground">
-                        <div className="flex items-center gap-2">
-                           <Hourglass className="h-5 w-5" />
-                           <p className="font-semibold">Ini adalah Kapsul Waktu.</p>
-                        </div>
-                        <p className="text-sm mt-1">Postingan ini akan disegel dan baru bisa dibuka dalam 30 hari.</p>
-                    </div>
-                )}
-                
-                { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
-                
-                 {(isOwner || !activeEntry) && (
-                    <div className="space-y-4 mt-6 pt-4 border-t">
-                      <h3 className="text-sm font-medium">Visibilitas</h3>
-                       <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex gap-4">
-                           <div className="flex items-center space-x-2">
-                               <RadioGroupItem value="public" id="v-public" />
-                               <Label htmlFor="v-public" className="flex items-center gap-2"><Globe className="h-4 w-4" /> Publik</Label>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                               <RadioGroupItem value="private" id="v-private" />
-                               <Label htmlFor="v-private" className="flex items-center gap-2"><Lock className="h-4 w-4" /> Pribadi</Label>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                               <RadioGroupItem value="restricted" id="v-restricted" />
-                               <Label htmlFor="v-restricted" className="flex items-center gap-2"><Users className="h-4 w-4" /> Terbatas</Label>
-                           </div>
-                       </RadioGroup>
-                       
-                       {visibility === 'restricted' && (
-                         <div className="pt-4">
-                           <h4 className="text-sm font-medium mb-2">Pilih siapa yang bisa melihat</h4>
-                           {followers.length > 0 ? (
-                               <ScrollArea className="h-40 rounded-md border p-4">
-                                   <div className="space-y-2">
-                                       {followers.map(follower => (
-                                           <div key={follower.id} className="flex items-center space-x-2">
-                                               <Checkbox
-                                                   id={`user-${follower.id}`}
-                                                   checked={allowedUsers.includes(follower.id)}
-                                                   onCheckedChange={(checked) => handleAllowedUserChange(follower.id, !!checked)}
-                                               />
-                                               <Label htmlFor={`user-${follower.id}`}>{follower.displayName}</Label>
-                                           </div>
-                                       ))}
-                                   </div>
-                               </ScrollArea>
-                           ) : (
-                               <p className="text-xs text-muted-foreground">Anda tidak memiliki pengikut untuk dipilih.</p>
-                           )}
+            <Card className="shadow-lg p-4 md:p-6">
+              <div className="flex gap-4 items-start">
+                  { (entryOwner || isOwner) && (
+                      <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
+                          <AvatarFallback className="text-xl">{isOwner ? currentUser?.avatar : entryOwner?.avatar}</AvatarFallback>
+                      </Avatar>
+                   )}
+                   <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                         <div>
+                            <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
+                              {isOwner ? currentUser?.displayName : entryOwner?.displayName}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}`: 'Membuat postingan baru'}
+                            </p>
                          </div>
-                       )}
-                    </div>
-                 )}
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreVertical /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {isOwner && (
+                                   <DropdownMenuItem onClick={() => {}}>
+                                      <Edit className="mr-2"/> Edit
+                                   </DropdownMenuItem>
+                                )}
+                                {!isOwner && entryOwner && (
+                                    <DropdownMenuItem onClick={() => toggleFollow(entryOwner!.id)}>
+                                        <UserPlus className="mr-2"/> {isFollowing ? 'Berhenti Ikuti' : 'Ikuti'}
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={handlePrint}>
+                                    <Printer className="mr-2"/> Cetak
+                                </DropdownMenuItem>
+                                {isOwner && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive">
+                                                <Trash2 className="mr-2"/> Hapus
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Anda yakin ingin menghapus?</AlertDialogTitle>
+                                                <AlertDialogDescription>Tindakan ini tidak bisa dibatalkan.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                      </div>
 
+                      <div className="mt-4">
+                        {isOwner ? (
+                            <Textarea
+                                placeholder={
+                                    postType === 'journal' ? "Mulai menulis jurnal... Gunakan # untuk topik." :
+                                    postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
+                                    "Tulis pesan untuk masa depan... Gunakan # untuk topik."
+                                }
+                                className="text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                                value={editorContent}
+                                onChange={e => setEditorContent(e.target.value)}
+                            />
+                        ) : (
+                            <div className="flex-1 text-base py-2">
+                               <HashtagRenderer text={editorContent} onViewHashtag={onViewHashtag} />
+                            </div>
+                        )}
+                      </div>
 
-                 { (isOwner || !activeEntry) && postType !== 'capsule' && (
-                  <div className="pt-4 mt-auto">
-                    <div className={cn("grid gap-2", imagePreviews.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
-                        {imagePreviews.map((img, index) => (
-                          <div key={index} className="relative group cursor-pointer" onClick={() => onViewImage(img)}>
-                              <Image src={img} alt={`Preview ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
-                              <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); removeImage(index);}}>
-                                  <XCircle className="h-4 w-4" />
-                              </Button>
+                      { imagePreviews.length > 0 && (
+                        <div className={cn("grid gap-2 mt-4", imagePreviews.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+                            {imagePreviews.map((img, index) => (
+                              <div key={index} className="relative group rounded-lg overflow-hidden">
+                                  <Image src={img} alt={`Preview ${index + 1}`} width={400} height={400} className="object-cover aspect-video cursor-pointer" onClick={() => onViewImage(img)} />
+                                  {isOwner && (
+                                    <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); removeImage(index);}}>
+                                        <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                      
+                       {isOwner && postType !== 'capsule' && (
+                          <div className="mt-4">
+                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={images.length >= 3}>
+                                <ImageIcon className="mr-2 h-4 w-4" />
+                                Tambah Gambar ({images.length}/3)
+                            </Button>
+                             <Input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                onChange={handleImageUpload} 
+                                accept="image/*" 
+                                multiple 
+                              />
                           </div>
-                        ))}
-                    </div>
-                    <Separator className="my-4" />
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={images.length >= 3}>
-                        <ImageIcon className="mr-2 h-4 w-4" />
-                        Tambah Gambar ({images.length}/3)
-                    </Button>
-                     <Input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        onChange={handleImageUpload} 
-                        accept="image/*" 
-                        multiple 
-                      />
-                  </div>
-                )}
-                 { (!isOwner && activeEntry && imagePreviews.length > 0) && (
-                  <div className="pt-4 mt-auto">
-                    <div className={cn("grid gap-2", imagePreviews.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
-                        {imagePreviews.map((img, index) => (
-                          <div key={index} className="relative cursor-pointer" onClick={() => onViewImage(img)}>
-                              <Image src={img} alt={`Image ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-               {activeEntry && activeEntry.postType !== 'capsule' && (
-                <>
-                    <Separator className="mt-4" />
-                    <CardFooter className="p-4">
-                        <SupportBar entry={activeEntry} onCommentClick={() => {}} />
-                    </CardFooter>
-                </>
-                )}
+                        )}
+
+                        { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
+                        
+                         {isOwner && (
+                            <div className="space-y-4 mt-6 pt-4 border-t">
+                              <h3 className="text-sm font-medium">Pengaturan Postingan</h3>
+                               { !activeEntry && (
+                               <div className="flex gap-2 mb-4">
+                                 <Button size="sm" variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
+                                   <Type className="mr-2 h-4 w-4" />Jurnal
+                                 </Button>
+                                 <Button size="sm" variant={postType === 'voting' ? 'default' : 'outline'} onClick={() => setPostType('voting')}>
+                                   <Vote className="mr-2 h-4 w-4" />Voting
+                                 </Button>
+                                 <Button size="sm" variant={postType === 'capsule' ? 'default' : 'outline'} onClick={() => setPostType('capsule')}>
+                                   <Hourglass className="mr-2 h-4 w-4" />Kapsul
+                                 </Button>
+                               </div>
+                             )}
+                               {postType === 'voting' && (
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-medium">Opsi Voting</h3>
+                                        {voteOptions.map((option, index) => (
+                                           <div key={index} className="flex items-center gap-2">
+                                               <Input 
+                                                   value={option}
+                                                   onChange={(e) => handleOptionChange(index, e.target.value)}
+                                                   placeholder={`Opsi ${index + 1}`}
+                                               />
+                                               <Button variant="ghost" size="icon" onClick={() => removeVoteOption(index)}>
+                                                   <X className="h-4 w-4" />
+                                               </Button>
+                                           </div>
+                                        ))}
+                                        <Button variant="outline" size="sm" onClick={addVoteOption}>
+                                           <PlusCircle className="mr-2 h-4 w-4" /> Tambah Opsi
+                                        </Button>
+                                    </div>
+                                )}
+                               {postType === 'capsule' && (
+                                    <div className="mt-4 p-4 bg-accent rounded-lg text-accent-foreground">
+                                        <div className="flex items-center gap-2">
+                                           <Hourglass className="h-5 w-5" />
+                                           <p className="font-semibold">Ini adalah Kapsul Waktu.</p>
+                                        </div>
+                                        <p className="text-sm mt-1">Postingan ini akan disegel dan baru bisa dibuka dalam 30 hari.</p>
+                                    </div>
+                                )}
+                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex gap-4">
+                                   <div className="flex items-center space-x-2">
+                                       <RadioGroupItem value="public" id="v-public" />
+                                       <Label htmlFor="v-public" className="flex items-center gap-2"><Globe className="h-4 w-4" /> Publik</Label>
+                                   </div>
+                                   <div className="flex items-center space-x-2">
+                                       <RadioGroupItem value="private" id="v-private" />
+                                       <Label htmlFor="v-private" className="flex items-center gap-2"><Lock className="h-4 w-4" /> Pribadi</Label>
+                                   </div>
+                                   <div className="flex items-center space-x-2">
+                                       <RadioGroupItem value="restricted" id="v-restricted" />
+                                       <Label htmlFor="v-restricted" className="flex items-center gap-2"><Users className="h-4 w-4" /> Terbatas</Label>
+                                   </div>
+                               </RadioGroup>
+                               
+                               {visibility === 'restricted' && (
+                                 <div className="pt-4">
+                                   <h4 className="text-sm font-medium mb-2">Pilih siapa yang bisa melihat</h4>
+                                   {followers.length > 0 ? (
+                                       <ScrollArea className="h-40 rounded-md border p-4">
+                                           <div className="space-y-2">
+                                               {followers.map(follower => (
+                                                   <div key={follower.id} className="flex items-center space-x-2">
+                                                       <Checkbox
+                                                           id={`user-${follower.id}`}
+                                                           checked={allowedUsers.includes(follower.id)}
+                                                           onCheckedChange={(checked) => handleAllowedUserChange(follower.id, !!checked)}
+                                                       />
+                                                       <Label htmlFor={`user-${follower.id}`}>{follower.displayName}</Label>
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       </ScrollArea>
+                                   ) : (
+                                       <p className="text-xs text-muted-foreground">Anda tidak memiliki pengikut untuk dipilih.</p>
+                                   )}
+                                 </div>
+                               )}
+                               <div className="flex justify-end">
+                                <Button onClick={handleSave} size="lg">
+                                  <Save className="mr-2 h-5 w-5" />
+                                  Simpan
+                                </Button>
+                               </div>
+                            </div>
+                         )}
+                         
+                       <div className="mt-4 pt-4 border-t">
+                         {activeEntry && <SupportBar entry={activeEntry} onCommentClick={() => {}} />}
+                       </div>
+                   </div>
+              </div>
             </Card>
-            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag}/>}
+            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile}/>}
             </>
           )}
         </main>
     </div>
   );
 }
+
+    

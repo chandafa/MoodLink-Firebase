@@ -1,11 +1,12 @@
+
 'use client'
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType, Visibility } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -13,6 +14,9 @@ import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
 import HashtagRenderer from './hashtag-renderer';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
     switch (visibility) {
@@ -21,7 +25,7 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
         case 'private':
             return <Lock className="h-3 w-3" />;
         case 'restricted':
-            return <Users className="h-3 w-3" />;
+            return <UsersIcon className="h-3 w-3" />;
         default:
             return <Globe className="h-3 w-3" />;
     }
@@ -29,7 +33,7 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const hasVoted = entry.votedBy?.includes(currentAuthUserId);
+  const hasVoted = entry.votedBy?.includes(currentAuthUserId || '');
   const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const handleVote = (e: React.MouseEvent, index: number) => {
@@ -75,18 +79,13 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 }
 
 
-export function JournalEntryCard({ entry, onSelect, onDelete, onViewHashtag }: { entry: JournalEntry; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; }) {
+export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toast } = useToast();
   const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
-  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
+  const isBookmarked = entry.bookmarkedBy?.includes(currentAuthUserId || '');
   
-  const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }) || 'Just now';
-
-  const title = entry.content.split('\n')[0];
+  const timeAgo = entry.createdAt ? formatDistanceToNow(entry.createdAt.toDate(), { addSuffix: true, locale: id }) : 'baru saja';
+  
   const isOwner = entry.ownerId === currentAuthUserId;
 
   const handleReport = () => {
@@ -111,83 +110,89 @@ export function JournalEntryCard({ entry, onSelect, onDelete, onViewHashtag }: {
     toggleBookmark(entry.id);
   }
 
+  const cardContent = (
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <p className="font-bold text-foreground">{author?.displayName || 'Anonim'}</p>
+                <span>·</span>
+                <span>{timeAgo}</span>
+            </div>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {isOwner && (
+                        <DropdownMenuItem onClick={handleEditClick}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit</span>
+                        </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => {}}>
+                        <Flag className="mr-2 h-4 w-4" />
+                        <span>Laporkan</span>
+                    </DropdownMenuItem>
+                    {isOwner && (
+                        <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Hapus</span>
+                        </DropdownMenuItem>
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+
+        <div className="mt-1">
+            {entry.postType === 'journal' ? (
+              <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} />
+            ) : (
+              <>
+                <p className="font-semibold">{entry.content.split('\n')[0]}</p>
+                <VotingSection entry={entry} onVote={voteOnEntry} />
+              </>
+            )}
+        </div>
+        
+        {entry.images && entry.images.length > 0 && (
+          <div className="relative w-full h-auto mt-2 rounded-lg border overflow-hidden">
+            <Image
+              src={entry.images[0]}
+              alt={entry.content.split('\n')[0]}
+              width={500}
+              height={300}
+              className="object-cover w-full h-full cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}
+            />
+          </div>
+        )}
+        
+        <div className="mt-2 -ml-2">
+            <SupportBar entry={entry} onCommentClick={onSelect} />
+        </div>
+      </div>
+  );
 
   return (
     <motion.div
         layout
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
     >
-        <Card className="cursor-pointer h-full flex flex-col hover:border-primary transition-colors duration-200 relative group" onClick={onSelect}>
-            <div className="absolute top-2 right-2 z-10 flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleBookmarkClick}>
-                    <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current text-primary")} />
-                </Button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                        {isOwner && (
-                            <DropdownMenuItem onClick={handleEditClick}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit</span>
-                            </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={handleReport}>
-                            <Flag className="mr-2 h-4 w-4" />
-                            <span>Laporkan</span>
-                        </DropdownMenuItem>
-                        {isOwner && (
-                            <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Hapus</span>
-                            </DropdownMenuItem>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+        <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200" onClick={onSelect}>
+            <div className="flex gap-4">
+                <Avatar>
+                    <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
+                </Avatar>
+                {cardContent}
             </div>
-            {entry.images && entry.images.length > 0 && (
-              <div className="relative w-full h-40">
-                <Image
-                  src={entry.images[0]}
-                  alt={title}
-                  layout="fill"
-                  objectFit="cover"
-                  className="rounded-t-lg"
-                />
-              </div>
-            )}
-
-            <CardHeader className={cn(entry.images && entry.images.length > 0 && "pt-4")}>
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    {entry.postType === 'voting' ? <Vote className="h-4 w-4" /> : <BookText className="h-4 w-4" />}
-                    <span className="text-xs font-medium uppercase">{entry.postType}</span>
-                     <Separator orientation="vertical" className="h-4" />
-                    <VisibilityIcon visibility={entry.visibility} />
-                    <span className="text-xs font-medium capitalize">{entry.visibility}</span>
-                </div>
-                <CardTitle className="truncate pr-8">{title}</CardTitle>
-                <CardDescription>{formattedDate}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1">
-                {entry.postType === 'journal' ? (
-                  <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
-                ) : (
-                  <VotingSection entry={entry} onVote={voteOnEntry} />
-                )}
-            </CardContent>
-            <Separator className="my-2" />
-            <CardFooter className="p-2 pt-0">
-                <SupportBar entry={entry} onCommentClick={onSelect} />
-            </CardFooter>
         </Card>
     </motion.div>
   );

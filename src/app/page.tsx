@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -173,7 +174,7 @@ export default function Home() {
       return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
     }
     if (viewingHashtag) {
-        return <HashtagPage hashtag={viewingHashtag} onBack={handleBackToList} onSelectEntry={handleSelectEntry} />;
+        return <HashtagPage hashtag={viewingHashtag} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onViewImage={handleViewImage} />;
     }
 
     switch (activeTab) {
@@ -189,7 +190,7 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={onViewHashtag}/>;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={onViewHashtag} onViewImage={onViewImage}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:

@@ -1,125 +1,15 @@
+
 'use client';
 
 import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useJournal, type JournalEntry } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icons } from './icons';
-import { Edit, Flag, Trash2, MoreVertical, Bookmark, ArrowLeft } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
-import { SupportBar } from './support-bar';
-import { Separator } from './ui/separator';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import HashtagRenderer from './hashtag-renderer';
-
-function JournalEntryCard({ entry, onSelect, onViewHashtag }: { entry: JournalEntry; onSelect: () => void; onViewHashtag: (tag: string) => void; }) {
-  const { toast } = useToast();
-  const { toggleBookmark, currentAuthUserId, deleteEntry } = useJournal();
-  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId);
-
-  const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }) || 'Just now';
-
-  const title = entry.content.split('\n')[0];
-  const isOwner = entry.ownerId === currentAuthUserId;
-
-  const handleReport = () => {
-    toast({
-      title: "Entri Dilaporkan",
-      description: "Terima kasih atas laporan Anda. Kami akan meninjaunya."
-    });
-  }
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    deleteEntry(entry.id);
-  }
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect();
-  }
-
-  const handleBookmarkClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleBookmark(entry.id);
-  }
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Card className="cursor-pointer h-full flex flex-col hover:border-primary transition-colors duration-200 relative group" onClick={onSelect}>
-        <div className="absolute top-2 right-2 z-10 flex gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleBookmarkClick}>
-            <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current text-primary")} />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              {isOwner && (
-                <DropdownMenuItem onClick={handleEditClick}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={handleReport}>
-                <Flag className="mr-2 h-4 w-4" />
-                <span>Laporkan</span>
-              </DropdownMenuItem>
-              {isOwner && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>Hapus</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        {entry.images && entry.images.length > 0 && (
-          <div className="relative w-full h-40">
-            <Image
-              src={entry.images[0]}
-              alt={title}
-              layout="fill"
-              objectFit="cover"
-              className="rounded-t-lg"
-            />
-          </div>
-        )}
-        <CardHeader>
-          <CardTitle className="truncate pr-8">{title}</CardTitle>
-          <CardDescription>{formattedDate}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1">
-          <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
-        </CardContent>
-        <Separator className="my-2" />
-        <CardFooter className="p-2 pt-0">
-          <SupportBar entry={entry} onCommentClick={onSelect} />
-        </CardFooter>
-      </Card>
-    </motion.div>
-  );
-}
+import { Bookmark, ArrowLeft } from 'lucide-react';
+import { JournalEntryCard } from './journal-list-card';
 
 function EmptyState() {
   return (
@@ -135,8 +25,8 @@ function EmptyState() {
   );
 }
 
-export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag }: { onSelectEntry: (id: string | null) => void; onBack: () => void; onViewHashtag: (tag: string) => void; }) {
-  const { entries, isLoaded, currentAuthUserId } = useJournal();
+export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onBack: () => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
+  const { entries, users, isLoaded, currentAuthUserId, deleteEntry } = useJournal();
 
   const bookmarkedEntries = useMemo(() => {
     if (!currentAuthUserId) return [];
@@ -144,6 +34,8 @@ export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag }: { onSelec
       .filter(entry => entry.bookmarkedBy.includes(currentAuthUserId))
       .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
   }, [entries, currentAuthUserId]);
+  
+  const getUserForEntry = (ownerId: string): User | undefined => users.find(u => u.id === ownerId);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -160,18 +52,17 @@ export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag }: { onSelec
       </header>
 
       {!isLoaded ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full mt-2" />
-                <Skeleton className="h-4 w-2/3 mt-2" />
-              </CardContent>
+            <Card key={i} className="p-4">
+              <div className="flex gap-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </div>
             </Card>
           ))}
         </div>
@@ -181,14 +72,17 @@ export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag }: { onSelec
         <AnimatePresence>
           <motion.div
             layout
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="space-y-4"
           >
             {bookmarkedEntries.map(entry => (
               <JournalEntryCard
                 key={entry.id}
                 entry={entry}
+                author={getUserForEntry(entry.ownerId)}
                 onSelect={() => onSelectEntry(entry.id)}
+                onDelete={deleteEntry}
                 onViewHashtag={onViewHashtag}
+                onViewImage={onViewImage}
               />
             ))}
           </motion.div>

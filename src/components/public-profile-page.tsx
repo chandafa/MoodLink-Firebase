@@ -10,114 +10,15 @@ import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, B
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { AnimatePresence, motion } from 'framer-motion';
-import { JournalListPage } from './journal-list-page'; // Re-use for listing user's journals
+import { JournalEntryCard } from './journal-list-card'; // Re-use for listing user's journals
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { SupportBar } from './support-bar';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import HashtagRenderer from './hashtag-renderer';
+import { SupportBar } from './support-bar';
 
 const POINTS_PER_LEVEL = 50;
-
-const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
-    switch (visibility) {
-        case 'public':
-            return <Globe className="h-3 w-3" />;
-        case 'private':
-            return <Lock className="h-3 w-3" />;
-        case 'restricted':
-            return <UsersIcon className="h-3 w-3" />;
-        default:
-            return <Globe className="h-3 w-3" />;
-    }
-};
-
-function ProfileJournalEntryCard({ entry, onSelect, onViewHashtag, onViewImage }: { entry: JournalEntry; onSelect: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
-  const { toggleBookmark, currentAuthUserId } = useJournal();
-  const { toast } = useToast();
-  const isBookmarked = entry.bookmarkedBy.includes(currentAuthUserId || '');
-
-  const formattedDate = entry.createdAt?.toDate().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }) || 'Just now';
-
-  const title = entry.content.split('\n')[0];
-
-  const handleBookmarkClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleBookmark(entry.id);
-  }
-
-  const handleReport = () => {
-    toast({
-        title: "Entri Dilaporkan",
-        description: "Terima kasih atas laporan Anda. Kami akan meninjaunya."
-    });
-  }
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Card className="cursor-pointer h-full flex flex-col hover:border-primary transition-colors duration-200 relative group" onClick={() => onSelect(entry.id)}>
-        <div className="absolute top-2 right-2 z-10 flex gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleBookmarkClick}>
-                <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current text-primary")} />
-            </Button>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={handleReport}>
-                        <Flag className="mr-2 h-4 w-4" />
-                        <span>Laporkan</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-        {entry.images && entry.images.length > 0 && (
-          <div className="relative w-full h-40 cursor-pointer" onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}>
-            <Image
-              src={entry.images[0]}
-              alt={title}
-              layout="fill"
-              objectFit="cover"
-              className="rounded-t-lg"
-            />
-          </div>
-        )}
-        <CardHeader className={cn(entry.images && entry.images.length > 0 && "pt-4")}>
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                {entry.postType === 'voting' ? <Vote className="h-4 w-4" /> : <BookText className="h-4 w-4" />}
-                <span className="text-xs font-medium uppercase">{entry.postType}</span>
-                 <Separator orientation="vertical" className="h-4" />
-                <VisibilityIcon visibility={entry.visibility} />
-                <span className="text-xs font-medium capitalize">{entry.visibility}</span>
-            </div>
-            <CardTitle className="truncate pr-8">{title}</CardTitle>
-            <CardDescription>{formattedDate}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1">
-          <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt={true} />
-        </CardContent>
-        <Separator className="my-2" />
-        <CardFooter className="p-2 pt-0">
-          <SupportBar entry={entry} onCommentClick={() => onSelect(entry.id)} />
-        </CardFooter>
-      </Card>
-    </motion.div>
-  );
-}
 
 
 export default function PublicProfilePage({
@@ -135,7 +36,7 @@ export default function PublicProfilePage({
   onViewHashtag: (tag: string) => void;
   onViewImage: (url: string) => void;
 }) {
-  const { users, isLoaded, currentUser, toggleFollow, getUserEntries } = useJournal();
+  const { users, isLoaded, currentUser, toggleFollow, getUserEntries, deleteEntry } = useJournal();
 
   const userProfile = useMemo(() => {
     return users.find(u => u.id === userId);
@@ -278,9 +179,16 @@ export default function PublicProfilePage({
         <div>
             <h2 className="text-2xl font-bold mb-4">Postingan dari {userProfile.displayName}</h2>
              {userEntries.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
                    {userEntries.map(entry => (
-                       <ProfileJournalEntryCard key={entry.id} entry={entry} onSelect={onSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />
+                       <JournalEntryCard 
+                        key={entry.id} 
+                        entry={entry}
+                        author={userProfile}
+                        onSelect={() => onSelectEntry(entry.id)} 
+                        onDelete={deleteEntry}
+                        onViewHashtag={onViewHashtag} 
+                        onViewImage={onViewImage} />
                    ))}
                 </div>
              ) : (

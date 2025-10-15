@@ -1,27 +1,31 @@
+
 'use client';
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useHashtagEntries } from '@/hooks/use-hashtags';
-import { useJournal, type JournalEntry } from '@/hooks/use-journal';
+import { useJournal, type JournalEntry, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Hash } from 'lucide-react';
-import { JournalListPage } from './journal-list-page'; // A bit of a circular dependency, but let's reuse the card
-import { JournalEntryCard } from './journal-list-card'; // Let's extract the card to its own component
+import { JournalEntryCard } from './journal-list-card'; 
 
 export default function HashtagPage({
   hashtag,
   onBack,
   onSelectEntry,
+  onViewImage,
 }: {
   hashtag: string;
   onBack: () => void;
   onSelectEntry: (id: string | null) => void;
+  onViewImage: (url: string) => void;
 }) {
-  const { currentAuthUserId, deleteEntry } = useJournal();
+  const { currentAuthUserId, deleteEntry, users } = useJournal();
   const { entries, isLoading } = useHashtagEntries(hashtag, currentAuthUserId);
+
+  const getUserForEntry = (ownerId: string): User | undefined => users.find(u => u.id === ownerId);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -38,15 +42,17 @@ export default function HashtagPage({
       </header>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <Skeleton className="h-40 w-full" />
-              <div className="p-4 space-y-2">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-10 w-full" />
-              </div>
+             <Card key={i} className="p-4">
+                <div className="flex gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                </div>
             </Card>
           ))}
         </div>
@@ -58,22 +64,22 @@ export default function HashtagPage({
           </p>
         </div>
       ) : (
-        <AnimatePresence>
           <motion.div
             layout
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="space-y-4"
           >
             {entries.map(entry => (
               <JournalEntryCard
                 key={entry.id}
                 entry={entry}
+                author={getUserForEntry(entry.ownerId)}
                 onSelect={() => onSelectEntry(entry.id)}
                 onDelete={deleteEntry}
                 onViewHashtag={() => {}} // We are already on a hashtag page
+                onViewImage={onViewImage}
               />
             ))}
           </motion.div>
-        </AnimatePresence>
       )}
     </div>
   );
