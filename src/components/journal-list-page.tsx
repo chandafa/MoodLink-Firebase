@@ -153,9 +153,7 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
                  <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
                     <Search className="h-5 w-5" />
                 </Button>
-                <div className="hidden md:flex items-center gap-2">
-                    <ThemeToggle />
-                </div>
+                <ThemeToggle />
             </div>
         </header>
 
