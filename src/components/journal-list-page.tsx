@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ITEMS_PER_PAGE = 12;
 
-function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
+function EmptyState() {
     return (
       <div className="text-center p-8 flex flex-col items-center justify-center h-full col-span-full">
         <div className="p-4 bg-secondary rounded-full mb-4">
@@ -29,7 +29,7 @@ function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
     );
   }
   
-function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry, getUserForEntry }: { entries: JournalEntry[], onSelectEntry: (id: string | null) => void, onNewPost: (type: PostType) => void, onViewHashtag: (tag: string) => void, onViewImage: (url: string) => void, deleteEntry: (id: string) => void, getUserForEntry: (ownerId: string) => any }) {
+function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry, getUserForEntry }: { entries: JournalEntry[], onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void, deleteEntry: (id: string) => void, getUserForEntry: (ownerId: string) => any }) {
     const [currentPage, setCurrentPage] = useState(1);
     
     const totalPages = Math.ceil(entries.length / ITEMS_PER_PAGE);
@@ -91,7 +91,7 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
     )
 }
 
-export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onNewPost: (type: PostType) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
+export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { entries, users, deleteEntry, isLoaded, currentAuthUserId, currentUser } = useJournal();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -181,14 +181,13 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
                     ))}
                 </div>
             ) : forYouEntries.length === 0 && searchTerm === '' ? (
-                <EmptyState onNewPost={onNewPost} />
+                <EmptyState />
             ) : (
                 <>
                   <TabsContent value="for-you">
                     <Feed 
                       entries={forYouEntries}
                       onSelectEntry={onSelectEntry}
-                      onNewPost={onNewPost}
                       onViewHashtag={onViewHashtag}
                       onViewImage={onViewImage}
                       deleteEntry={deleteEntry}
@@ -199,7 +198,6 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
                     <Feed 
                       entries={followingEntries}
                       onSelectEntry={onSelectEntry}
-                      onNewPost={onNewPost}
                       onViewHashtag={onViewHashtag}
                       onViewImage={onViewImage}
                       deleteEntry={deleteEntry}

@@ -180,7 +180,7 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
         return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
@@ -195,7 +195,7 @@ export default function Home() {
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onNewPost={handleNewPost} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
     }
   };
 
@@ -220,29 +220,9 @@ export default function Home() {
           
           {activeTab === 'Home' && !isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
             <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-20">
-               <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" className="rounded-full h-16 w-16 shadow-lg">
-                      <FilePlus className="h-8 w-8" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="top" align="end" className="mb-2">
-                      <DropdownMenuGroup>
-                         <DropdownMenuItem onClick={() => handleNewPost('journal')}>
-                             <BookText className="mr-2 h-4 w-4" />
-                             <span>Jurnal</span>
-                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => handleNewPost('voting')}>
-                             <Vote className="mr-2 h-4 w-4" />
-                             <span>Voting</span>
-                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => handleNewPost('capsule')}>
-                             <Hourglass className="mr-2 h-4 w-4" />
-                             <span>Kapsul Waktu</span>
-                         </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                  </DropdownMenuContent>
-               </DropdownMenu>
+               <Button size="icon" className="rounded-full h-16 w-16 shadow-lg" onClick={() => handleNewPost('journal')}>
+                  <FilePlus className="h-8 w-8" />
+               </Button>
             </div>
           )}
 
