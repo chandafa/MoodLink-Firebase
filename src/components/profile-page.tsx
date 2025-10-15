@@ -278,7 +278,7 @@ const emailAuthSchema = z.object({
 type EmailAuthFormValues = z.infer<typeof emailAuthSchema>;
 
 function GuestProfileView() {
-    const { linkWithGoogle, signInWithEmail, signUpWithEmail } = useJournal();
+    const { signInWithEmail, signUpWithEmail } = useJournal();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const form = useForm<EmailAuthFormValues>({
@@ -309,22 +309,6 @@ function GuestProfileView() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <Button onClick={linkWithGoogle} size="lg" className="w-full">
-                    <LogIn className="mr-2 h-5 w-5" />
-                    Masuk dengan Google
-                </Button>
-
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                        Atau lanjutkan dengan
-                        </span>
-                    </div>
-                </div>
-
                 <Form {...form}>
                     <form className="space-y-4">
                         <FormField
