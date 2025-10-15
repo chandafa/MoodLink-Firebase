@@ -13,7 +13,7 @@ import { ArrowLeft, ArrowRight, BookText, FilePlus, Search, Hourglass, Vote } fr
 import { JournalEntryCard } from './journal-list-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 12;
 
 function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
     return (
@@ -25,10 +25,6 @@ function EmptyState({ onNewPost }: { onNewPost: (type: PostType) => void }) {
         <p className="text-muted-foreground mb-4">
           Klik tombol di bawah untuk membuat postingan pertama Anda.
         </p>
-        <Button onClick={() => onNewPost('journal')}>
-            <FilePlus className="mr-2" />
-            Buat Entri Baru
-        </Button>
       </div>
     );
   }
@@ -55,14 +51,14 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
     };
     
     if (entries.length === 0) {
-        return <p className="text-muted-foreground text-center py-10">Tidak ada postingan untuk ditampilkan.</p>
+        return <p className="text-muted-foreground text-center py-10 col-span-full">Tidak ada postingan untuk ditampilkan.</p>
     }
 
     return (
         <>
             <motion.div 
                 layout
-                className="space-y-4"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
                 {paginatedEntries.map(entry => (
                     <JournalEntryCard 
@@ -77,7 +73,7 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
                 ))}
             </motion.div>
             {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-4 mt-8">
+                <div className="flex justify-center items-center gap-4 mt-8 col-span-full">
                     <Button onClick={handlePrevPage} disabled={currentPage === 1} variant="outline">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Sebelumnya
@@ -170,7 +166,7 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
           </TabsList>
           <div className="mt-6">
             {!isLoaded ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                      {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
                         <Card key={i} className="p-4">
                           <div className="flex gap-4">

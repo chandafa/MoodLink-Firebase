@@ -110,74 +110,6 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     toggleBookmark(entry.id);
   }
 
-  const cardContent = (
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <p className="font-bold text-foreground">{author?.displayName || 'Anonim'}</p>
-                <span>·</span>
-                <span>{timeAgo}</span>
-            </div>
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    {isOwner && (
-                        <DropdownMenuItem onClick={handleEditClick}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit</span>
-                        </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={() => {}}>
-                        <Flag className="mr-2 h-4 w-4" />
-                        <span>Laporkan</span>
-                    </DropdownMenuItem>
-                    {isOwner && (
-                        <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Hapus</span>
-                        </DropdownMenuItem>
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-
-        <div className="mt-1">
-            {entry.postType === 'journal' ? (
-              <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} />
-            ) : (
-              <>
-                <p className="font-semibold">{entry.content.split('\n')[0]}</p>
-                <VotingSection entry={entry} onVote={voteOnEntry} />
-              </>
-            )}
-        </div>
-        
-        {entry.images && entry.images.length > 0 && (
-          <div className="relative w-full h-auto mt-2 rounded-lg border overflow-hidden">
-            <Image
-              src={entry.images[0]}
-              alt={entry.content.split('\n')[0]}
-              width={500}
-              height={300}
-              className="object-cover w-full h-full cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}
-            />
-          </div>
-        )}
-        
-        <div className="mt-2 -ml-2">
-            <SupportBar entry={entry} onCommentClick={onSelect} />
-        </div>
-      </div>
-  );
-
   return (
     <motion.div
         layout
@@ -185,13 +117,76 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
+        className="h-full"
     >
-        <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200" onClick={onSelect}>
-            <div className="flex gap-4">
-                <Avatar>
-                    <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
-                </Avatar>
-                {cardContent}
+        <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col" onClick={onSelect}>
+            <div className="flex-1">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                        <Avatar>
+                            <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <p className="font-bold text-foreground leading-tight">{author?.displayName || 'Anonim'}</p>
+                            <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                        </div>
+                    </div>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            {isOwner && (
+                                <DropdownMenuItem onClick={handleEditClick}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>Edit</span>
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={handleReport}>
+                                <Flag className="mr-2 h-4 w-4" />
+                                <span>Laporkan</span>
+                            </DropdownMenuItem>
+                            {isOwner && (
+                                <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={handleDeleteClick}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Hapus</span>
+                                </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                <div className="mt-3">
+                    {entry.postType === 'journal' ? (
+                      <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
+                    ) : (
+                      <>
+                        <p className="font-semibold text-sm line-clamp-2">{entry.content.split('\n')[0]}</p>
+                        <VotingSection entry={entry} onVote={voteOnEntry} />
+                      </>
+                    )}
+                </div>
+                
+                {entry.images && entry.images.length > 0 && (
+                  <div className="relative w-full aspect-video mt-2 rounded-lg border overflow-hidden">
+                    <Image
+                      src={entry.images[0]}
+                      alt={entry.content.split('\n')[0]}
+                      fill
+                      className="object-cover cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}
+                    />
+                  </div>
+                )}
+            </div>
+            
+            <div className="mt-2 pt-2 border-t -ml-2 -mr-2">
+                <SupportBar entry={entry} onCommentClick={onSelect} />
             </div>
         </Card>
     </motion.div>
