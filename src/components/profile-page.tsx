@@ -25,7 +25,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2 } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogIn } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -211,8 +211,29 @@ function ProfileForm({ currentUser, onUpdate }: { currentUser: User | null; onUp
   );
 }
 
+function GuestProfileView() {
+    const { linkWithGoogle } = useJournal();
+    return (
+        <Card className="text-center">
+            <CardHeader>
+                <CardTitle>Anda adalah Tamu</CardTitle>
+                <CardDescription>
+                    Masuk untuk menyimpan profil, poin, dan aktivitas Anda secara permanen.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={linkWithGoogle} size="lg">
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Masuk dengan Google
+                </Button>
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
-  const { currentUser, isLoaded, uploadImageToHosting } = useJournal();
+  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, linkWithGoogle } = useJournal();
+  const { toast } = useToast();
 
   const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
     if (currentUser) {
@@ -243,7 +264,7 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
             </TabsTrigger>
-             <TabsTrigger value="capsules">
+             <TabsTrigger value="capsules" disabled={isAnonymous}>
                 <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
@@ -251,10 +272,14 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
-            <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} />
+            {isAnonymous ? (
+                <GuestProfileView />
+            ) : (
+                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} />
+            )}
           </TabsContent>
            <TabsContent value="capsules" className="mt-6">
-            <CapsuleListPage onSelectEntry={onSelectEntry} />
+            {isAnonymous ? <GuestProfileView /> : <CapsuleListPage onSelectEntry={onSelectEntry} />}
           </TabsContent>
           <TabsContent value="leaderboard" className="mt-6">
             <LeaderboardPage />
@@ -263,5 +288,3 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
     </div>
   );
 }
-
-    
