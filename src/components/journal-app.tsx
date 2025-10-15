@@ -62,6 +62,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -838,5 +839,3 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     </div>
   );
 }
-
-    
