@@ -104,6 +104,7 @@ function CommentThread({
   entryOwnerId,
   onViewHashtag,
   onViewProfile,
+  parentAuthorName,
   level = 0,
 }: {
   comment: CommentWithReplies;
@@ -111,6 +112,7 @@ function CommentThread({
   entryOwnerId: string;
   onViewHashtag: (tag: string) => void;
   onViewProfile: (userId: string) => void;
+  parentAuthorName?: string;
   level?: number;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
@@ -175,10 +177,14 @@ function CommentThread({
           toast({ title: 'Gagal menghapus komentar', variant: 'destructive' });
       }
   }
+  
+  const displayContent = level >= 1 && parentAuthorName 
+    ? `@${parentAuthorName} ${comment.content}` 
+    : comment.content;
 
   return (
-    <div className={cn("flex gap-3", level > 0 && "ml-2 md:ml-4 mt-3 pt-3 border-l-2 border-border")}>
-      <Avatar className="cursor-pointer" onClick={() => onViewProfile(comment.authorId)}>
+    <div className={cn("flex gap-3", level > 0 && "ml-2 md:ml-4 mt-3 pt-3 border-l")}>
+      <Avatar className="cursor-pointer h-8 w-8" onClick={() => onViewProfile(comment.authorId)}>
         <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
@@ -243,7 +249,11 @@ function CommentThread({
                   </div>
               </form>
           ) : (
-              <HashtagRenderer text={comment.content} onViewHashtag={onViewHashtag} />
+            <HashtagRenderer
+              text={displayContent}
+              onViewHashtag={onViewHashtag}
+              mentionTarget={level >= 1 ? parentAuthorName : undefined}
+            />
           )}
 
         {!isEditing && (
@@ -296,6 +306,7 @@ function CommentThread({
                   entryOwnerId={entryOwnerId}
                   onViewHashtag={onViewHashtag}
                   onViewProfile={onViewProfile}
+                  parentAuthorName={comment.authorName}
                   level={level + 1}
                 />
               ))}
