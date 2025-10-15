@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeToggle } from './theme-toggle';
 import { ArrowLeft, ArrowRight, BookText, FilePlus, Search, Hourglass, Vote } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { JournalEntryCard } from './journal-list-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -158,30 +157,6 @@ export function JournalListPage({ onSelectEntry, onNewPost, onViewHashtag, onVie
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button>
-                        <FilePlus className="mr-2" />
-                        Postingan Baru
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuGroup>
-                           <DropdownMenuItem onClick={() => onNewPost('journal')}>
-                               <BookText className="mr-2 h-4 w-4" />
-                               <span>Jurnal</span>
-                           </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => onNewPost('voting')}>
-                               <Vote className="mr-2 h-4 w-4" />
-                               <span>Voting</span>
-                           </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => onNewPost('capsule')}>
-                               <Hourglass className="mr-2 h-4 w-4" />
-                               <span>Kapsul Waktu</span>
-                           </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                 </DropdownMenu>
                 <div className="hidden md:flex items-center gap-2">
                     <ThemeToggle />
                 </div>

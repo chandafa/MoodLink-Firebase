@@ -19,7 +19,8 @@ import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, FilePlus, BookText, Vote, Hourglass } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -190,7 +191,7 @@ export default function Home() {
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
         if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={onViewHashtag} onViewImage={onViewImage}/>;
+            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={onViewImage}/>;
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
@@ -216,6 +217,35 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
+          
+          {activeTab === 'Home' && !isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
+            <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-20">
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" className="rounded-full h-16 w-16 shadow-lg">
+                      <FilePlus className="h-8 w-8" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="top" align="end" className="mb-2">
+                      <DropdownMenuGroup>
+                         <DropdownMenuItem onClick={() => handleNewPost('journal')}>
+                             <BookText className="mr-2 h-4 w-4" />
+                             <span>Jurnal</span>
+                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handleNewPost('voting')}>
+                             <Vote className="mr-2 h-4 w-4" />
+                             <span>Voting</span>
+                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handleNewPost('capsule')}>
+                             <Hourglass className="mr-2 h-4 w-4" />
+                             <span>Kapsul Waktu</span>
+                         </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+            </div>
+          )}
+
           {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <HelpChatbot />}
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </motion.div>
