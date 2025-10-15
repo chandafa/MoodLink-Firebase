@@ -140,8 +140,8 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
             <div className="flex items-center gap-3">
                 <BookText className="h-7 w-7 text-primary" />
             </div>
-            <div className="flex items-center gap-2">
-                <div className="relative flex-1 min-w-40">
+            <div className="flex-1 flex justify-end items-center gap-2">
+                <div className="relative w-full max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
                         placeholder="Cari postingan atau #tag..."
