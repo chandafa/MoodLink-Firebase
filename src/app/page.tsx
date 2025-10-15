@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -201,7 +202,7 @@ export default function Home() {
       case 'Home':
         return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
-        return <ExplorePage onViewHashtag={onViewHashtag} />;
+        return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
