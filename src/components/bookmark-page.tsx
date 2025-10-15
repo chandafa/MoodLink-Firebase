@@ -31,7 +31,7 @@ export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag, onViewImage
   const bookmarkedEntries = useMemo(() => {
     if (!currentAuthUserId) return [];
     return entries
-      .filter(entry => entry.bookmarkedBy.includes(currentAuthUserId))
+      .filter(entry => (entry.bookmarkedBy || []).includes(currentAuthUserId))
       .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
   }, [entries, currentAuthUserId]);
   

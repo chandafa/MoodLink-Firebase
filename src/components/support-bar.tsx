@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'framer-motion';
-import { Heart, Link, Repeat, MessageSquare } from 'lucide-react';
+import { Heart, Link, Bookmark, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { useToast } from '@/hooks/use-toast';
@@ -24,12 +24,16 @@ type SupportBarProps = {
 };
 
 export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
-  const { toggleLike, currentAuthUserId } = useJournal();
+  const { toggleLike, toggleBookmark, currentAuthUserId } = useJournal();
   const { toast } = useToast();
   
   const isLiked = useMemo(() => 
-    entry.likedBy.includes(currentAuthUserId)
+    (entry.likedBy || []).includes(currentAuthUserId)
   , [entry.likedBy, currentAuthUserId]);
+
+  const isBookmarked = useMemo(() =>
+    (entry.bookmarkedBy || []).includes(currentAuthUserId)
+  , [entry.bookmarkedBy, currentAuthUserId]);
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/?entryId=${entry.id}`;
@@ -40,25 +44,19 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
     });
   };
 
-  const handleRepost = () => {
-     toast({
-      title: 'Berhasil di-repost!',
-      description: 'Jurnal ini telah di-repost di halaman Anda (fitur demo).',
-    });
-  }
-
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleLike(entry.id);
   }
 
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleBookmark(entry.id);
+  }
+
   const handleCopyClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       handleCopyLink();
-  }
-
-  const handleRepostClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
   }
 
   const handleCommentClick = (e: React.MouseEvent) => {
@@ -79,7 +77,7 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
           disabled={!currentAuthUserId}
         >
           <Heart className={cn("h-4 w-4", isLiked && 'fill-red-500 text-red-500')} />
-          <span className="text-xs font-semibold">{entry.likes}</span>
+          <span className="text-xs font-semibold">{entry.likes || 0}</span>
         </Button>
       </motion.div>
 
@@ -94,27 +92,17 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
         </Button>
       </motion.div>
 
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <motion.div whileTap={{ scale: 0.9 }}>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-1.5" onClick={handleRepostClick}>
-                        <Repeat className="h-4 w-4" />
-                    </Button>
-                </motion.div>
-            </AlertDialogTrigger>
-            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Repost Jurnal?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Apakah Anda yakin ingin me-repost jurnal ini ke halaman Anda?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleRepost}>Ya, Repost</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <motion.div whileTap={{ scale: 0.9 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1.5"
+            onClick={handleBookmarkClick}
+            disabled={!currentAuthUserId}
+          >
+            <Bookmark className={cn("h-4 w-4", isBookmarked && 'fill-yellow-400 text-yellow-500')} />
+          </Button>
+        </motion.div>
 
       {onCommentClick && (
          <motion.div whileTap={{ scale: 0.9 }}>
