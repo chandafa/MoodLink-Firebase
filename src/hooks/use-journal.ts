@@ -299,7 +299,7 @@ export function useJournal() {
         usersUnsub();
         entriesUnsub();
     };
-  }, [currentAuthUser, isLoaded]); // Rerun when auth user changes
+  }, [currentAuthUser, isLoaded]);
   
   // --- POINTS & LEVEL ---
   const addPoints = useCallback(async (userId: string, amount: number) => {
@@ -388,12 +388,11 @@ export function useJournal() {
   // --- JOURNAL ACTIONS ---
   const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) {
-        toast({ title: 'Anda harus masuk untuk memposting', variant: 'destructive'});
+        toast({ title: 'Gagal memuat status autentikasi', variant: 'destructive'});
         return null;
     }
     if (isAnonymous) {
-        toast({ title: 'Masuk untuk Memposting', description: 'Silakan masuk dengan Google untuk membuat postingan.', variant: 'destructive'});
-        return null;
+        toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk dengan Google untuk menyimpan postingan Anda secara permanen.'});
     }
     if (!content.trim()) {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
@@ -454,7 +453,11 @@ export function useJournal() {
       }
       
       const docRef = await addDoc(collection(db, 'journals'), newEntryData);
-      await addPoints(currentAuthUser.uid, 5); // +5 points for any post
+      
+      if(!isAnonymous) {
+        await addPoints(currentAuthUser.uid, 5); // +5 points for any post
+      }
+      
       // The onSnapshot listener will automatically update the UI.
       return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
 
@@ -561,7 +564,7 @@ export function useJournal() {
   }, [currentAuthUser, toast, updateHashtagCounts]);
 
   const toggleLike = useCallback(async (entryId: string) => {
-    if (!currentAuthUser || isAnonymous || !currentUser) {
+    if (!currentAuthUser || isAnonymous) {
         toast({ title: 'Harus Masuk', description: 'Masuk dengan Google untuk menyukai postingan.', variant: 'destructive'});
         return;
     }
@@ -711,16 +714,23 @@ export function useJournal() {
         addPoints(currentAuthUser.uid, 1);
     }, [currentAuthUser, isAnonymous, toast, addPoints]);
 
-    const addComment = useCallback(async (entryId: string, commentContent: string, author: User, entryOwnerId: string, parentId: string | null = null) => {
-        if (!commentContent.trim() || !currentUser || isAnonymous) {
-            toast({ title: 'Harus Masuk', description: 'Masuk untuk berkomentar', variant: 'destructive' });
+    const addComment = useCallback(async (entryId: string, commentContent: string, author: User | null, entryOwnerId: string, parentId: string | null = null) => {
+        if (!commentContent.trim() || !currentAuthUser) {
+            toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
+        if (isAnonymous) {
+            toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk dengan Google untuk menyimpan komentar Anda secara permanen.' });
+        }
         
+        const authorId = currentAuthUser.uid;
+        const authorName = author?.displayName || 'Tamu';
+        const authorAvatar = author?.avatar || '👤';
+
         const commentData = {
-            authorId: author.id,
-            authorName: author.displayName,
-            authorAvatar: author.avatar,
+            authorId,
+            authorName,
+            authorAvatar,
             content: commentContent,
             createdAt: serverTimestamp(),
             parentId,
@@ -736,7 +746,7 @@ export function useJournal() {
         await updateDoc(entryRef, { commentCount: increment(1) });
 
 
-        if (author.id !== entryOwnerId) {
+        if (authorId !== entryOwnerId && !isAnonymous && currentUser) {
            await addPoints(entryOwnerId, 2);
             if(entryDoc.exists()) {
                 await createNotification({
@@ -751,7 +761,7 @@ export function useJournal() {
         }
         
         toast({ title: 'Komentar ditambahkan' });
-    }, [toast, addPoints, currentUser, isAnonymous]);
+    }, [toast, addPoints, currentAuthUser, currentUser, isAnonymous]);
     
     const toggleCommentLike = useCallback(async (entryId: string, commentId: string) => {
         if (!currentAuthUser || isAnonymous) {

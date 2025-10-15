@@ -148,7 +148,7 @@ function CommentItem({
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyContent.trim() || !currentUser) {
+    if (!replyContent.trim()) {
       toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
       return;
     }
@@ -340,7 +340,7 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
 
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newComment.trim() || !currentUser) {
+        if (!newComment.trim()) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
@@ -364,16 +364,16 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
             </h2>
             
             <form onSubmit={handleCommentSubmit} className="flex gap-4 mb-6">
-                 <Avatar><AvatarFallback>{currentUser?.avatar}</AvatarFallback></Avatar>
+                 <Avatar><AvatarFallback>{currentUser?.avatar || 'T'}</AvatarFallback></Avatar>
                  <Textarea 
-                    placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Anonim'}...`}
+                    placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Tamu'}...`}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    disabled={isSubmitting || !currentUser}
+                    disabled={isSubmitting}
                     rows={1}
                     className="flex-1"
                  />
-                 <Button type="submit" disabled={isSubmitting || !currentUser}>
+                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
                  </Button>
             </form>
@@ -681,14 +681,14 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
               <div className="flex gap-4 items-start">
                   { (entryOwner || isOwner) && (
                       <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
-                          <AvatarFallback className="text-xl">{isOwner ? currentUser?.avatar : entryOwner?.avatar}</AvatarFallback>
+                          <AvatarFallback className="text-xl">{isOwner ? currentUser?.avatar || 'T' : entryOwner?.avatar}</AvatarFallback>
                       </Avatar>
                    )}
                    <div className="flex-1">
                       <div className="flex items-center justify-between">
                          <div>
                             <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
-                              {isOwner ? currentUser?.displayName : entryOwner?.displayName}
+                              {isOwner ? currentUser?.displayName || 'Tamu' : entryOwner?.displayName}
                             </p>
                             <p className="text-sm text-muted-foreground">
                                 {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}`: 'Membuat postingan baru'}
@@ -704,7 +704,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                       <Edit className="mr-2"/> Edit
                                    </DropdownMenuItem>
                                 )}
-                                {!isOwner && entryOwner && (
+                                {!isOwner && entryOwner && currentUser && (
                                     <DropdownMenuItem onClick={() => toggleFollow(entryOwner!.id)}>
                                         <UserPlus className="mr-2"/> {isFollowing ? 'Berhenti Ikuti' : 'Ikuti'}
                                     </DropdownMenuItem>
