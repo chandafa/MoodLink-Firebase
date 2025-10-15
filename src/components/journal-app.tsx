@@ -82,7 +82,12 @@ function buildCommentTree(comments: Comment[]): CommentWithReplies[] {
 
     commentMap.forEach(comment => {
         if (comment.parentId && commentMap.has(comment.parentId)) {
-            commentMap.get(comment.parentId)!.replies.push(comment);
+            const parent = commentMap.get(comment.parentId)!;
+            // Ensure replies array exists
+            if (!parent.replies) {
+                parent.replies = [];
+            }
+            parent.replies.push(comment);
         } else {
             rootComments.push(comment);
         }
@@ -90,30 +95,38 @@ function buildCommentTree(comments: Comment[]): CommentWithReplies[] {
 
     // Sort replies by creation date as well
     commentMap.forEach(comment => {
-        comment.replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+        if (comment.replies) {
+            comment.replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+        }
     });
     
     // Sort root comments
     return rootComments.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
 }
 
+function getCommentAndReplies(comment: CommentWithReplies): CommentWithReplies[] {
+    const list: CommentWithReplies[] = [comment];
+    comment.replies.forEach(reply => {
+        list.push(...getCommentAndReplies(reply));
+    });
+    return list;
+}
 
-function CommentThread({
+
+function CommentItem({
   comment,
   entryId,
   entryOwnerId,
+  allComments,
   onViewHashtag,
   onViewProfile,
-  parentAuthorName,
-  level = 0,
 }: {
-  comment: CommentWithReplies;
+  comment: Comment;
   entryId: string;
   entryOwnerId: string;
+  allComments: Comment[];
   onViewHashtag: (tag: string) => void;
   onViewProfile: (userId: string) => void;
-  parentAuthorName?: string;
-  level?: number;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
   const [replyContent, setReplyContent] = useState('');
@@ -125,6 +138,13 @@ function CommentThread({
 
   const isLiked = (comment.likedBy || []).includes(currentAuthUserId || '');
   const isOwner = comment.authorId === currentAuthUserId;
+  const isReply = !!comment.parentId;
+
+  const parentAuthorName = useMemo(() => {
+    if (!comment.parentId) return undefined;
+    const parentComment = allComments.find(c => c.id === comment.parentId);
+    return parentComment?.authorName;
+  }, [comment.parentId, allComments]);
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +154,7 @@ function CommentThread({
     }
     setIsSubmitting(true);
     try {
+      // When replying, the parent is the current comment
       await addComment(entryId, replyContent, currentUser, entryOwnerId, comment.id);
       setReplyContent('');
       setIsReplying(false);
@@ -178,18 +199,18 @@ function CommentThread({
       }
   }
   
-  const displayContent = level >= 1 && parentAuthorName 
+  const displayContent = isReply && parentAuthorName 
     ? `@${parentAuthorName} ${comment.content}` 
     : comment.content;
 
   return (
-    <div className={cn("flex gap-3", level > 0 && "ml-2 md:ml-4 mt-3 pt-3 border-l")}>
+    <div className={cn("flex gap-3", isReply && "ml-5 md:ml-6 mt-3 pt-3 border-l")}>
       <Avatar className="cursor-pointer h-8 w-8" onClick={() => onViewProfile(comment.authorId)}>
         <AvatarFallback>{comment.authorAvatar}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
                 <p className="text-xs text-muted-foreground">
                     {comment.createdAt ? `· ${formatDistanceToNow(comment.createdAt.toDate(), { locale: id, addSuffix: true })}` : ''}
@@ -295,23 +316,6 @@ function CommentThread({
               </motion.div>
             )}
           </AnimatePresence>
-
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-2">
-              {comment.replies.map(reply => (
-                <CommentThread
-                  key={reply.id}
-                  comment={reply}
-                  entryId={entryId}
-                  entryOwnerId={entryOwnerId}
-                  onViewHashtag={onViewHashtag}
-                  onViewProfile={onViewProfile}
-                  parentAuthorName={comment.authorName}
-                  level={level + 1}
-                />
-              ))}
-            </div>
-          )}
       </div>
     </div>
   );
@@ -325,8 +329,13 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
-    const commentTree = useMemo(() => {
-        return buildCommentTree(comments);
+    const flattenedComments = useMemo(() => {
+        const commentTree = buildCommentTree(comments);
+        const flatList: CommentWithReplies[] = [];
+        commentTree.forEach(rootComment => {
+            flatList.push(...getCommentAndReplies(rootComment));
+        });
+        return flatList;
     }, [comments]);
 
     const handleCommentSubmit = async (e: React.FormEvent) => {
@@ -372,8 +381,16 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
             <div className="space-y-4">
               {isLoadingComments ? (
                  <Skeleton className="h-40 w-full" />
-              ) : commentTree.length > 0 ? commentTree.map(comment => (
-                    <CommentThread key={comment.id} comment={comment} entryId={entryId} entryOwnerId={entryOwnerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} />
+              ) : flattenedComments.length > 0 ? flattenedComments.map(comment => (
+                    <CommentItem 
+                        key={comment.id} 
+                        comment={comment} 
+                        entryId={entryId} 
+                        entryOwnerId={entryOwnerId} 
+                        allComments={comments}
+                        onViewHashtag={onViewHashtag} 
+                        onViewProfile={onViewProfile}
+                    />
                 )) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
                 )}
