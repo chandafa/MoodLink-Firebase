@@ -154,15 +154,19 @@ export function useJournal() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // User is signed in.
+        const wasAnonymous = isAnonymous;
         setCurrentAuthUser(user);
         setIsAnonymous(user.isAnonymous);
+
+        let isNewUserAfterLink = false;
 
         // Handle redirect result from Google sign-in
         try {
             const result = await getRedirectResult(auth);
-            if (result && user.isAnonymous) {
+            if (result && wasAnonymous && !user.isAnonymous) {
                 // This means a user who was anonymous just came back from a redirect.
                 // Firebase automatically links the accounts.
+                isNewUserAfterLink = true;
                 toast({ title: 'Berhasil Masuk', description: 'Akun Anda telah ditautkan dengan Google.' });
             } else if (result) {
                 // This means a returning user signed in.
@@ -183,8 +187,8 @@ export function useJournal() {
             if (doc.exists()) {
                 const userData = { id: doc.id, ...doc.data() } as User;
                 setCurrentUser(userData);
-            } else if (!user.isAnonymous) { // Only create doc for non-anonymous new users
-                 // New user, create a document for them.
+            } else if (!user.isAnonymous) { // Create doc for non-anonymous users if it doesn't exist
+                 // New user, or anonymous user who just linked.
                 const newUser: Omit<User, 'id'> = {
                     displayName: user.displayName || `Anonim${Math.floor(Math.random() * 1000)}`,
                     avatar: user.photoURL || '👤',
@@ -225,7 +229,7 @@ export function useJournal() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, isAnonymous]);
   
   const linkWithGoogle = async () => {
     if (!currentAuthUser || !currentAuthUser.isAnonymous) {
