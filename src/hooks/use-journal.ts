@@ -30,7 +30,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   EmailAuthProvider,
-  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  firebaseSendPasswordResetEmail,
   confirmPasswordReset,
   verifyPasswordResetCode,
 } from '@/lib/firebase';
@@ -190,6 +190,8 @@ export function useJournal() {
                 // Handle case for new anonymous user if needed, or just let them be null
                 setCurrentUser(null);
             }
+             // Ensure the app is marked as loaded once we have auth state and attempt to get user.
+            if (!isLoaded) setIsLoaded(true);
         });
         
         return () => userDocUnsub();
@@ -213,7 +215,7 @@ export function useJournal() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, isLoaded]);
   
   const signOutUser = async () => {
     try {
@@ -311,9 +313,6 @@ export function useJournal() {
                 prevEntries.map(e => e.id === entry.id ? { ...e, commentCount: count } : e)
             );
         });
-        
-        // Mark as loaded only after the first batch of data is set
-        if (!isLoaded) setIsLoaded(true);
 
     });
 
@@ -321,7 +320,7 @@ export function useJournal() {
         usersUnsub();
         entriesUnsub();
     };
-  }, [currentAuthUser, isLoaded]);
+  }, [currentAuthUser]);
   
   // --- POINTS & LEVEL ---
   const addPoints = useCallback(async (userId: string, amount: number) => {

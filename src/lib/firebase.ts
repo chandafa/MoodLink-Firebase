@@ -1,7 +1,8 @@
 
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, EmailAuthProvider, sendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, EmailAuthProvider, sendPasswordResetEmail as firebaseSendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import {
   getFirestore,
   doc,
@@ -24,6 +25,7 @@ import {
   setDoc,
   increment,
   limit,
+  enableIndexedDbPersistence,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -43,6 +45,18 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code == 'failed-precondition') {
+    // Multiple tabs open, persistence can only be enabled in one tab at a time.
+    console.warn('Firestore persistence failed: multiple tabs open.');
+  } else if (err.code == 'unimplemented') {
+    // The current browser does not support all of the features required to enable persistence
+    console.warn('Firestore persistence not available in this browser.');
+  }
+});
+
+
 export { 
     app, 
     db, 
@@ -52,7 +66,7 @@ export {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     EmailAuthProvider,
-    sendPasswordResetEmail,
+    firebaseSendPasswordResetEmail,
     confirmPasswordReset,
     verifyPasswordResetCode,
     // Firestore functions
@@ -77,5 +91,3 @@ export {
     increment,
     limit,
 };
-
-    
