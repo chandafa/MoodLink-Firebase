@@ -43,6 +43,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 
 const profileSchema = z.object({
@@ -277,9 +286,15 @@ const emailAuthSchema = z.object({
 });
 type EmailAuthFormValues = z.infer<typeof emailAuthSchema>;
 
+const passwordResetSchema = z.object({
+    email: z.string().email('Alamat email tidak valid.'),
+});
+type PasswordResetFormValues = z.infer<typeof passwordResetSchema>;
+
 function GuestProfileView() {
-    const { signInWithEmail, signUpWithEmail } = useJournal();
+    const { signInWithEmail, signUpWithEmail, sendPasswordResetEmail } = useJournal();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
     
     const form = useForm<EmailAuthFormValues>({
         resolver: zodResolver(emailAuthSchema),
@@ -287,6 +302,10 @@ function GuestProfileView() {
             email: '',
             password: '',
         },
+    });
+
+    const resetForm = useForm<PasswordResetFormValues>({
+        resolver: zodResolver(passwordResetSchema),
     });
 
     const handleEmailSubmit = async (data: EmailAuthFormValues, isSignUp: boolean) => {
@@ -298,6 +317,19 @@ function GuestProfileView() {
         }
         setIsSubmitting(false);
     };
+
+    const handlePasswordReset = async (data: PasswordResetFormValues) => {
+        setIsSubmitting(true);
+        const success = await sendPasswordResetEmail(data.email);
+        if (success) {
+            toast({
+                title: 'Email Terkirim',
+                description: 'Silakan periksa email Anda untuk tautan pengaturan ulang kata sandi.'
+            });
+        }
+        // Error toast is handled inside sendPasswordResetEmail
+        setIsSubmitting(false);
+    }
 
 
     return (
@@ -358,6 +390,43 @@ function GuestProfileView() {
                         </div>
                     </form>
                 </Form>
+                 <div className="text-center">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="link" className="text-sm">Lupa kata sandi?</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Lupa Kata Sandi</DialogTitle>
+                                <DialogDescription>
+                                    Masukkan alamat email Anda. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
+                                </DialogDescription>
+                            </DialogHeader>
+                             <Form {...resetForm}>
+                                <form onSubmit={resetForm.handleSubmit(handlePasswordReset)} className="space-y-4">
+                                     <FormField
+                                        control={resetForm.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Email</FormLabel>
+                                            <FormControl>
+                                                <Input type="email" placeholder="email@anda.com" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <DialogFooter>
+                                         <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting ? 'Mengirim...' : 'Kirim Tautan'}
+                                         </Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </CardContent>
         </Card>
     )

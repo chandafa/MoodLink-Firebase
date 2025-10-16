@@ -30,6 +30,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   EmailAuthProvider,
+  sendPasswordResetEmail,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, linkWithCredential, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -160,23 +161,6 @@ export function useJournal() {
         setCurrentAuthUser(user);
         setIsAnonymous(user.isAnonymous);
 
-        // Handle redirect result from Google sign-in
-        try {
-            const result = await getRedirectResult(auth);
-            if (result) {
-                // This means a user just came back from a redirect.
-                // Could be a new user or a linking user.
-                toast({ title: `Selamat datang!` });
-            }
-        } catch (error: any) {
-            console.error("Error getting redirect result:", error);
-            if (error.code === 'auth/credential-already-in-use') {
-                toast({ title: 'Gagal Menautkan Akun', description: 'Akun Google ini sudah digunakan.', variant: 'destructive'});
-            } else {
-                toast({ title: 'Gagal Masuk', description: 'Terjadi kesalahan saat masuk dengan Google.', variant: 'destructive'});
-            }
-        }
-
         const userRef = doc(db, 'users', user.uid);
         
         const userDocUnsub = onSnapshot(userRef, async (docSnap) => {
@@ -272,6 +256,23 @@ export function useJournal() {
             } else {
                 toast({ title: 'Gagal Masuk', description: error.message, variant: 'destructive' });
             }
+        }
+    };
+
+    const sendPasswordResetEmail = async (email: string) => {
+        try {
+            await sendPasswordResetEmail(auth, email, {
+                url: `${window.location.origin}/reset-password`,
+            });
+            return true;
+        } catch (error: any) {
+            console.error("Error sending password reset email:", error);
+            if (error.code === 'auth/user-not-found') {
+                 toast({ title: 'Email Tidak Ditemukan', description: 'Tidak ada pengguna dengan alamat email ini.', variant: 'destructive' });
+            } else {
+                toast({ title: 'Gagal Mengirim Email', description: 'Terjadi kesalahan. Silakan coba lagi.', variant: 'destructive' });
+            }
+            return false;
         }
     };
 
@@ -410,9 +411,9 @@ export function useJournal() {
         toast({ title: 'Gagal memuat status autentikasi', variant: 'destructive'});
         return null;
     }
-    if (isAnonymous) {
-        toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk untuk menyimpan postingan Anda secara permanen.'});
-    }
+    
+    toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk untuk menyimpan postingan Anda secara permanen.'});
+    
     if (!content.trim()) {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
         return null;
@@ -473,9 +474,9 @@ export function useJournal() {
       
       const docRef = await addDoc(collection(db, 'journals'), newEntryData);
       
-      if(!isAnonymous) {
+      
         await addPoints(currentAuthUser.uid, 5); // +5 points for any post
-      }
+      
       
       // The onSnapshot listener will automatically update the UI.
       return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
@@ -485,7 +486,7 @@ export function useJournal() {
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
         return null;
     }
-  }, [currentAuthUser, isAnonymous, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
+  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
 
   const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) return;
@@ -583,7 +584,7 @@ export function useJournal() {
   }, [currentAuthUser, toast, updateHashtagCounts]);
 
   const toggleLike = useCallback(async (entryId: string) => {
-    if (!currentAuthUser || isAnonymous) {
+    if (!currentAuthUser) {
         toast({ title: 'Harus Masuk', description: 'Masuk untuk menyukai postingan.', variant: 'destructive'});
         return;
     }
@@ -634,10 +635,10 @@ export function useJournal() {
     } catch (error) {
         console.error("Like transaction failed: ", error);
     }
-  }, [currentAuthUser, currentUser, isAnonymous, toast, addPoints]);
+  }, [currentAuthUser, currentUser, toast, addPoints]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
-    if (!currentAuthUser || isAnonymous) {
+    if (!currentAuthUser) {
         toast({ title: 'Harus Masuk', description: 'Masuk untuk menyimpan postingan.', variant: 'destructive'});
         return;
     }
@@ -672,10 +673,10 @@ export function useJournal() {
         console.error("Error toggling bookmark:", error);
         toast({ title: 'Gagal memproses bookmark', variant: 'destructive' });
     }
-  }, [currentAuthUser, isAnonymous, toast]);
+  }, [currentAuthUser, toast]);
 
     const toggleFollow = useCallback(async (targetUserId: string) => {
-        if (!currentAuthUser || isAnonymous || !currentUser || currentAuthUser.uid === targetUserId) return;
+        if (!currentAuthUser || !currentUser || currentAuthUser.uid === targetUserId) return;
 
         const currentUserRef = doc(db, 'users', currentAuthUser.uid);
         const targetUserRef = doc(db, 'users', targetUserId);
@@ -704,10 +705,10 @@ export function useJournal() {
         }
         
         await batch.commit();
-    }, [currentAuthUser, isAnonymous, currentUser, toast, addPoints]);
+    }, [currentAuthUser, currentUser, toast, addPoints]);
 
     const voteOnEntry = useCallback(async (entryId: string, optionIndex: number) => {
-        if (!currentAuthUser || isAnonymous) {
+        if (!currentAuthUser) {
             toast({ title: 'Harus Masuk', description: 'Masuk untuk memberi suara.', variant: 'destructive'});
             return;
         }
@@ -731,7 +732,7 @@ export function useJournal() {
             });
         });
         addPoints(currentAuthUser.uid, 1);
-    }, [currentAuthUser, isAnonymous, toast, addPoints]);
+    }, [currentAuthUser, toast, addPoints]);
 
     const addComment = useCallback(async (entryId: string, commentContent: string, author: User | null, entryOwnerId: string, parentId: string | null = null) => {
         if (!commentContent.trim()) {
@@ -743,9 +744,9 @@ export function useJournal() {
             return;
         }
         
-        if (isAnonymous) {
-            toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk untuk menyimpan komentar Anda.' });
-        }
+        
+        toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk untuk menyimpan komentar Anda.' });
+        
         
         const authorId = currentAuthUser.uid;
         const authorName = author?.displayName || 'Tamu';
@@ -788,7 +789,7 @@ export function useJournal() {
     }, [toast, addPoints, currentAuthUser, currentUser, isAnonymous]);
     
     const toggleCommentLike = useCallback(async (entryId: string, commentId: string) => {
-        if (!currentAuthUser || isAnonymous) {
+        if (!currentAuthUser) {
             toast({ title: 'Harus Masuk', description: 'Masuk untuk menyukai komentar.', variant: 'destructive'});
             return;
         }
@@ -813,7 +814,7 @@ export function useJournal() {
                 });
             }
         });
-    }, [currentAuthUser, isAnonymous, toast]);
+    }, [currentAuthUser, toast]);
 
     const updateComment = useCallback(async (entryId: string, commentId: string, newContent: string) => {
         if (!currentAuthUser) return;
@@ -864,7 +865,7 @@ export function useJournal() {
     };
 
     const sendMessage = useCallback(async (targetUserId: string, text: string) => {
-        if (!currentUser || !currentAuthUser || !text.trim() || isAnonymous) {
+        if (!currentUser || !currentAuthUser || !text.trim()) {
              toast({ title: 'Harus Masuk', description: 'Masuk untuk mengirim pesan.', variant: 'destructive'});
              return;
         }
@@ -906,10 +907,10 @@ export function useJournal() {
 
         await setDoc(chatDocRef, conversationData, { merge: true });
 
-    }, [currentAuthUser, currentUser, isAnonymous, users, toast]);
+    }, [currentAuthUser, currentUser, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail };
+  return { entries, users, currentUser, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail };
 }
 
 

@@ -1,7 +1,7 @@
 
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, EmailAuthProvider } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, EmailAuthProvider, sendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import {
   getFirestore,
   doc,
@@ -52,6 +52,9 @@ export {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     EmailAuthProvider,
+    sendPasswordResetEmail,
+    confirmPasswordReset,
+    verifyPasswordResetCode,
     // Firestore functions
     doc,
     getDoc,
