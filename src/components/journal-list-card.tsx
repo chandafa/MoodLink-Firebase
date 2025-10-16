@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useState, useMemo } from 'react';
@@ -7,7 +8,7 @@ import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame } from 'lucide-react';
+import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -18,6 +19,14 @@ import HashtagRenderer from './hashtag-renderer';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+
+type ReactionType = 'fire' | 'wind' | 'snow';
+type Reaction = {
+    id: number;
+    type: ReactionType;
+    x: string;
+};
+
 
 const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
     switch (visibility) {
@@ -88,7 +97,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toast } = useToast();
   const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
-  const [boosts, setBoosts] = useState<number[]>([]);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
 
   const isBookmarked = useMemo(() => 
     entry.bookmarkedBy?.includes(currentAuthUserId || '')
@@ -120,16 +129,28 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     toggleBookmark(entry.id);
   }
   
-  const handleBoost = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const newBoostId = Date.now();
-      setBoosts(prev => [...prev, newBoostId]);
+  const handleReaction = (reactionType: ReactionType) => {
+      const newReaction: Reaction = {
+          id: Date.now(),
+          type: reactionType,
+          x: `${Math.random() * 80 + 10}%`,
+      };
+      setReactions(prev => [...prev, newReaction]);
       setTimeout(() => {
-          setBoosts(prev => prev.filter(id => id !== newBoostId));
-      }, 1000);
+          setReactions(prev => prev.filter(r => r.id !== newReaction.id));
+      }, 1200);
   };
 
   const cardStyle = entry.cardColor ? { ["--card-theme-bg" as any]: `var(--${entry.cardColor}-bg)`, ["--card-theme-fg" as any]: `var(--${entry.cardColor}-fg)` } : {};
+
+  const ReactionIcon = ({ type }: { type: ReactionType }) => {
+    switch (type) {
+        case 'fire': return <Flame className="text-orange-500 fill-orange-400" />;
+        case 'wind': return <Wind className="text-blue-400" />;
+        case 'snow': return <Snowflake className="text-sky-300" />;
+        default: return null;
+    }
+  };
 
   return (
     <motion.div
@@ -147,20 +168,20 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
             data-theme={entry.cardColor || 'default'}
         >
             <AnimatePresence>
-                {boosts.map(id => (
+                {reactions.map(reaction => (
                     <motion.div
-                        key={id}
+                        key={reaction.id}
                         initial={{ y: 0, opacity: 1, scale: 0.5 }}
-                        animate={{ y: -100, opacity: 0, scale: 1 }}
+                        animate={{ y: -100, opacity: 0, scale: 1.2 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 1, ease: 'easeOut' }}
-                        className="absolute text-2xl pointer-events-none"
+                        transition={{ duration: 1.2, ease: 'easeOut' }}
+                        className="absolute text-2xl pointer-events-none z-30"
                         style={{
-                            left: `${Math.random() * 90 + 5}%`,
+                            left: reaction.x,
                             bottom: '10%',
                         }}
                     >
-                       <Flame className="text-orange-500 fill-orange-400" />
+                       <ReactionIcon type={reaction.type} />
                     </motion.div>
                 ))}
             </AnimatePresence>
@@ -238,7 +259,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
             </div>
             
             <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-black/10 dark:border-white/10">
-                <SupportBar entry={entry} onCommentClick={onSelect} onBoostClick={handleBoost} />
+                <SupportBar entry={entry} onCommentClick={onSelect} onReact={handleReaction} />
             </div>
         </Card>
     </motion.div>

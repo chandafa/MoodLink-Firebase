@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useJournal, User, JournalEntry, PostType, Visibility } from '@/hooks/use-journal';

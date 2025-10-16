@@ -1,7 +1,7 @@
 
 'use client';
 import { motion } from 'framer-motion';
-import { Heart, Link, Bookmark, MessageSquare, Flame } from 'lucide-react';
+import { Heart, Link, Bookmark, MessageSquare, Flame, Wind, Snowflake } from 'lucide-react';
 import { Button } from './ui/button';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { useToast } from '@/hooks/use-toast';
@@ -17,15 +17,76 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+
+type ReactionType = 'fire' | 'wind' | 'snow';
+
+type ReactionButtonProps = {
+    onReact: (reaction: ReactionType) => void;
+};
+
+function ReactionButton({ onReact }: ReactionButtonProps) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleSimpleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onReact('fire');
+    };
+
+    const handleReactionSelect = (e: React.MouseEvent, reaction: ReactionType) => {
+        e.stopPropagation();
+        onReact(reaction);
+        setIsOpen(false);
+    };
+
+    return (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+                <motion.div
+                    whileTap={{ scale: 0.9 }}
+                    onTapHold={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(true);
+                    }}
+                >
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center gap-1.5"
+                        onClick={handleSimpleClick}
+                    >
+                        <Flame className="h-4 w-4 text-orange-500" />
+                    </Button>
+                </motion.div>
+            </PopoverTrigger>
+            <PopoverContent 
+                className="w-auto p-2"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'fire')}>
+                        <Flame className="text-orange-500" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'wind')}>
+                        <Wind className="text-blue-400" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'snow')}>
+                        <Snowflake className="text-sky-300" />
+                    </Button>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 type SupportBarProps = {
   entry: JournalEntry;
   onCommentClick?: () => void;
-  onBoostClick?: (e: React.MouseEvent) => void;
+  onReact: (reaction: ReactionType) => void;
 };
 
-export function SupportBar({ entry, onCommentClick, onBoostClick }: SupportBarProps) {
+export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) {
   const { toggleLike, toggleBookmark, currentAuthUserId } = useJournal();
   const { toast } = useToast();
   
@@ -83,18 +144,7 @@ export function SupportBar({ entry, onCommentClick, onBoostClick }: SupportBarPr
         </Button>
       </motion.div>
       
-      {onBoostClick && (
-          <motion.div whileTap={{ scale: 0.9 }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-1.5"
-              onClick={onBoostClick}
-            >
-              <Flame className="h-4 w-4 text-orange-500" />
-            </Button>
-          </motion.div>
-      )}
+      <ReactionButton onReact={onReact} />
 
        <motion.div whileTap={{ scale: 0.9 }}>
         <Button
