@@ -38,21 +38,9 @@ export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag, onViewImage
   const getUserForEntry = (ownerId: string): User | undefined => users.find(u => u.id === ownerId);
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <Button onClick={onBack} size="icon" variant="ghost" className="mr-2">
-              <ArrowLeft />
-          </Button>
-          <Icons.logo className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold font-headline text-foreground">
-            Jurnal Tersimpan
-          </h1>
-        </div>
-      </header>
-
+    <div>
       {!isLoaded ? (
-         <div className="space-y-4">
+         <div className="space-y-4 mt-6">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i} className="p-4">
               <div className="flex gap-4">
@@ -72,7 +60,7 @@ export function BookmarkPage({ onSelectEntry, onBack, onViewHashtag, onViewImage
         <AnimatePresence>
           <motion.div
             layout
-            className="space-y-4"
+            className="space-y-4 mt-6"
           >
             {bookmarkedEntries.map(entry => (
               <JournalEntryCard

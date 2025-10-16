@@ -23,7 +23,7 @@ import { Bookmark, ChevronRight, LogIn, LogOut, User } from "lucide-react";
 import { useJournal } from "@/hooks/use-journal";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 
-export default function SettingsPage({ onNavigate }: { onNavigate: (view: 'main' | 'bookmarks') => void }) {
+export default function SettingsPage() {
   const { toast } = useToast();
   const { theme } = useTheme();
   const { currentUser, isAnonymous, linkWithGoogle, signOutUser } = useJournal();
@@ -98,23 +98,6 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (view: 'main'
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Konten</CardTitle>
-            <CardDescription>Kelola konten dan data Anda.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <button onClick={() => onNavigate('bookmarks')} className="flex items-center justify-between w-full p-4 rounded-lg hover:bg-accent transition-colors">
-                <div className="flex items-center gap-4">
-                    <Bookmark className="h-5 w-5 text-primary" />
-                    <span className="font-medium">Jurnal Tersimpan</span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
-          </CardContent>
-        </Card>
-
       </div>
 
       <div className="text-center mt-8 text-sm text-muted-foreground">

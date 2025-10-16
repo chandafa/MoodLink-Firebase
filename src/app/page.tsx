@@ -14,7 +14,6 @@ import { PostType, User, JournalCollection, useJournal } from '@/hooks/use-journ
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
-import { BookmarkPage } from '@/components/bookmark-page';
 import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
@@ -97,7 +96,6 @@ export default function Home() {
   const [isEditing, setIsEditing] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [chattingWith, setChattingWith] = useState<User | null>(null);
-  const [settingsView, setSettingsView] = useState<'main' | 'bookmarks'>('main');
   const [viewingHashtag, setViewingHashtag] = useState<string | null>(null);
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
   const [isBuildingCollection, setIsBuildingCollection] = useState(false);
@@ -130,12 +128,6 @@ export default function Home() {
       }
     }
   }, [isLoaded, isAnonymous]);
-  
-  useEffect(() => {
-    if (activeTab !== 'Settings') {
-        setSettingsView('main');
-    }
-  }, [activeTab]);
 
   const handleLogin = () => {
     setShowOnboarding(false);
@@ -229,14 +221,11 @@ export default function Home() {
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':
-        if (settingsView === 'bookmarks') {
-            return <BookmarkPage onSelectEntry={handleSelectEntry} onBack={() => setSettingsView('main')} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
-        }
-        return <SettingsPage onNavigate={setSettingsView} />;
+        return <SettingsPage />;
       default:
         return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
     }

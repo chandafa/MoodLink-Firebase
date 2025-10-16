@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -53,6 +53,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CollectionListPage } from './collection-list-page';
+import { BookmarkPage } from './bookmark-page';
 
 
 const profileSchema = z.object({
@@ -485,7 +486,7 @@ function GuestProfileView() {
     )
 }
 
-export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; }) {
+export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges } = useJournal();
   const { toast } = useToast();
 
@@ -525,7 +526,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSe
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
             </TabsTrigger>
@@ -534,6 +535,9 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSe
             </TabsTrigger>
              <TabsTrigger value="capsules" disabled={isAnonymous}>
                 <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
+            </TabsTrigger>
+            <TabsTrigger value="bookmarks" disabled={isAnonymous}>
+                <Bookmark className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Tersimpan</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
                 <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
@@ -551,6 +555,9 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSe
           </TabsContent>
            <TabsContent value="capsules" className="mt-6">
             {isAnonymous ? <GuestProfileView /> : <CapsuleListPage onSelectEntry={onSelectEntry} />}
+          </TabsContent>
+          <TabsContent value="bookmarks" className="mt-6">
+            {isAnonymous ? <GuestProfileView /> : <BookmarkPage onSelectEntry={onSelectEntry} onBack={() => {}} onViewHashtag={onViewHashtag} onViewImage={onViewImage}/>}
           </TabsContent>
           <TabsContent value="leaderboard" className="mt-6">
             <LeaderboardPage />
