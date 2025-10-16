@@ -6,11 +6,29 @@ const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
+  const theme = props['data-theme'] as string | undefined;
+  
+  const themeClasses = {
+    rose: 'bg-rose-bg text-rose-fg',
+    sky: 'bg-sky-bg text-sky-fg',
+    jade: 'bg-jade-bg text-jade-fg',
+    sand: 'bg-sand-bg text-sand-fg',
+dusk: 'bg-dusk-bg text-dusk-fg',
+  };
+
+  const getThemeClass = (theme?: string) => {
+    if (theme && themeClasses[theme as keyof typeof themeClasses]) {
+      return themeClasses[theme as keyof typeof themeClasses];
+    }
+    return 'bg-card text-card-foreground';
+  }
+
   return (
     <div
       ref={ref}
       className={cn(
-        "rounded-lg border bg-card text-card-foreground shadow-sm",
+        "rounded-lg border shadow-sm",
+        getThemeClass(theme),
         className
       )}
       {...props}
@@ -32,10 +50,10 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <h3
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight",
@@ -47,10 +65,10 @@ const CardTitle = React.forwardRef<
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <p
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
