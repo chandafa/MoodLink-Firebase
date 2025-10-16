@@ -9,11 +9,11 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
   const { t } = useLanguage();
 
   const navItems = [
-    { name: 'Home', label: t('home'), icon: Home },
-    { name: 'Explore', label: t('explore'), icon: Compass },
-    { name: 'Pesan', label: t('messages'), icon: MessageSquare },
-    { name: 'Notifikasi', label: t('notificationsNav'), icon: Bell },
-    { name: 'Profile', label: t('profile'), icon: User },
+    { name: 'Home', label: 'Beranda', icon: Home },
+    { name: 'Explore', label: 'Jelajahi', icon: Compass },
+    { name: 'Pesan', label: 'Pesan', icon: MessageSquare },
+    { name: 'Notifikasi', label: 'Notifikasi', icon: Bell },
+    { name: 'Profile', label: 'Profil', icon: User },
   ];
 
   return (

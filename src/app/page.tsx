@@ -220,7 +220,7 @@ export default function Home() {
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       default:
