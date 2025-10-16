@@ -1,17 +1,21 @@
+
 'use client';
 import { Home, MessageSquare, User, Settings, Bell, Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-
-const navItems = [
-  { name: 'Home', icon: Home },
-  { name: 'Explore', icon: Compass },
-  { name: 'Pesan', icon: MessageSquare },
-  { name: 'Notifikasi', icon: Bell },
-  { name: 'Profile', icon: User },
-];
+import { useLanguage } from '@/contexts/language-context';
 
 export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) {
+  const { t } = useLanguage();
+
+  const navItems = [
+    { name: 'Home', label: t('home'), icon: Home },
+    { name: 'Explore', label: t('explore'), icon: Compass },
+    { name: 'Pesan', label: t('messages'), icon: MessageSquare },
+    { name: 'Notifikasi', label: t('notificationsNav'), icon: Bell },
+    { name: 'Profile', label: t('profile'), icon: User },
+  ];
+
   return (
     <div className={cn(
       "fixed bottom-0 left-0 right-0 z-20 h-16",
@@ -35,7 +39,7 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             <item.icon className="h-6 w-6 md:h-5 md:w-5" />
-            <span className="text-xs mt-1 md:text-sm md:mt-0">{item.name}</span>
+            <span className="text-xs mt-1 md:text-sm md:mt-0">{item.label}</span>
             
             {activeTab === item.name && (
               <motion.div

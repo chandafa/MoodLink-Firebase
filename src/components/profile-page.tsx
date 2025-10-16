@@ -55,6 +55,7 @@ import {
 import { CollectionListPage } from './collection-list-page';
 import { BookmarkPage } from './bookmark-page';
 import SettingsPage from './settings-page';
+import { useLanguage } from '@/contexts/language-context';
 
 
 const profileSchema = z.object({
@@ -70,6 +71,7 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze }: { currentU
   const { toast } = useToast();
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { t } = useLanguage();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -211,13 +213,13 @@ const getBadgeDescription = (badge: string) => {
                 </div>
                  <div>
                     <p className="text-lg font-bold">{currentUser?.points || 0}</p>
-                    <p className="text-sm text-muted-foreground">Poin</p>
+                    <p className="text-sm text-muted-foreground">{t('points')}</p>
                 </div>
             </div>
              <div className="mt-4 w-full max-w-sm">
                 <div className="flex justify-between items-center mb-1">
                     <p className="text-sm font-semibold">Level {currentUser?.level || 1}</p>
-                    <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin ke level berikutnya</p>
+                    <p className="text-xs text-muted-foreground">{pointsToNextLevel} {t('pointsToNextLevel')}</p>
                 </div>
                 <Progress value={progressToNextLevel} className="h-2" />
             </div>
@@ -227,13 +229,13 @@ const getBadgeDescription = (badge: string) => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-               <h3 className="text-lg font-semibold">Edit Your Profile</h3>
+               <h3 className="text-lg font-semibold">{t('editProfile')}</h3>
               <FormField
                 control={form.control}
                 name="displayName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Display Name</FormLabel>
+                    <FormLabel>{t('displayName')}</FormLabel>
                     <FormControl>
                       <Input placeholder="Your Name" {...field} />
                     </FormControl>
@@ -249,7 +251,7 @@ const getBadgeDescription = (badge: string) => {
                     <FormLabel>Bio</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Tell us a little about yourself"
+                        placeholder={t('bioPlaceholder')}
                         className="resize-none"
                         {...field}
                       />
@@ -274,55 +276,54 @@ const getBadgeDescription = (badge: string) => {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit">{t('saveChanges')}</Button>
             </form>
           </Form>
         </CardContent>
 
          <Separator className="my-4" />
         <CardContent>
-            <h3 className="text-lg font-semibold mb-2">Analisis AI</h3>
-            <p className="text-sm text-muted-foreground mb-4">Minta AI untuk menganalisis aktivitas Anda dan memberikan lencana pencapaian unik berdasarkan kontribusi Anda.</p>
+            <h3 className="text-lg font-semibold mb-2">{t('aiAnalysis')}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{t('aiAnalysisDescription')}</p>
              <Button onClick={handleAnalysisClick} disabled={isAnalyzing}>
                 {isAnalyzing ? <LoaderCircle className="animate-spin mr-2" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                Analisis Esensi Saya
+                {t('analyzeMyEssence')}
             </Button>
         </CardContent>
 
         <CardFooter className="flex-col sm:flex-row gap-2 justify-end bg-muted/50 p-4 border-t">
             <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> Keluar</Button>
+                    <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> {t('signOut')}</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Anda yakin ingin keluar?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('signOutConfirmTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Anda akan kembali ke akun anonim. Anda dapat masuk kembali nanti untuk mengakses data Anda.
+                            {t('signOutConfirmDescription')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={onSignOut}>Ya, Keluar</AlertDialogAction>
+                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={onSignOut}>{t('yesSignOut')}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Hapus Data Lokal</Button>
+                <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> {t('deleteLocalData')}</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
+                  <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Tindakan ini tidak dapat dibatalkan. Ini akan menghapus semua
-                    data sesi dan postingan tamu dari perangkat ini. Data akun Anda yang tersimpan di server akan tetap aman.
+                    {t('deleteLocalDataConfirm')}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                   <AlertDialogAction onClick={handleResetData} className="bg-destructive hover:bg-destructive/90">
-                    Ya, hapus data lokal
+                    {t('yesDeleteData')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -347,6 +348,7 @@ function GuestProfileView() {
     const { signInWithEmail, signUpWithEmail, sendPasswordResetEmail } = useJournal();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
+    const { t } = useLanguage();
     
     const form = useForm<EmailAuthFormValues>({
         resolver: zodResolver(emailAuthSchema),
@@ -390,9 +392,9 @@ function GuestProfileView() {
     return (
         <Card>
             <CardHeader className="text-center">
-                <CardTitle>Anda adalah Tamu</CardTitle>
+                <CardTitle>{t('youAreAGuest')}</CardTitle>
                 <CardDescription>
-                    Masuk atau Daftar untuk menyimpan profil, poin, dan aktivitas Anda secara permanen.
+                    {t('guestDescription')}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -416,7 +418,7 @@ function GuestProfileView() {
                             name="password"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Kata Sandi</FormLabel>
+                                <FormLabel>{t('password')}</FormLabel>
                                 <FormControl>
                                     <Input type="password" placeholder="******" {...field} />
                                 </FormControl>
@@ -431,7 +433,7 @@ function GuestProfileView() {
                                 disabled={isSubmitting}
                                 className="w-full"
                             >
-                                {isSubmitting ? 'Memproses...' : 'Masuk'}
+                                {isSubmitting ? t('processing') : t('signIn')}
                             </Button>
                              <Button 
                                 type="button" 
@@ -440,7 +442,7 @@ function GuestProfileView() {
                                 variant="secondary"
                                 className="w-full"
                              >
-                                {isSubmitting ? 'Memproses...' : 'Daftar'}
+                                {isSubmitting ? t('processing') : t('signUp')}
                             </Button>
                         </div>
                     </form>
@@ -448,13 +450,13 @@ function GuestProfileView() {
                  <div className="text-center">
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="link" className="text-sm">Lupa kata sandi?</Button>
+                            <Button variant="link" className="text-sm">{t('forgotPassword')}</Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Lupa Kata Sandi</DialogTitle>
+                                <DialogTitle>{t('forgotPassword')}</DialogTitle>
                                 <DialogDescription>
-                                    Masukkan alamat email Anda. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
+                                    {t('forgotPasswordDescription')}
                                 </DialogDescription>
                             </DialogHeader>
                              <Form {...resetForm}>
@@ -474,7 +476,7 @@ function GuestProfileView() {
                                     />
                                     <DialogFooter>
                                          <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting ? 'Mengirim...' : 'Kirim Tautan'}
+                                            {isSubmitting ? t('sending') : t('sendLink')}
                                          </Button>
                                     </DialogFooter>
                                 </form>
@@ -490,6 +492,7 @@ function GuestProfileView() {
 export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges } = useJournal();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
     if (currentUser) {
@@ -523,28 +526,28 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
       <header className="flex items-center gap-3 mb-8">
         <Icons.logo className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-bold font-headline text-foreground">
-          Profil & Aktivitas
+          {t('profileAndActivity')}
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="profile">
-                <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
+                <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('profile')}</span>
             </TabsTrigger>
              <TabsTrigger value="collections" disabled={isAnonymous}>
-                <BookCopy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Koleksi</span>
+                <BookCopy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('collections')}</span>
             </TabsTrigger>
              <TabsTrigger value="capsules" disabled={isAnonymous}>
-                <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
+                <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('capsules')}</span>
             </TabsTrigger>
             <TabsTrigger value="bookmarks" disabled={isAnonymous}>
-                <Bookmark className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Tersimpan</span>
+                <Bookmark className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('saved')}</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
-                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
+                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('leaderboard')}</span>
             </TabsTrigger>
              <TabsTrigger value="settings">
-                <Settings className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Pengaturan</span>
+                <Settings className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('settings')}</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">

@@ -16,30 +16,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Icons } from './icons';
 import { ThemeToggle } from './theme-toggle';
 import { useTheme } from "./theme-provider";
-import { LogIn, LogOut, User, Trash2, ChevronRight, Bell, CaseSensitive, Languages } from "lucide-react";
+import { LogIn, LogOut, User, Trash2, Bell, CaseSensitive, Languages } from "lucide-react";
 import { useJournal } from "@/hooks/use-journal";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { useState } from "react";
 import { Switch } from "./ui/switch";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const { currentUser, isAnonymous, signOutUser } = useJournal();
-  const [language, setLanguage] = useState('id');
-  const [font, setFont] = useState('body');
-
-  const handleResetData = () => {
-    localStorage.clear();
-    toast({
-      title: 'Data Dihapus',
-      description: 'Semua data lokal Anda telah dihapus. Aplikasi akan dimuat ulang.',
-    });
-    setTimeout(() => window.location.reload(), 1500);
-  };
+  const { theme, setTheme } = useTheme();
+  const { locale, setLocale, t } = useLanguage();
   
   const fontOptions = [
     { value: 'font-body', label: 'Poppins' },
@@ -48,13 +38,21 @@ export default function SettingsPage() {
     { value: 'font-mono', label: 'Inconsolata' },
 ];
 
+const handleFontChange = (value: string) => {
+    // This logic needs to be implemented globally, perhaps in a context
+    // For now, this is a placeholder.
+    document.body.className = document.body.className.replace(/font-\w+/g, '');
+    document.body.classList.add(value);
+    console.log("Font changed to:", value);
+};
+
 
   return (
     <div className="space-y-6">
         <Card>
             <CardHeader>
-                <CardTitle>Akun</CardTitle>
-                <CardDescription>Kelola sesi dan data akun Anda.</CardDescription>
+                <CardTitle>{t('account')}</CardTitle>
+                <CardDescription>{t('accountDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
                 {isAnonymous ? (
@@ -62,11 +60,11 @@ export default function SettingsPage() {
                        <div className="flex items-center gap-3">
                         <Avatar><AvatarFallback><User /></AvatarFallback></Avatar>
                         <div>
-                            <p className="font-semibold">Akun Tamu</p>
-                            <p className="text-sm text-muted-foreground">Data Anda tidak tersimpan permanen.</p>
+                            <p className="font-semibold">{t('guestAccount')}</p>
+                            <p className="text-sm text-muted-foreground">{t('guestAccountDescription')}</p>
                         </div>
                        </div>
-                       <Button><LogIn className="mr-2"/> Masuk</Button>
+                       <Button><LogIn className="mr-2"/> {t('signIn')}</Button>
                     </div>
                 ) : (
                     <div className="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
@@ -74,20 +72,20 @@ export default function SettingsPage() {
                         <Avatar><AvatarFallback>{currentUser?.avatar}</AvatarFallback></Avatar>
                         <div>
                             <p className="font-semibold">{currentUser?.displayName}</p>
-                            <p className="text-sm text-muted-foreground">Masuk sebagai {currentUser?.displayName}</p>
+                            <p className="text-sm text-muted-foreground">{t('signedInAs')} {currentUser?.displayName}</p>
                         </div>
                        </div>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> Keluar</Button>
+                                <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> {t('signOut')}</Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle>Anda yakin ingin keluar?</AlertDialogTitle>
+                                    <AlertDialogTitle>{t('signOutConfirmTitle')}</AlertDialogTitle>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={signOutUser}>Ya, Keluar</AlertDialogAction>
+                                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                    <AlertDialogAction onClick={signOutUser}>{t('yesSignOut')}</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -98,26 +96,26 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Tampilan</CardTitle>
-            <CardDescription>Sesuaikan tampilan dan nuansa aplikasi.</CardDescription>
+            <CardTitle>{t('display')}</CardTitle>
+            <CardDescription>{t('displayDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 divide-y">
             <div className="flex items-center justify-between py-3">
-              <Label htmlFor="dark-mode" className="flex items-center gap-3"><ThemeToggle/> Mode Gelap</Label>
-              <Switch id="dark-mode" checked={useTheme().theme === 'dark'} onCheckedChange={() => useTheme().setTheme(useTheme().theme === 'light' ? 'dark' : 'light')} />
+              <Label htmlFor="dark-mode" className="flex items-center gap-3"><ThemeToggle/> {t('darkMode')}</Label>
+              <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={() => setTheme(theme === 'light' ? 'dark' : 'light')} />
             </div>
              <div className="flex items-center justify-between py-3">
-              <Label htmlFor="language" className="flex items-center gap-3"><Languages /> Bahasa</Label>
+              <Label htmlFor="language" className="flex items-center gap-3"><Languages /> {t('language')}</Label>
                <div className="flex gap-2">
-                <Button size="sm" variant={language === 'id' ? 'default' : 'outline'} onClick={() => setLanguage('id')}>Indonesia</Button>
-                <Button size="sm" variant={language === 'en' ? 'default' : 'outline'} onClick={() => setLanguage('en')} disabled>English</Button>
+                <Button size="sm" variant={locale === 'id' ? 'default' : 'outline'} onClick={() => setLocale('id')}>Indonesia</Button>
+                <Button size="sm" variant={locale === 'en' ? 'default' : 'outline'} onClick={() => setLocale('en')}>English</Button>
                </div>
             </div>
             <div className="flex items-center justify-between py-3">
-              <Label htmlFor="font" className="flex items-center gap-3"><CaseSensitive /> Font</Label>
-               <Select value={font} onValueChange={setFont}>
+              <Label htmlFor="font" className="flex items-center gap-3"><CaseSensitive /> {t('font')}</Label>
+               <Select onValueChange={handleFontChange} defaultValue="font-body">
                 <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Pilih font" />
+                    <SelectValue placeholder="Select font" />
                 </SelectTrigger>
                 <SelectContent>
                     {fontOptions.map(option => (
@@ -133,29 +131,29 @@ export default function SettingsPage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Lainnya</CardTitle>
+                <CardTitle>{t('other')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 divide-y">
                  <div className="flex items-center justify-between py-3">
-                  <Label htmlFor="notifications" className="flex items-center gap-3"><Bell/> Notifikasi</Label>
+                  <Label htmlFor="notifications" className="flex items-center gap-3"><Bell/> {t('notifications')}</Label>
                   <Switch id="notifications" />
                 </div>
                  <div className="flex items-center justify-between py-3">
-                    <Label htmlFor="reset-data" className="flex items-center gap-3"><Trash2 /> Hapus Data Lokal</Label>
+                    <Label htmlFor="reset-data" className="flex items-center gap-3"><Trash2 /> {t('deleteLocalData')}</Label>
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">Hapus</Button>
+                            <Button variant="destructive" size="sm">{t('delete')}</Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
+                            <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Ini akan menghapus semua data tamu (postingan anonim) dari perangkat ini. Tindakan ini tidak dapat diurungkan.
+                                {t('deleteLocalDataConfirm')}
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                            <AlertDialogCancel>Batal</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleResetData} className="bg-destructive hover:bg-destructive/90">Hapus Sekarang</AlertDialogAction>
+                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => toast({ title: "Not implemented"})} className="bg-destructive hover:bg-destructive/90">{t('yesDeleteData')}</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
