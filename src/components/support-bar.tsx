@@ -25,40 +25,19 @@ const ReactionIcon = ({ type, className }: { type: ReactionType, className?: str
     }
 };
 
-
 function ReactionButton({ onReact }: ReactionButtonProps) {
     const [currentReactionIndex, setCurrentReactionIndex] = useState(0);
-    const clickTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const activeReaction = reactionCycle[currentReactionIndex];
-    
-    useEffect(() => {
-        // Cleanup timeout on component unmount
-        return () => {
-            if (clickTimeout.current) {
-                clearTimeout(clickTimeout.current);
-            }
-        };
-    }, []);
 
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
 
-        // If there's a pending timeout, it means it's a multi-click
-        if (clickTimeout.current) {
-            clearTimeout(clickTimeout.current);
-            // Cycle to the next reaction
-            setCurrentReactionIndex(prevIndex => (prevIndex + 1) % reactionCycle.length);
-        } else {
-             // This is the first click in a potential sequence, trigger the current reaction immediately
-             onReact(e, activeReaction);
-        }
-
-        // Set a timeout. If no more clicks happen within 1s, reset the cycle.
-        clickTimeout.current = setTimeout(() => {
-            setCurrentReactionIndex(0);
-            clickTimeout.current = null;
-        }, 1000); 
+        // Trigger the currently selected reaction
+        onReact(e, activeReaction);
+        
+        // Immediately cycle to the next reaction for the next click
+        setCurrentReactionIndex(prevIndex => (prevIndex + 1) % reactionCycle.length);
     };
 
     return (
@@ -96,11 +75,11 @@ export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) 
   const { toast } = useToast();
   
   const isLiked = useMemo(() => 
-    (entry.likedBy || []).includes(currentAuthUserId)
+    (entry.likedBy || []).includes(currentAuthUserId || '')
   , [entry.likedBy, currentAuthUserId]);
 
   const isBookmarked = useMemo(() =>
-    (entry.bookmarkedBy || []).includes(currentAuthUserId)
+    (entry.bookmarkedBy || []).includes(currentAuthUserId || '')
   , [entry.bookmarkedBy, currentAuthUserId]);
 
   const handleCopyLink = (e: React.MouseEvent) => {
