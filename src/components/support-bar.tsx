@@ -1,6 +1,6 @@
 
 'use client';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Link, Bookmark, MessageSquare, Flame, Wind, Snowflake } from 'lucide-react';
 import { Button } from './ui/button';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
