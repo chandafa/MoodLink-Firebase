@@ -11,7 +11,7 @@ import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
-import { PostType, User, useJournal } from '@/hooks/use-journal';
+import { PostType, User, JournalCollection, useJournal } from '@/hooks/use-journal';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
@@ -21,6 +21,7 @@ import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle } from 'lucide-react';
+import { CollectionBuilderPage } from '@/components/collection-builder-page';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -99,6 +100,9 @@ export default function Home() {
   const [settingsView, setSettingsView] = useState<'main' | 'bookmarks'>('main');
   const [viewingHashtag, setViewingHashtag] = useState<string | null>(null);
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
+  const [isBuildingCollection, setIsBuildingCollection] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (isLoaded) {
@@ -141,6 +145,8 @@ export default function Home() {
     setViewingProfileId(null);
     setChattingWith(null);
     setViewingHashtag(null);
+    setIsBuildingCollection(false);
+    setSelectedCollectionId(null);
   }
 
   const handleSelectEntry = (id: string | null) => {
@@ -181,6 +187,13 @@ export default function Home() {
   const handleViewImage = (url: string) => {
     setViewingImageUrl(url);
   }
+  
+  const handleBuildCollection = (collectionId: string | null) => {
+    resetViews();
+    setSelectedCollectionId(collectionId);
+    setIsBuildingCollection(true);
+  };
+
 
   const renderContent = () => {
     if (chattingWith) {
@@ -195,6 +208,9 @@ export default function Home() {
     if (viewingHashtag) {
         return <HashtagPage hashtag={viewingHashtag} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onViewImage={handleViewImage} />;
     }
+    if(isBuildingCollection) {
+        return <CollectionBuilderPage onBack={handleBackToList} collectionId={selectedCollectionId} />;
+    }
 
     switch (activeTab) {
       case 'Home':
@@ -204,7 +220,7 @@ export default function Home() {
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       case 'Settings':

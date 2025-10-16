@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogIn, LogOut } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -52,6 +52,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { CollectionListPage } from './collection-list-page';
 
 
 const profileSchema = z.object({
@@ -70,7 +71,7 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      displayName: currentUser?.displayName || '',
+      displayName: currentUser?.displayName || 'Tamu',
       bio: currentUser?.bio || '',
       avatar: currentUser?.avatar || '👤',
     },
@@ -435,8 +436,8 @@ function GuestProfileView() {
     )
 }
 
-export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: string | null) => void; }) {
-  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, linkWithGoogle, signOutUser } = useJournal();
+export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; }) {
+  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser } = useJournal();
   const { toast } = useToast();
 
   const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
@@ -464,15 +465,18 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
+            </TabsTrigger>
+             <TabsTrigger value="collections" disabled={isAnonymous}>
+                <BookCopy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Koleksi</span>
             </TabsTrigger>
              <TabsTrigger value="capsules" disabled={isAnonymous}>
                 <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
-                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
+                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md-inline">Peringkat</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
@@ -481,6 +485,9 @@ export default function ProfilePage({ onSelectEntry }: { onSelectEntry: (id: str
             ) : (
                 <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} />
             )}
+          </TabsContent>
+          <TabsContent value="collections" className="mt-6">
+             {isAnonymous ? <GuestProfileView /> : <CollectionListPage onBuildCollection={onBuildCollection} />}
           </TabsContent>
            <TabsContent value="capsules" className="mt-6">
             {isAnonymous ? <GuestProfileView /> : <CapsuleListPage onSelectEntry={onSelectEntry} />}

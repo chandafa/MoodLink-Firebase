@@ -34,7 +34,7 @@ import {
   confirmPasswordReset,
   verifyPasswordResetCode,
 } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously, linkWithCredential, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
@@ -94,6 +94,16 @@ export type JournalEntry = {
   hashtags: string[];
 };
 
+export type JournalCollection = {
+    id: string;
+    ownerId: string;
+    title: string;
+    description: string;
+    entryIds: string[];
+    createdAt: any;
+    updatedAt: any;
+};
+
 export type ChatMessage = {
     id: string;
     senderId: string;
@@ -149,6 +159,7 @@ async function createNotification(notification: Omit<Notification, 'id' | 'creat
 export function useJournal() {
   const { toast } = useToast();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [collections, setCollections] = useState<JournalCollection[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentAuthUser, setCurrentAuthUser] = useState<any>(null);
@@ -234,9 +245,10 @@ export function useJournal() {
             return;
         }
         try {
-            const credential = EmailAuthProvider.credential(email, password);
-            await linkWithCredential(currentAuthUser, credential);
-            // The onAuthStateChanged listener will handle creating the user document.
+            // Because we're linking, a user document will be created by onAuthStateChanged after linking
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // After successful sign-up, the onAuthStateChanged listener will fire
+            // and handle the user document creation logic.
             toast({ title: 'Pendaftaran Berhasil', description: 'Selamat datang di MoodLink!' });
         } catch (error: any) {
             console.error("Error signing up with email:", error);
@@ -316,9 +328,16 @@ export function useJournal() {
 
     });
 
+    const collectionsUnsub = onSnapshot(query(collection(db, 'journal-collections'), where('ownerId', '==', currentAuthUser.uid)), (snapshot) => {
+        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as JournalCollection[];
+        setCollections(collectionsData);
+    });
+
+
     return () => {
         usersUnsub();
         entriesUnsub();
+        collectionsUnsub();
     };
   }, [currentAuthUser]);
   
@@ -585,6 +604,44 @@ export function useJournal() {
     await deleteDoc(entryRef);
     toast({ title: 'Postingan Dihapus', variant: 'destructive' });
   }, [currentAuthUser, toast, updateHashtagCounts]);
+
+  // --- COLLECTION ACTIONS ---
+  const addCollection = useCallback(async (title: string, description: string, entryIds: string[]) => {
+      if (!currentAuthUser) return;
+      
+      await addDoc(collection(db, 'journal-collections'), {
+          ownerId: currentAuthUser.uid,
+          title,
+          description,
+          entryIds,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+      });
+      
+      toast({ title: 'Koleksi Dibuat', description: `Koleksi "${title}" telah berhasil dibuat.` });
+  }, [currentAuthUser, toast]);
+
+  const updateCollection = useCallback(async (collectionId: string, title: string, description: string, entryIds: string[]) => {
+      if (!currentAuthUser) return;
+      const collectionRef = doc(db, 'journal-collections', collectionId);
+      
+      await updateDoc(collectionRef, {
+          title,
+          description,
+          entryIds,
+          updatedAt: serverTimestamp(),
+      });
+      
+      toast({ title: 'Koleksi Diperbarui' });
+  }, [currentAuthUser, toast]);
+
+  const deleteCollection = useCallback(async (collectionId: string) => {
+      if (!currentAuthUser) return;
+      const collectionRef = doc(db, 'journal-collections', collectionId);
+      await deleteDoc(collectionRef);
+      toast({ title: 'Koleksi Dihapus', variant: 'destructive' });
+  }, [currentAuthUser, toast]);
+
 
   const toggleLike = useCallback(async (entryId: string) => {
     if (!currentAuthUser) {
@@ -913,7 +970,7 @@ export function useJournal() {
     }, [currentAuthUser, currentUser, users, toast]);
 
 
-  return { entries, users, currentUser, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail };
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection };
 }
 
 
