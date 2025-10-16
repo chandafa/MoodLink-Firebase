@@ -30,9 +30,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   EmailAuthProvider,
-  sendPasswordResetEmail,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
 } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, linkWithCredential, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, linkWithCredential, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
@@ -261,7 +261,7 @@ export function useJournal() {
 
     const sendPasswordResetEmail = async (email: string) => {
         try {
-            await sendPasswordResetEmail(auth, email, {
+            await firebaseSendPasswordResetEmail(auth, email, {
                 url: `${window.location.origin}/reset-password`,
             });
             return true;
@@ -412,7 +412,9 @@ export function useJournal() {
         return null;
     }
     
-    toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk untuk menyimpan postingan Anda secara permanen.'});
+    if (isAnonymous) {
+        toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk untuk menyimpan postingan Anda secara permanen.'});
+    }
     
     if (!content.trim()) {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
@@ -474,9 +476,9 @@ export function useJournal() {
       
       const docRef = await addDoc(collection(db, 'journals'), newEntryData);
       
-      
+      if (!isAnonymous) {
         await addPoints(currentAuthUser.uid, 5); // +5 points for any post
-      
+      }
       
       // The onSnapshot listener will automatically update the UI.
       return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
@@ -486,7 +488,7 @@ export function useJournal() {
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
         return null;
     }
-  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts]);
+  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous]);
 
   const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[]) => {
     if (!currentAuthUser) return;
@@ -744,9 +746,9 @@ export function useJournal() {
             return;
         }
         
-        
-        toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk untuk menyimpan komentar Anda.' });
-        
+        if (isAnonymous) {
+            toast({ title: 'Anda Berkomentar sebagai Tamu', description: 'Masuk untuk menyimpan komentar Anda.' });
+        }
         
         const authorId = currentAuthUser.uid;
         const authorName = author?.displayName || 'Tamu';
