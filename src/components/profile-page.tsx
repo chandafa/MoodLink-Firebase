@@ -70,9 +70,9 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      displayName: '',
-      bio: '',
-      avatar: '👤',
+      displayName: currentUser?.displayName || '',
+      bio: currentUser?.bio || '',
+      avatar: currentUser?.avatar || '👤',
     },
   });
   
@@ -306,6 +306,9 @@ function GuestProfileView() {
 
     const resetForm = useForm<PasswordResetFormValues>({
         resolver: zodResolver(passwordResetSchema),
+        defaultValues: {
+          email: ''
+        }
     });
 
     const handleEmailSubmit = async (data: EmailAuthFormValues, isSignUp: boolean) => {
