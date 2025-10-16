@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/dialog";
 import { CollectionListPage } from './collection-list-page';
 import { BookmarkPage } from './bookmark-page';
+import SettingsPage from './settings-page';
 
 
 const profileSchema = z.object({
@@ -526,7 +527,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Profil</span>
             </TabsTrigger>
@@ -541,6 +542,9 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
                 <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
+            </TabsTrigger>
+             <TabsTrigger value="settings">
+                <Settings className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Pengaturan</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
@@ -562,9 +566,10 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
           <TabsContent value="leaderboard" className="mt-6">
             <LeaderboardPage />
           </TabsContent>
+           <TabsContent value="settings" className="mt-6">
+            <SettingsPage />
+          </TabsContent>
         </Tabs>
     </div>
   );
 }
-
-    

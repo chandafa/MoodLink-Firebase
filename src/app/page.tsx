@@ -8,7 +8,6 @@ import { BottomNav } from '@/components/bottom-nav';
 import { Icons } from '@/components/icons';
 import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
-import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { PostType, User, JournalCollection, useJournal } from '@/hooks/use-journal';
 import PublicProfilePage from '@/components/public-profile-page';
@@ -224,8 +223,6 @@ export default function Home() {
         return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
-      case 'Settings':
-        return <SettingsPage />;
       default:
         return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
     }
@@ -277,7 +274,3 @@ export default function Home() {
     </>
   );
 }
-
-    
-
-    
