@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'framer-motion';
-import { Heart, Link, Bookmark, MessageSquare } from 'lucide-react';
+import { Heart, Link, Bookmark, MessageSquare, Flame } from 'lucide-react';
 import { Button } from './ui/button';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { useToast } from '@/hooks/use-toast';
@@ -21,9 +21,10 @@ import { useMemo } from 'react';
 type SupportBarProps = {
   entry: JournalEntry;
   onCommentClick?: () => void;
+  onBoostClick?: () => void;
 };
 
-export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
+export function SupportBar({ entry, onCommentClick, onBoostClick }: SupportBarProps) {
   const { toggleLike, toggleBookmark, currentAuthUserId } = useJournal();
   const { toast } = useToast();
   
@@ -66,6 +67,11 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
     }
   }
 
+  const handleBoost = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if(onBoostClick) onBoostClick();
+  }
+
   return (
     <div className="w-full flex items-center justify-around text-muted-foreground">
       <motion.div whileTap={{ scale: 0.9 }}>
@@ -80,6 +86,19 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
           <span className="text-xs font-semibold">{entry.likes || 0}</span>
         </Button>
       </motion.div>
+      
+      {onBoostClick && (
+          <motion.div whileTap={{ scale: 0.9 }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1.5"
+              onClick={handleBoost}
+            >
+              <Flame className="h-4 w-4 text-orange-500" />
+            </Button>
+          </motion.div>
+      )}
 
        <motion.div whileTap={{ scale: 0.9 }}>
         <Button

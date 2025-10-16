@@ -1,12 +1,13 @@
 
 'use client'
 
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon } from 'lucide-react';
+import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -82,6 +83,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toast } = useToast();
   const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
+  const [boosts, setBoosts] = useState<number[]>([]);
   const isBookmarked = entry.bookmarkedBy?.includes(currentAuthUserId || '');
   
   const timeAgo = entry.createdAt ? formatDistanceToNow(entry.createdAt.toDate(), { addSuffix: true, locale: id }) : 'baru saja';
@@ -109,6 +111,15 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     e.stopPropagation();
     toggleBookmark(entry.id);
   }
+  
+  const handleBoost = () => {
+      const newBoostId = Date.now();
+      setBoosts(prev => [...prev, newBoostId]);
+      setTimeout(() => {
+          setBoosts(prev => prev.filter(id => id !== newBoostId));
+      }, 1000); // Remove after 1 second
+  };
+
 
   return (
     <motion.div
@@ -119,7 +130,25 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
         transition={{ duration: 0.2 }}
         className="h-full"
     >
-        <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col" onClick={onSelect}>
+        <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden" onClick={onSelect}>
+            <AnimatePresence>
+                {boosts.map(id => (
+                    <motion.div
+                        key={id}
+                        initial={{ y: 0, opacity: 1, scale: 0.5 }}
+                        animate={{ y: -100, opacity: 0, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1, ease: 'easeOut' }}
+                        className="absolute text-2xl pointer-events-none"
+                        style={{
+                            left: `${Math.random() * 90 + 5}%`,
+                            bottom: '10%',
+                        }}
+                    >
+                       <Flame className="text-orange-500 fill-orange-400" />
+                    </motion.div>
+                ))}
+            </AnimatePresence>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
@@ -194,7 +223,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
             </div>
             
             <div className="mt-2 pt-2 border-t -ml-2 -mr-2">
-                <SupportBar entry={entry} onCommentClick={onSelect} />
+                <SupportBar entry={entry} onCommentClick={onSelect} onBoostClick={handleBoost} />
             </div>
         </Card>
     </motion.div>
