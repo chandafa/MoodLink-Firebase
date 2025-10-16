@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -45,6 +46,15 @@ const handleFontChange = (value: string) => {
     document.body.classList.add(value);
     console.log("Font changed to:", value);
 };
+
+const handleResetData = () => {
+    localStorage.clear();
+    toast({
+      title: 'Data Dihapus',
+      description: 'Semua data lokal Anda telah dihapus. Aplikasi akan dimuat ulang.',
+    });
+    setTimeout(() => window.location.reload(), 1500);
+  };
 
 
   return (
@@ -158,7 +168,7 @@ const handleFontChange = (value: string) => {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => toast({ title: "Not implemented"})} className="bg-destructive hover:bg-destructive/90">{t('yesDeleteData')}</AlertDialogAction>
+                            <AlertDialogAction onClick={handleResetData} className="bg-destructive hover:bg-destructive/90">{t('yesDeleteData')}</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
