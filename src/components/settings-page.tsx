@@ -27,7 +27,7 @@ import { useLanguage } from "@/contexts/language-context";
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { currentUser, isAnonymous, signOutUser } = useJournal();
+  const { currentUser, isAnonymous, signOutUser, toggleNotifications } = useJournal();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useLanguage();
   
@@ -136,7 +136,12 @@ const handleFontChange = (value: string) => {
             <CardContent className="space-y-1 divide-y">
                  <div className="flex items-center justify-between py-3">
                   <Label htmlFor="notifications" className="flex items-center gap-3"><Bell/> {t('notifications')}</Label>
-                  <Switch id="notifications" />
+                  <Switch 
+                    id="notifications" 
+                    checked={currentUser?.notificationsEnabled !== false}
+                    onCheckedChange={(checked) => toggleNotifications(checked)}
+                    disabled={isAnonymous}
+                  />
                 </div>
                  <div className="flex items-center justify-between py-3">
                     <Label htmlFor="reset-data" className="flex items-center gap-3"><Trash2 /> {t('deleteLocalData')}</Label>

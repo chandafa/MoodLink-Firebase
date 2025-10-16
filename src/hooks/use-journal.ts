@@ -62,6 +62,7 @@ export type User = {
   level: number;
   bannerUrl?: string;
   badges: string[];
+  notificationsEnabled?: boolean;
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule';
@@ -148,6 +149,14 @@ async function createNotification(notification: Omit<Notification, 'id' | 'creat
         console.log("Skipping notification for user's own action.");
         return;
     }
+    // Check if recipient has notifications enabled
+    const userRef = doc(db, 'users', notification.userId);
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists() && userDoc.data().notificationsEnabled === false) {
+        console.log(`Skipping notification for ${notification.userId} because they have disabled them.`);
+        return;
+    }
+
     const notificationsRef = collection(db, 'notifications');
     await addDoc(notificationsRef, {
         ...notification,
@@ -196,6 +205,7 @@ export function useJournal() {
                     level: 1,
                     bannerUrl: user.photoURL || '',
                     badges: userCount < 10 ? ['pioneer'] : [],
+                    notificationsEnabled: true,
                 };
                 await setDoc(userRef, newUser);
             } else {
@@ -1010,8 +1020,25 @@ export function useJournal() {
 
     }, [currentUser, toast]);
 
+    const toggleNotifications = useCallback(async (enabled: boolean) => {
+        if (!currentAuthUser) return;
+        const userRef = doc(db, 'users', currentAuthUser.uid);
+        try {
+            await updateDoc(userRef, {
+                notificationsEnabled: enabled,
+            });
+            toast({
+                title: 'Pengaturan Notifikasi Diperbarui',
+                description: `Notifikasi telah ${enabled ? 'diaktifkan' : 'dinonaktifkan'}.`,
+            });
+        } catch (error) {
+            console.error("Error updating notification settings:", error);
+            toast({ title: 'Gagal Memperbarui Pengaturan', variant: 'destructive' });
+        }
+    }, [currentAuthUser, toast]);
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges };
+
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges, toggleNotifications };
 }
 
 
