@@ -92,6 +92,7 @@ export type JournalEntry = {
   visibility: Visibility;
   allowedUserIds: string[];
   hashtags: string[];
+  cardColor?: string; // HSL string e.g. "250 80% 60%"
 };
 
 export type JournalCollection = {
@@ -426,7 +427,7 @@ export function useJournal() {
   }, []);
 
   // --- JOURNAL ACTIONS ---
-  const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[]) => {
+  const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string) => {
     if (!currentAuthUser) {
         toast({ title: 'Gagal memuat status autentikasi', variant: 'destructive'});
         return null;
@@ -484,6 +485,7 @@ export function useJournal() {
         visibility,
         allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
         hashtags,
+        cardColor: cardColor || null,
       };
 
       if (postType === 'capsule') {
@@ -510,7 +512,7 @@ export function useJournal() {
     }
   }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[]) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -558,6 +560,7 @@ export function useJournal() {
       visibility,
       allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
       hashtags: newHashtags,
+      cardColor: cardColor || null,
     };
 
     if (postType === 'voting' && voteOptions.length > 0) {

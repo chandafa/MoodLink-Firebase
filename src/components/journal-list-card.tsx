@@ -120,6 +120,9 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
       }, 1000); // Remove after 1 second
   };
 
+  const cardStyle = entry.cardColor ? { backgroundColor: `hsl(${entry.cardColor})` } : {};
+  const isDarkColor = entry.cardColor ? parseInt(entry.cardColor.split(" ")[2]) < 50 : false;
+
 
   return (
     <motion.div
@@ -130,7 +133,11 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
         transition={{ duration: 0.2 }}
         className="h-full"
     >
-        <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden" onClick={onSelect}>
+        <Card 
+            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden" 
+            onClick={onSelect}
+            style={cardStyle}
+        >
             <AnimatePresence>
                 {boosts.map(id => (
                     <motion.div
@@ -155,14 +162,14 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                         <Avatar>
                             <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
                         </Avatar>
-                        <div>
-                            <p className="font-bold text-foreground leading-tight">{author?.displayName || 'Anonim'}</p>
-                            <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                        <div className={cn(isDarkColor && "text-primary-foreground")}>
+                            <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
+                            <span className={cn("text-xs", isDarkColor ? "text-primary-foreground/80" : "text-muted-foreground")}>{timeAgo}</span>
                         </div>
                     </div>
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className={cn("h-8 w-8 -mr-2 flex-shrink-0", isDarkColor && "text-primary-foreground hover:bg-white/20") } onClick={(e) => e.stopPropagation()}>
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -190,7 +197,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                     </DropdownMenu>
                 </div>
 
-                <div className="mt-3">
+                <div className={cn("mt-3", isDarkColor && "text-primary-foreground")}>
                     {entry.postType === 'journal' ? (
                       <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
                     ) : (
@@ -222,7 +229,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                 )}
             </div>
             
-            <div className="mt-2 pt-2 border-t -ml-2 -mr-2">
+            <div className={cn("mt-2 pt-2 border-t -ml-2 -mr-2", isDarkColor ? "border-white/20" : "border-border")}>
                 <SupportBar entry={entry} onCommentClick={onSelect} onBoostClick={handleBoost} />
             </div>
         </Card>
