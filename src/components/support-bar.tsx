@@ -23,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 type ReactionType = 'fire' | 'wind' | 'snow';
 
 type ReactionButtonProps = {
-    onReact: (reaction: ReactionType) => void;
+    onReact: (e: React.MouseEvent, reaction: ReactionType) => void;
 };
 
 function ReactionButton({ onReact }: ReactionButtonProps) {
@@ -31,12 +31,12 @@ function ReactionButton({ onReact }: ReactionButtonProps) {
 
     const handleSimpleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onReact('fire');
+        onReact(e, 'fire');
     };
 
     const handleReactionSelect = (e: React.MouseEvent, reaction: ReactionType) => {
         e.stopPropagation();
-        onReact(reaction);
+        onReact(e, reaction);
         setIsOpen(false);
     };
 
@@ -45,6 +45,7 @@ function ReactionButton({ onReact }: ReactionButtonProps) {
             <PopoverTrigger asChild>
                 <motion.div
                     whileTap={{ scale: 0.9 }}
+                    onTapStart={(e) => e.stopPropagation()} // Prevent card click
                     onTapHold={(e) => {
                         e.stopPropagation();
                         setIsOpen(true);
@@ -63,6 +64,7 @@ function ReactionButton({ onReact }: ReactionButtonProps) {
             <PopoverContent 
                 className="w-auto p-2"
                 onClick={(e) => e.stopPropagation()}
+                onInteractOutside={() => setIsOpen(false)}
             >
                 <div className="flex gap-2">
                     <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'fire')}>
@@ -83,7 +85,7 @@ function ReactionButton({ onReact }: ReactionButtonProps) {
 type SupportBarProps = {
   entry: JournalEntry;
   onCommentClick?: () => void;
-  onReact: (reaction: ReactionType) => void;
+  onReact: (e: React.MouseEvent, reaction: ReactionType) => void;
 };
 
 export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) {
