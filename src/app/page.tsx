@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -22,6 +21,7 @@ import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle } from 'lucide-react';
 import { CollectionBuilderPage } from '@/components/collection-builder-page';
+import { VirtualMascot } from '@/components/virtual-mascot';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -88,7 +88,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { isLoaded, isAnonymous } = useJournal();
+  const { isLoaded, isAnonymous, currentUser } = useJournal();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
@@ -102,6 +102,7 @@ export default function Home() {
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
   const [isBuildingCollection, setIsBuildingCollection] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [showMascot, setShowMascot] = useState(false);
 
 
   useEffect(() => {
@@ -118,6 +119,14 @@ export default function Home() {
       } else {
         // User is logged in, never show onboarding
         setShowOnboarding(false);
+        
+        // Mascot logic
+        const mascotLastShown = localStorage.getItem('mascotLastShown');
+        const today = new Date().toDateString();
+        if (mascotLastShown !== today) {
+            setShowMascot(true);
+            localStorage.setItem('mascotLastShown', today);
+        }
       }
     }
   }, [isLoaded, isAnonymous]);
@@ -214,7 +223,7 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
         return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
@@ -229,7 +238,7 @@ export default function Home() {
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={handleViewImage}/>;
     }
   };
 
@@ -241,6 +250,14 @@ export default function Home() {
       </AnimatePresence>
       <AnimatePresence>
         {showOnboarding && <OnboardingScreen onLogin={handleLogin} onGuest={handleGuest} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showMascot && currentUser && (
+            <VirtualMascot 
+                user={currentUser} 
+                onClose={() => setShowMascot(false)} 
+            />
+        )}
       </AnimatePresence>
       <AnimatePresence>
       {!isLoading && !showOnboarding && (
@@ -271,3 +288,5 @@ export default function Home() {
     </>
   );
 }
+
+    
