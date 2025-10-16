@@ -223,7 +223,7 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={handleViewImage} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Explore':
         return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
@@ -238,7 +238,7 @@ export default function Home() {
         }
         return <SettingsPage onNavigate={setSettingsView} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={handleViewImage}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
     }
   };
 
@@ -288,5 +288,7 @@ export default function Home() {
     </>
   );
 }
+
+    
 
     
