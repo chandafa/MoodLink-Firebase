@@ -31,6 +31,8 @@ import {
   signInWithEmailAndPassword,
   EmailAuthProvider,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously, linkWithCredential, signOut } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -436,9 +438,9 @@ export function useJournal() {
       const validImageUrls = imageUrls.filter((url): url is string => url !== null);
 
       // 2. Upload music file
-      let musicUrl: string | null = null;
+      let finalMusicUrl: string | null = null;
       if (musicFile && postType !== 'capsule') {
-          musicUrl = await uploadImageToHosting(musicFile); // Reusing the same upload function
+          finalMusicUrl = await uploadImageToHosting(musicFile); // Reusing the same upload function
       }
       
       // 3. Handle hashtags
@@ -453,7 +455,7 @@ export function useJournal() {
         content,
         postType,
         images: validImageUrls,
-        musicUrl: musicUrl,
+        musicUrl: finalMusicUrl,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         likes: 0,
