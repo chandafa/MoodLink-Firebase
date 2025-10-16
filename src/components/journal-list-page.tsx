@@ -22,8 +22,6 @@ import {
 } from "@/components/ui/dialog";
 
 
-const ITEMS_PER_PAGE = 12;
-
 function EmptyState() {
     return (
       <div className="text-center p-8 flex flex-col items-center justify-center h-full col-span-full">
@@ -38,65 +36,41 @@ function EmptyState() {
     );
   }
   
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry, getUserForEntry }: { entries: JournalEntry[], onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void, deleteEntry: (id: string) => void, getUserForEntry: (ownerId: string) => any }) {
-    const [currentPage, setCurrentPage] = useState(1);
-    
-    const totalPages = Math.ceil(entries.length / ITEMS_PER_PAGE);
-    const paginatedEntries = useMemo(() => {
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        return entries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-    }, [entries, currentPage]);
-
-    const handleNextPage = () => {
-        if (currentPage < totalPages) {
-            setCurrentPage(currentPage + 1);
-        }
-    };
-
-    const handlePrevPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-        }
-    };
     
     if (entries.length === 0) {
         return <p className="text-muted-foreground text-center py-10 col-span-full">Tidak ada postingan untuk ditampilkan.</p>
     }
 
     return (
-        <>
-            <motion.div 
-                layout
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            >
-                {paginatedEntries.map(entry => (
-                    <JournalEntryCard 
-                        key={entry.id} 
-                        entry={entry}
-                        author={getUserForEntry(entry.ownerId)}
-                        onSelect={() => onSelectEntry(entry.id)}
-                        onDelete={deleteEntry}
-                        onViewHashtag={onViewHashtag}
-                        onViewImage={onViewImage}
-                    />
-                ))}
-            </motion.div>
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-4 mt-8 col-span-full">
-                    <Button onClick={handlePrevPage} disabled={currentPage === 1} variant="outline">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Sebelumnya
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                        Halaman {currentPage} dari {totalPages}
-                    </span>
-                    <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
-                        Berikutnya
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </div>
-            )}
-        </>
+        <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+            {entries.map(entry => (
+                <JournalEntryCard 
+                    key={entry.id} 
+                    entry={entry}
+                    author={getUserForEntry(entry.ownerId)}
+                    onSelect={() => onSelectEntry(entry.id)}
+                    onDelete={deleteEntry}
+                    onViewHashtag={onViewHashtag}
+                    onViewImage={onViewImage}
+                />
+            ))}
+        </motion.div>
     )
 }
 
@@ -186,7 +160,7 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
           <div className="mt-6">
             {!isLoaded ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+                     {Array.from({ length: 9 }).map((_, i) => (
                         <Card key={i} className="p-4">
                           <div className="flex gap-4">
                             <Skeleton className="h-12 w-12 rounded-full" />

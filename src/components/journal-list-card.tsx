@@ -143,35 +143,10 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   };
   
   const animationVariants = {
-    initial: { opacity: 0 },
-    animate: { opacity: 1, transition: { duration: 0.5 } },
-    exit: { opacity: 0 },
-    focus: {
-        opacity: 1,
-        transition: { duration: 0.5 }
-    },
-    energetic: {
-        scale: [1, 1.01, 1],
-        transition: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-    },
-    classic: {
-        opacity: 1
-    }
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 },
   };
-
-  const getAnimationForTheme = (theme?: string) => {
-    switch(theme) {
-        case 'dusk':
-        case 'sky':
-            return 'focus';
-        case 'rose':
-        case 'sand':
-            return 'energetic';
-        default:
-            return 'classic';
-    }
-  }
-
 
   const ReactionIcon = ({ type }: { type: ReactionType }) => {
     switch (type) {
@@ -184,11 +159,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
 
   return (
     <motion.div
-        layout
         variants={animationVariants}
-        initial="initial"
-        animate={getAnimationForTheme(entry.cardColor)}
-        exit="exit"
         className="h-full"
     >
         <Card 
