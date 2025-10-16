@@ -6,19 +6,7 @@ import { Button } from './ui/button';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useMemo, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { useMemo, useState, useEffect, useRef } from 'react';
 
 type ReactionType = 'fire' | 'wind' | 'snow';
 
@@ -26,59 +14,74 @@ type ReactionButtonProps = {
     onReact: (e: React.MouseEvent, reaction: ReactionType) => void;
 };
 
+const reactionCycle: ReactionType[] = ['fire', 'wind', 'snow'];
+
+const ReactionIcon = ({ type, className }: { type: ReactionType, className?: string }) => {
+    switch (type) {
+        case 'fire': return <Flame className={cn("h-4 w-4 text-orange-500", className)} />;
+        case 'wind': return <Wind className={cn("h-4 w-4 text-blue-400", className)} />;
+        case 'snow': return <Snowflake className={cn("h-4 w-4 text-sky-300", className)} />;
+        default: return <Flame className={cn("h-4 w-4 text-orange-500", className)} />;
+    }
+};
+
+
 function ReactionButton({ onReact }: ReactionButtonProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const [currentReactionIndex, setCurrentReactionIndex] = useState(0);
+    const clickTimeout = useRef<NodeJS.Timeout | null>(null);
 
-    const handleSimpleClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onReact(e, 'fire');
-    };
+    const activeReaction = reactionCycle[currentReactionIndex];
+    
+    useEffect(() => {
+        // Cleanup timeout on component unmount
+        return () => {
+            if (clickTimeout.current) {
+                clearTimeout(clickTimeout.current);
+            }
+        };
+    }, []);
 
-    const handleReactionSelect = (e: React.MouseEvent, reaction: ReactionType) => {
+    const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onReact(e, reaction);
-        setIsOpen(false);
+
+        // If there's a pending timeout, it means it's a multi-click
+        if (clickTimeout.current) {
+            clearTimeout(clickTimeout.current);
+            // Cycle to the next reaction
+            setCurrentReactionIndex(prevIndex => (prevIndex + 1) % reactionCycle.length);
+        } else {
+             // This is the first click in a potential sequence, trigger the current reaction immediately
+             onReact(e, activeReaction);
+        }
+
+        // Set a timeout. If no more clicks happen within 1s, reset the cycle.
+        clickTimeout.current = setTimeout(() => {
+            setCurrentReactionIndex(0);
+            clickTimeout.current = null;
+        }, 1000); 
     };
 
     return (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-            <PopoverTrigger asChild>
-                <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    onTapStart={(e) => e.stopPropagation()} // Prevent card click
-                    onTapHold={(e) => {
-                        e.stopPropagation();
-                        setIsOpen(true);
-                    }}
-                >
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-1.5"
-                        onClick={handleSimpleClick}
-                    >
-                        <Flame className="h-4 w-4 text-orange-500" />
-                    </Button>
-                </motion.div>
-            </PopoverTrigger>
-            <PopoverContent 
-                className="w-auto p-2"
-                onClick={(e) => e.stopPropagation()}
-                onInteractOutside={() => setIsOpen(false)}
+        <motion.div whileTap={{ scale: 0.9 }}>
+            <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-1.5"
+                onClick={handleClick}
             >
-                <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'fire')}>
-                        <Flame className="text-orange-500" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'wind')}>
-                        <Wind className="text-blue-400" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => handleReactionSelect(e, 'snow')}>
-                        <Snowflake className="text-sky-300" />
-                    </Button>
-                </div>
-            </PopoverContent>
-        </Popover>
+                <AnimatePresence mode="popLayout">
+                     <motion.div
+                        key={activeReaction}
+                        initial={{ scale: 0.5, opacity: 0, y: 10 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.5, opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                     >
+                        <ReactionIcon type={activeReaction} />
+                     </motion.div>
+                </AnimatePresence>
+            </Button>
+        </motion.div>
     );
 }
 
@@ -100,7 +103,8 @@ export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) 
     (entry.bookmarkedBy || []).includes(currentAuthUserId)
   , [entry.bookmarkedBy, currentAuthUserId]);
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const url = `${window.location.origin}/?entryId=${entry.id}`;
     navigator.clipboard.writeText(url);
     toast({
@@ -117,11 +121,6 @@ export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleBookmark(entry.id);
-  }
-
-  const handleCopyClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      handleCopyLink();
   }
 
   const handleCommentClick = (e: React.MouseEvent) => {
@@ -153,7 +152,7 @@ export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) 
           variant="ghost"
           size="sm"
           className="flex items-center gap-1.5"
-          onClick={handleCopyClick}
+          onClick={handleCopyLink}
         >
           <Link className="h-4 w-4" />
         </Button>
