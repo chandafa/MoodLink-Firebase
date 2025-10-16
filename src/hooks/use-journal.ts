@@ -33,6 +33,7 @@ import {
   firebaseSendPasswordResetEmail,
   confirmPasswordReset,
   verifyPasswordResetCode,
+  enableIndexedDbPersistence,
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously, signOut, linkWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -92,7 +93,7 @@ export type JournalEntry = {
   visibility: Visibility;
   allowedUserIds: string[];
   hashtags: string[];
-  cardColor?: string; // HSL string e.g. "250 80% 60%"
+  cardColor?: string; // e.g. 'rose', 'sky'
 };
 
 export type JournalCollection = {

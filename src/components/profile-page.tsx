@@ -81,7 +81,7 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
     if (currentUser) {
         form.reset({
             displayName: currentUser.displayName,
-            bio: currentUser.bio,
+            bio: currentUser.bio || '',
             avatar: currentUser.avatar,
         });
     }
@@ -476,7 +476,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSe
                 <Hourglass className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Kapsul</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
-                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md-inline">Peringkat</span>
+                <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Peringkat</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
