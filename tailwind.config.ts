@@ -18,8 +18,8 @@ export default {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'hsl(var(--default-bg, var(--card)))',
+          foreground: 'hsl(var(--default-fg, var(--card-foreground)))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -64,6 +64,26 @@ export default {
           'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
+        },
+        rose: {
+          bg: 'hsl(var(--rose-bg))',
+          fg: 'hsl(var(--rose-fg))',
+        },
+        sky: {
+          bg: 'hsl(var(--sky-bg))',
+          fg: 'hsl(var(--sky-fg))',
+        },
+        jade: {
+          bg: 'hsl(var(--jade-bg))',
+          fg: 'hsl(var(--jade-fg))',
+        },
+        sand: {
+          bg: 'hsl(var(--sand-bg))',
+          fg: 'hsl(var(--sand-fg))',
+        },
+        dusk: {
+          bg: 'hsl(var(--dusk-bg))',
+          fg: 'hsl(var(--dusk-fg))',
         },
       },
       borderRadius: {
