@@ -654,9 +654,6 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       onViewProfile(id);
     }
   };
-  
-  const cardStyle = cardColor ? { ["--card-theme-bg" as any]: `var(--${cardColor}-bg)`, ["--card-theme-fg" as any]: `var(--${cardColor}-fg)` } : {};
-
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -688,7 +685,10 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
              </Card>
           ) : (
             <>
-            <Card className="shadow-lg p-4 md:p-6 transition-colors bg-[var(--card-theme-bg)] text-[var(--card-theme-fg)]" style={cardStyle} data-theme={cardColor || 'default'}>
+            <Card 
+              className="shadow-lg p-4 md:p-6 transition-colors"
+              data-theme={cardColor || 'default'}
+            >
               <div className="flex gap-4 items-start">
                   { (entryOwner || isOwner) && (
                       <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
@@ -696,18 +696,18 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       </Avatar>
                    )}
                    <div className="flex-1">
-                      <div className="flex items-center justify-between text-[var(--card-theme-fg)]">
+                      <div className="flex items-center justify-between text-card-foreground">
                          <div>
                             <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
                               {isOwner ? currentUser?.displayName || 'Tamu' : entryOwner?.displayName}
                             </p>
-                            <p className="text-sm text-[var(--card-theme-fg)] opacity-80">
+                            <p className="text-sm text-muted-foreground">
                                 {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}`: 'Membuat postingan baru'}
                             </p>
                          </div>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-[var(--card-theme-fg)] hover:bg-black/10 dark:hover:bg-white/10"><MoreVertical /></Button>
+                                <Button variant="ghost" size="icon"><MoreVertical /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 {isOwner && (
@@ -754,12 +754,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                     postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
                                     "Tulis pesan untuk masa depan... Gunakan # untuk topik."
                                 }
-                                className="text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-[var(--card-theme-fg)] placeholder:text-[var(--card-theme-fg)] placeholder:opacity-70"
+                                className="text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-card-foreground placeholder:text-muted-foreground"
                                 value={editorContent}
                                 onChange={e => setEditorContent(e.target.value)}
                             />
                         ) : (
-                            <div className="flex-1 text-base py-2 text-[var(--card-theme-fg)]">
+                            <div className="flex-1 text-base py-2 text-card-foreground">
                                <HashtagRenderer text={editorContent} onViewHashtag={onViewHashtag} />
                             </div>
                         )}
@@ -819,15 +819,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                           </div>
                         )}
                         {musicFile && isOwner && (
-                             <div className="text-sm mt-2 text-[var(--card-theme-fg)] opacity-80">File musik dipilih: {musicFile.name}</div>
+                             <div className="text-sm mt-2 text-muted-foreground">File musik dipilih: {musicFile.name}</div>
                         )}
 
 
                         { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
                         
                          {isOwner && (
-                            <div className="space-y-4 mt-6 pt-4 border-t border-black/10 dark:border-white/20">
-                              <h3 className="text-sm font-medium text-[var(--card-theme-fg)]">Pengaturan Postingan</h3>
+                            <div className="space-y-4 mt-6 pt-4 border-t border-border/20">
+                              <h3 className="text-sm font-medium text-card-foreground">Pengaturan Postingan</h3>
                                { !activeEntry && (
                                <div className="flex flex-wrap gap-2 mb-4">
                                  <Button size="sm" variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
@@ -873,20 +873,20 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-x-4 gap-y-2">
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="public" id="v-public" />
-                                       <Label htmlFor="v-public" className="flex items-center gap-2 text-[var(--card-theme-fg)]"><Globe className="h-4 w-4" /> Publik</Label>
+                                       <Label htmlFor="v-public" className="flex items-center gap-2 text-card-foreground"><Globe className="h-4 w-4" /> Publik</Label>
                                    </div>
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="private" id="v-private" />
-                                       <Label htmlFor="v-private" className="flex items-center gap-2 text-[var(--card-theme-fg)]"><Lock className="h-4 w-4" /> Pribadi</Label>
+                                       <Label htmlFor="v-private" className="flex items-center gap-2 text-card-foreground"><Lock className="h-4 w-4" /> Pribadi</Label>
                                    </div>
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="restricted" id="v-restricted" />
-                                       <Label htmlFor="v-restricted" className="flex items-center gap-2 text-[var(--card-theme-fg)]"><Users className="h-4 w-4" /> Terbatas</Label>
+                                       <Label htmlFor="v-restricted" className="flex items-center gap-2 text-card-foreground"><Users className="h-4 w-4" /> Terbatas</Label>
                                    </div>
                                </RadioGroup>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[var(--card-theme-fg)]"><Palette className="inline-block mr-2 h-4 w-4" /> Tema Kartu</Label>
+                                    <Label className="text-card-foreground"><Palette className="inline-block mr-2 h-4 w-4" /> Tema Kartu</Label>
                                     <div className="flex flex-wrap gap-2">
                                         {cardThemes.map((theme) => (
                                             <button
@@ -936,8 +936,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             </div>
                          )}
                          
-                       <div className="mt-4 pt-4 border-t border-black/10 dark:border-white/20">
-                         {activeEntry && <SupportBar entry={activeEntry} onCommentClick={() => {}} />}
+                       <div className="mt-4 pt-4 border-t border-border/20">
+                         {activeEntry && <SupportBar entry={activeEntry} onCommentClick={() => {}} onReact={(reaction) => {}} />}
                        </div>
                    </div>
               </div>

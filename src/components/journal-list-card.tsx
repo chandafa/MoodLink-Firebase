@@ -129,7 +129,8 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     toggleBookmark(entry.id);
   }
   
-  const handleReaction = (reactionType: ReactionType) => {
+  const handleReaction = (e: React.MouseEvent, reactionType: ReactionType) => {
+      e.stopPropagation();
       const newReaction: Reaction = {
           id: Date.now(),
           type: reactionType,
@@ -140,8 +141,6 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
           setReactions(prev => prev.filter(r => r.id !== newReaction.id));
       }, 1200);
   };
-
-  const cardStyle = entry.cardColor ? { ["--card-theme-bg" as any]: `var(--${entry.cardColor}-bg)`, ["--card-theme-fg" as any]: `var(--${entry.cardColor}-fg)` } : {};
   
   const animationVariants = {
     initial: { opacity: 0 },
@@ -193,9 +192,8 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
         className="h-full"
     >
         <Card 
-            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden bg-[var(--card-theme-bg)] text-[var(--card-theme-fg)]"
+            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden"
             onClick={onSelect}
-            style={cardStyle}
             data-theme={entry.cardColor || 'default'}
         >
             <AnimatePresence>
@@ -222,14 +220,14 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                         <Avatar>
                             <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
                         </Avatar>
-                        <div className="text-[var(--card-theme-fg)]">
+                        <div className="text-card-foreground">
                             <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
-                            <span className="text-xs text-[var(--card-theme-fg)] opacity-80">{timeAgo}</span>
+                            <span className="text-xs text-muted-foreground">{timeAgo}</span>
                         </div>
                     </div>
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 flex-shrink-0 text-[var(--card-theme-fg)] hover:bg-black/10 dark:hover:bg-white/10" onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -257,7 +255,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                     </DropdownMenu>
                 </div>
 
-                <div className="mt-3 text-[var(--card-theme-fg)]">
+                <div className="mt-3 text-card-foreground">
                     {entry.postType === 'journal' ? (
                       <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
                     ) : (
@@ -289,7 +287,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                 )}
             </div>
             
-            <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-black/10 dark:border-white/10">
+            <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-border/20">
                 <SupportBar entry={entry} onCommentClick={onSelect} onReact={handleReaction} />
             </div>
         </Card>
