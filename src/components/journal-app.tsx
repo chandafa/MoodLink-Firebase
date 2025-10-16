@@ -84,7 +84,6 @@ function buildCommentTree(comments: Comment[]): CommentWithReplies[] {
     commentMap.forEach(comment => {
         if (comment.parentId && commentMap.has(comment.parentId)) {
             const parent = commentMap.get(comment.parentId)!;
-            // Ensure replies array exists
             if (!parent.replies) {
                 parent.replies = [];
             }
@@ -94,14 +93,12 @@ function buildCommentTree(comments: Comment[]): CommentWithReplies[] {
         }
     });
 
-    // Sort replies by creation date as well
     commentMap.forEach(comment => {
         if (comment.replies) {
             comment.replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
         }
     });
     
-    // Sort root comments
     return rootComments.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
 }
 
@@ -155,7 +152,6 @@ function CommentItem({
     }
     setIsSubmitting(true);
     try {
-      // When replying, the parent is the current comment
       await addComment(entryId, replyContent, currentUser, entryOwnerId, comment.id);
       setReplyContent('');
       setIsReplying(false);
@@ -438,14 +434,13 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
   );
 }
 
-const colorPalette = [
-    null, // Default
-    "250 80% 60%", // soft purple (primary)
-    "220 60% 90%", // light blue (secondary)
-    "0 84.2% 60.2%", // destructive
-    "142.1 76.2% 36.3%", // green
-    "47.9 95.8% 53.1%", // yellow
-    "25.7 89.7% 53.9%", // orange
+const cardThemes = [
+    { name: 'default', label: 'Default' },
+    { name: 'rose', label: 'Rose' },
+    { name: 'sky', label: 'Sky' },
+    { name: 'jade', label: 'Jade' },
+    { name: 'sand', label: 'Sand' },
+    { name: 'dusk', label: 'Dusk' },
 ];
 
 type JournalAppProps = {
@@ -514,7 +509,6 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
         setVoteOptions(activeEntry.options.map(opt => opt.text));
       }
     } else {
-      // It's a new entry, so clear the editor
       setPostType(newPostType);
       setEditorContent('');
       setImages([]);
@@ -561,7 +555,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
           return;
       }
       setMusicFile(file);
-      setMusicUrl(URL.createObjectURL(file)); // Create a temporary URL for preview
+      setMusicUrl(URL.createObjectURL(file));
     }
   };
 
@@ -661,8 +655,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     }
   };
   
-  const cardStyle = cardColor ? { backgroundColor: `hsl(${cardColor})` } : {};
-  const isDarkColor = cardColor ? parseInt(cardColor.split(" ")[2]) < 50 : false;
+  const cardStyle = cardColor ? { ["--card-theme-bg" as any]: `var(--${cardColor}-bg)`, ["--card-theme-fg" as any]: `var(--${cardColor}-fg)` } : {};
 
 
   return (
@@ -695,7 +688,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
              </Card>
           ) : (
             <>
-            <Card className="shadow-lg p-4 md:p-6 transition-colors" style={cardStyle}>
+            <Card className="shadow-lg p-4 md:p-6 transition-colors bg-[var(--card-theme-bg)] text-[var(--card-theme-fg)]" style={cardStyle} data-theme={cardColor || 'default'}>
               <div className="flex gap-4 items-start">
                   { (entryOwner || isOwner) && (
                       <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
@@ -703,18 +696,18 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       </Avatar>
                    )}
                    <div className="flex-1">
-                      <div className={cn("flex items-center justify-between", isDarkColor && "text-primary-foreground")}>
+                      <div className="flex items-center justify-between text-[var(--card-theme-fg)]">
                          <div>
                             <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
                               {isOwner ? currentUser?.displayName || 'Tamu' : entryOwner?.displayName}
                             </p>
-                            <p className={cn("text-sm", isDarkColor ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                            <p className="text-sm text-[var(--card-theme-fg)] opacity-80">
                                 {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}`: 'Membuat postingan baru'}
                             </p>
                          </div>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreVertical /></Button>
+                                <Button variant="ghost" size="icon" className="text-[var(--card-theme-fg)] hover:bg-black/10 dark:hover:bg-white/10"><MoreVertical /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 {isOwner && (
@@ -761,12 +754,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                     postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
                                     "Tulis pesan untuk masa depan... Gunakan # untuk topik."
                                 }
-                                className={cn("text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0", isDarkColor && "text-primary-foreground placeholder:text-primary-foreground/70")}
+                                className="text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-[var(--card-theme-fg)] placeholder:text-[var(--card-theme-fg)] placeholder:opacity-70"
                                 value={editorContent}
                                 onChange={e => setEditorContent(e.target.value)}
                             />
                         ) : (
-                            <div className={cn("flex-1 text-base py-2", isDarkColor && "text-primary-foreground")}>
+                            <div className="flex-1 text-base py-2 text-[var(--card-theme-fg)]">
                                <HashtagRenderer text={editorContent} onViewHashtag={onViewHashtag} />
                             </div>
                         )}
@@ -826,15 +819,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                           </div>
                         )}
                         {musicFile && isOwner && (
-                             <div className={cn("text-sm mt-2", isDarkColor ? "text-primary-foreground/80" : "text-muted-foreground")}>File musik dipilih: {musicFile.name}</div>
+                             <div className="text-sm mt-2 text-[var(--card-theme-fg)] opacity-80">File musik dipilih: {musicFile.name}</div>
                         )}
 
 
                         { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
                         
                          {isOwner && (
-                            <div className={cn("space-y-4 mt-6 pt-4 border-t", isDarkColor && "border-white/20")}>
-                              <h3 className={cn("text-sm font-medium", isDarkColor && "text-primary-foreground")}>Pengaturan Postingan</h3>
+                            <div className="space-y-4 mt-6 pt-4 border-t border-black/10 dark:border-white/20">
+                              <h3 className="text-sm font-medium text-[var(--card-theme-fg)]">Pengaturan Postingan</h3>
                                { !activeEntry && (
                                <div className="flex flex-wrap gap-2 mb-4">
                                  <Button size="sm" variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
@@ -880,31 +873,32 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-x-4 gap-y-2">
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="public" id="v-public" />
-                                       <Label htmlFor="v-public" className={cn("flex items-center gap-2", isDarkColor && "text-primary-foreground")}><Globe className="h-4 w-4" /> Publik</Label>
+                                       <Label htmlFor="v-public" className="flex items-center gap-2 text-[var(--card-theme-fg)]"><Globe className="h-4 w-4" /> Publik</Label>
                                    </div>
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="private" id="v-private" />
-                                       <Label htmlFor="v-private" className={cn("flex items-center gap-2", isDarkColor && "text-primary-foreground")}><Lock className="h-4 w-4" /> Pribadi</Label>
+                                       <Label htmlFor="v-private" className="flex items-center gap-2 text-[var(--card-theme-fg)]"><Lock className="h-4 w-4" /> Pribadi</Label>
                                    </div>
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="restricted" id="v-restricted" />
-                                       <Label htmlFor="v-restricted" className={cn("flex items-center gap-2", isDarkColor && "text-primary-foreground")}><Users className="h-4 w-4" /> Terbatas</Label>
+                                       <Label htmlFor="v-restricted" className="flex items-center gap-2 text-[var(--card-theme-fg)]"><Users className="h-4 w-4" /> Terbatas</Label>
                                    </div>
                                </RadioGroup>
 
                                 <div className="space-y-2">
-                                    <Label className={cn(isDarkColor && "text-primary-foreground")}><Palette className="inline-block mr-2 h-4 w-4" /> Tema Kartu</Label>
+                                    <Label className="text-[var(--card-theme-fg)]"><Palette className="inline-block mr-2 h-4 w-4" /> Tema Kartu</Label>
                                     <div className="flex flex-wrap gap-2">
-                                        {colorPalette.map((color, index) => (
+                                        {cardThemes.map((theme) => (
                                             <button
-                                                key={index}
+                                                key={theme.name}
                                                 type="button"
-                                                onClick={() => setCardColor(color ?? undefined)}
+                                                title={theme.label}
+                                                onClick={() => setCardColor(theme.name === 'default' ? undefined : theme.name)}
                                                 className={cn(
                                                     "h-8 w-8 rounded-full border-2 transition-transform transform hover:scale-110",
-                                                    (cardColor === color || (!cardColor && !color)) ? "border-ring" : "border-transparent"
+                                                    (cardColor === theme.name || (!cardColor && theme.name === 'default')) ? "border-ring" : "border-transparent"
                                                 )}
-                                                style={{ backgroundColor: color ? `hsl(${color})` : 'hsl(var(--card))' }}
+                                                style={{ backgroundColor: `hsl(var(--${theme.name}-bg))` }}
                                             />
                                         ))}
                                     </div>
@@ -942,7 +936,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             </div>
                          )}
                          
-                       <div className={cn("mt-4 pt-4 border-t", isDarkColor && "border-white/20")}>
+                       <div className="mt-4 pt-4 border-t border-black/10 dark:border-white/20">
                          {activeEntry && <SupportBar entry={activeEntry} onCommentClick={() => {}} />}
                        </div>
                    </div>

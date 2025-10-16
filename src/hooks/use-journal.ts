@@ -34,7 +34,7 @@ import {
   confirmPasswordReset,
   verifyPasswordResetCode,
 } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signOut, linkWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
@@ -171,57 +171,38 @@ export function useJournal() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in.
         setCurrentAuthUser(user);
         setIsAnonymous(user.isAnonymous);
 
         const userRef = doc(db, 'users', user.uid);
-        
-        const userDocUnsub = onSnapshot(userRef, async (docSnap) => {
+        onSnapshot(userRef, async (docSnap) => {
             if (docSnap.exists()) {
-                const userData = { id: docSnap.id, ...docSnap.data() } as User;
-                setCurrentUser(userData);
-            } else if (!user.isAnonymous) { // Create doc for non-anonymous users if it doesn't exist
-                 const usersCollectionRef = collection(db, 'users');
-                 const usersSnapshot = await getDocs(usersCollectionRef);
-                 const userCount = usersSnapshot.size;
+                setCurrentUser({ id: docSnap.id, ...docSnap.data() } as User);
+            } else if (!user.isAnonymous) {
+                const usersCollectionRef = collection(db, 'users');
+                const usersSnapshot = await getDocs(usersCollectionRef);
+                const userCount = usersSnapshot.size;
 
                 const newUser: Omit<User, 'id'> = {
-                    displayName: `Anonim#${userCount + 1}`,
+                    displayName: user.displayName || `Anonim#${userCount + 1}`,
                     avatar: '👤',
                     bio: 'Pengguna baru MoodLink!',
                     followers: [],
                     following: [],
                     points: 0,
                     level: 1,
-                    bannerUrl: '',
+                    bannerUrl: user.photoURL || '',
                 };
                 await setDoc(userRef, newUser);
-                // The snapshot listener will automatically update setCurrentUser
-            } else if (user.isAnonymous) {
-                // Handle case for new anonymous user if needed, or just let them be null
-                setCurrentUser(null);
             }
-             // Ensure the app is marked as loaded once we have auth state and attempt to get user.
-            if (!isLoaded) setIsLoaded(true);
+            if (!isLoaded) {
+              setIsLoaded(true);
+            }
         });
-        
-        return () => userDocUnsub();
-
       } else {
-        // User is signed out, sign them in anonymously.
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
-            if (error.code === 'auth/configuration-not-found') {
-                toast({
-                    title: 'Authentication Disabled',
-                    description: 'Anonymous authentication is not enabled. Please enable it in your Firebase console.',
-                    variant: 'destructive',
-                    duration: 10000,
-                });
-            } else {
-                toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
-            }
+          toast({ title: 'Gagal Otentikasi', description: 'Tidak dapat terhubung ke layanan kami.', variant: 'destructive' });
         });
       }
     });
@@ -246,10 +227,7 @@ export function useJournal() {
             return;
         }
         try {
-            // Because we're linking, a user document will be created by onAuthStateChanged after linking
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            // After successful sign-up, the onAuthStateChanged listener will fire
-            // and handle the user document creation logic.
+            await createUserWithEmailAndPassword(auth, email, password);
             toast({ title: 'Pendaftaran Berhasil', description: 'Selamat datang di MoodLink!' });
         } catch (error: any) {
             console.error("Error signing up with email:", error);
@@ -264,7 +242,6 @@ export function useJournal() {
     const signInWithEmail = async (email: string, password: string) => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // onAuthStateChanged will handle the rest.
             toast({ title: 'Berhasil Masuk' });
         } catch (error: any) {
             console.error("Error signing in with email:", error);
@@ -303,6 +280,8 @@ export function useJournal() {
     const usersUnsub = onSnapshot(collection(db, 'users'), (snapshot) => {
         const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
         setUsers(usersData);
+    }, (error) => {
+        console.error("Error fetching users:", error);
     });
 
     // Fetch all entries
@@ -312,26 +291,21 @@ export function useJournal() {
             return {
                 id: doc.id,
                 ...data,
-                commentCount: 0, 
+                commentCount: data.commentCount || 0, 
             } as JournalEntry;
         });
-        
         setEntries(entriesData);
-        
-        // Asynchronously fetch comment counts
-        entriesData.forEach(async (entry) => {
-            if (entry.postType === 'capsule') return;
-            const count = await getCommentCount(entry.id);
-            setEntries(prevEntries => 
-                prevEntries.map(e => e.id === entry.id ? { ...e, commentCount: count } : e)
-            );
-        });
-
+    }, (error) => {
+        console.error("Error fetching journal entries:", error);
     });
 
-    const collectionsUnsub = onSnapshot(query(collection(db, 'journal-collections'), where('ownerId', '==', currentAuthUser.uid)), (snapshot) => {
+    // Fetch collections for the current user
+    const collectionsQuery = query(collection(db, 'journal-collections'), where('ownerId', '==', currentAuthUser.uid));
+    const collectionsUnsub = onSnapshot(collectionsQuery, (snapshot) => {
         const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as JournalCollection[];
         setCollections(collectionsData);
+    }, (error) => {
+        console.error("Error fetching collections:", error);
     });
 
 
@@ -350,7 +324,6 @@ export function useJournal() {
       await runTransaction(db, async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists()) {
-          // If the user doc doesn't exist, we can't add points.
           console.warn(`User document ${userId} does not exist. Cannot add points.`);
           return;
         }
@@ -362,8 +335,6 @@ export function useJournal() {
         transaction.update(userRef, { points: newPoints, level: newLevel });
 
         if (newLevel > oldLevel) {
-          // This toast needs to be called outside the transaction.
-          // We'll queue it up.
           setTimeout(() => {
             toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
           }, 0);
@@ -447,28 +418,25 @@ export function useJournal() {
     }
 
     try {
-      // 1. Upload new images (File objects) to cPanel hosting
+      let finalMusicUrl: string | null = null;
+      if (musicFile && postType !== 'capsule') {
+          finalMusicUrl = await uploadImageToHosting(musicFile);
+          if (!finalMusicUrl) throw new Error("Music upload failed.");
+      }
+
       const imageUrls = postType !== 'capsule' ? await Promise.all(
           images.map(async (image) => {
-              if (typeof image === 'string') return image; // It's already a URL
+              if (typeof image === 'string') return image;
               return await uploadImageToHosting(image);
           })
       ) : [];
       const validImageUrls = imageUrls.filter((url): url is string => url !== null);
 
-      // 2. Upload music file
-      let finalMusicUrl: string | null = null;
-      if (musicFile && postType !== 'capsule') {
-          finalMusicUrl = await uploadImageToHosting(musicFile); // Reusing the same upload function
-      }
-      
-      // 3. Handle hashtags
       const hashtags = extractHashtags(content);
       if (hashtags.length > 0) {
           await updateHashtagCounts(hashtags, 'increment');
       }
 
-      // 4. Add new journal document to Firestore
       const newEntryData: any = {
         ownerId: currentAuthUser.uid,
         content,
@@ -480,6 +448,7 @@ export function useJournal() {
         likes: 0,
         likedBy: [],
         bookmarkedBy: [],
+        commentCount: 0,
         options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
         votedBy: [],
         visibility,
@@ -499,11 +468,10 @@ export function useJournal() {
       const docRef = await addDoc(collection(db, 'journals'), newEntryData);
       
       if (!isAnonymous) {
-        await addPoints(currentAuthUser.uid, 5); // +5 points for any post
+        await addPoints(currentAuthUser.uid, 5);
       }
       
-      // The onSnapshot listener will automatically update the UI.
-      return { id: docRef.id, ...newEntryData, commentCount: 0 } as JournalEntry;
+      return { id: docRef.id, ...newEntryData } as JournalEntry;
 
     } catch (error) {
         console.error("Error adding document: ", error);
@@ -516,62 +484,64 @@ export function useJournal() {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
-    const docSnap = await getDoc(entryRef);
-    if (!docSnap.exists()) {
-        toast({ title: 'Error', description: 'Postingan tidak ditemukan.', variant: 'destructive'});
-        return;
-    }
-    const oldEntryData = docSnap.data() as JournalEntry;
-    const postType = oldEntryData.postType;
-
-    // Handle hashtag count updates
-    const oldHashtags = oldEntryData.hashtags || [];
-    const newHashtags = extractHashtags(content);
     
-    const tagsToAdd = newHashtags.filter(tag => !oldHashtags.includes(tag));
-    const tagsToRemove = oldHashtags.filter(tag => !newHashtags.includes(tag));
+    try {
+        const docSnap = await getDoc(entryRef);
+        if (!docSnap.exists()) {
+            toast({ title: 'Error', description: 'Postingan tidak ditemukan.', variant: 'destructive'});
+            return;
+        }
+        const oldEntryData = docSnap.data() as JournalEntry;
+        const postType = oldEntryData.postType;
 
-    if (tagsToAdd.length > 0) await updateHashtagCounts(tagsToAdd, 'increment');
-    if (tagsToRemove.length > 0) await updateHashtagCounts(tagsToRemove, 'decrement');
+        const oldHashtags = oldEntryData.hashtags || [];
+        const newHashtags = extractHashtags(content);
+        
+        const tagsToAdd = newHashtags.filter(tag => !oldHashtags.includes(tag));
+        const tagsToRemove = oldHashtags.filter(tag => !newHashtags.includes(tag));
 
+        if (tagsToAdd.length > 0) await updateHashtagCounts(tagsToAdd, 'increment');
+        if (tagsToRemove.length > 0) await updateHashtagCounts(tagsToRemove, 'decrement');
 
-    const newImageFiles = images.filter((img): img is File => img instanceof File);
-    const existingImageUrls = images.filter((img): img is string => typeof img === 'string');
+        const newImageFiles = images.filter((img): img is File => img instanceof File);
+        const existingImageUrls = images.filter((img): img is string => typeof img === 'string');
 
-    // Upload new images to cPanel hosting
-    const newImageUrls = postType !== 'capsule' ? await Promise.all(
-        newImageFiles.map(file => uploadImageToHosting(file))
-    ) : [];
-    
-    const validNewImageUrls = newImageUrls.filter((url): url is string => url !== null);
-    const allImageUrls = [...existingImageUrls, ...validNewImageUrls];
+        const newImageUrls = postType !== 'capsule' ? await Promise.all(
+            newImageFiles.map(file => uploadImageToHosting(file))
+        ) : [];
+        
+        const validNewImageUrls = newImageUrls.filter((url): url is string => url !== null);
+        const allImageUrls = [...existingImageUrls, ...validNewImageUrls];
 
-    // Handle music file
-    let finalMusicUrl = musicUrl;
-    if (musicFile) {
-        finalMusicUrl = await uploadImageToHosting(musicFile);
+        let finalMusicUrl = musicUrl;
+        if (musicFile) {
+            finalMusicUrl = await uploadImageToHosting(musicFile);
+        }
+        
+        const updateData: any = {
+          content,
+          images: allImageUrls,
+          musicUrl: finalMusicUrl,
+          updatedAt: serverTimestamp(),
+          visibility,
+          allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
+          hashtags: newHashtags,
+          cardColor: cardColor || null,
+        };
+
+        if (postType === 'voting' && voteOptions.length > 0) {
+          updateData.options = voteOptions.map((optText, index) => ({
+            text: optText,
+            votes: oldEntryData.options[index]?.votes || 0,
+          }));
+        }
+
+        await updateDoc(entryRef, updateData);
+        toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
+    } catch (error) {
+        console.error("Error updating entry:", error);
+        toast({ title: 'Gagal Memperbarui', variant: 'destructive' });
     }
-    
-    const updateData: any = {
-      content,
-      images: allImageUrls,
-      musicUrl: finalMusicUrl,
-      updatedAt: serverTimestamp(),
-      visibility,
-      allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
-      hashtags: newHashtags,
-      cardColor: cardColor || null,
-    };
-
-    if (postType === 'voting' && voteOptions.length > 0) {
-      updateData.options = voteOptions.map((optText, index) => ({
-        text: optText,
-        votes: oldEntryData.options[index]?.votes || 0,
-      }));
-    }
-
-    await updateDoc(entryRef, updateData);
-    toast({ title: 'Postingan Diperbarui', description: 'Postingan Anda telah diperbarui.' });
   }, [currentAuthUser, toast, uploadImageToHosting, updateHashtagCounts]);
 
 
@@ -584,13 +554,10 @@ export function useJournal() {
 
     if (!entryData) return;
     
-    // Decrement hashtag counts
     if (entryData.hashtags && entryData.hashtags.length > 0) {
         await updateHashtagCounts(entryData.hashtags, 'decrement');
     }
 
-    // Note: Deleting images/music from cPanel hosting would require another PHP script or API endpoint.
-    // This implementation does not delete the files from the hosting server.
     if (entryData.images && entryData.images.length > 0) {
         entryData.images.forEach(async (url: string) => {
             if (url.includes('firebasestorage')) {
@@ -662,19 +629,16 @@ export function useJournal() {
             const isLiked = entryData.likedBy?.includes(currentAuthUser.uid);
             
             if (isLiked) {
-                // Unlike
                 transaction.update(entryRef, { 
                     likedBy: arrayRemove(currentAuthUser.uid),
-                    likes: (entryData.likes || 1) - 1
+                    likes: increment(-1)
                 });
             } else {
-                 // Like
                  transaction.update(entryRef, { 
                     likedBy: arrayUnion(currentAuthUser.uid),
-                    likes: (entryData.likes || 0) + 1
+                    likes: increment(1)
                 });
                 
-                // Prepare data for notification after transaction
                 return {
                     ownerId: entryData.ownerId,
                     content: entryData.content
@@ -683,7 +647,6 @@ export function useJournal() {
             return null;
         });
 
-        // Post-transaction logic
         if (notificationData && currentUser) {
             await addPoints(notificationData.ownerId, 1);
             await createNotification({
@@ -715,17 +678,14 @@ export function useJournal() {
             }
     
             const entryData = entryDoc.data();
-            const bookmarkedBy = entryData.bookmarkedBy || [];
-            const isBookmarked = bookmarkedBy.includes(currentAuthUser.uid);
+            const isBookmarked = (entryData.bookmarkedBy || []).includes(currentAuthUser.uid);
     
             if (isBookmarked) {
-                // Unbookmark
                 transaction.update(entryRef, { 
                     bookmarkedBy: arrayRemove(currentAuthUser.uid)
                 });
                 toast({ title: 'Bookmark Dihapus' });
             } else {
-                // Bookmark
                 transaction.update(entryRef, { 
                     bookmarkedBy: arrayUnion(currentAuthUser.uid)
                 });
@@ -749,12 +709,10 @@ export function useJournal() {
         const batch = writeBatch(db);
 
         if (isFollowing) {
-            // Unfollow
             batch.update(currentUserRef, { following: arrayRemove(targetUserId) });
             batch.update(targetUserRef, { followers: arrayRemove(currentAuthUser.uid) });
             toast({ title: 'Berhenti Mengikuti' });
         } else {
-            // Follow
             batch.update(currentUserRef, { following: arrayUnion(targetUserId) });
             batch.update(targetUserRef, { followers: arrayUnion(currentAuthUser.uid) });
             addPoints(targetUserId, 2);
@@ -783,7 +741,7 @@ export function useJournal() {
             
             const data = entryDoc.data();
             if (data.postType !== 'voting' || data.votedBy.includes(currentAuthUser.uid)) {
-                return; // Already voted or not a voting post
+                return;
             }
 
             const newOptions = [...data.options];
@@ -827,15 +785,15 @@ export function useJournal() {
         };
 
         const commentsRef = collection(db, 'journals', entryId, 'comments');
-        await addDoc(commentsRef, commentData);
-        
         const entryRef = doc(db, 'journals', entryId);
-        const entryDoc = await getDoc(entryRef);
+        
+        await addDoc(commentsRef, commentData);
         await updateDoc(entryRef, { commentCount: increment(1) });
 
 
         if (authorId !== entryOwnerId && !isAnonymous && currentUser) {
            await addPoints(entryOwnerId, 2);
+            const entryDoc = await getDoc(entryRef);
             if(entryDoc.exists()) {
                 await createNotification({
                     userId: entryOwnerId,
@@ -868,12 +826,12 @@ export function useJournal() {
             if (isLiked) {
                 transaction.update(commentRef, {
                     likedBy: arrayRemove(currentAuthUser.uid),
-                    likes: (data.likes || 1) - 1,
+                    likes: increment(-1),
                 });
             } else {
                 transaction.update(commentRef, {
                     likedBy: arrayUnion(currentAuthUser.uid),
-                    likes: (data.likes || 0) + 1,
+                    likes: increment(1),
                 });
             }
         });
@@ -892,8 +850,6 @@ export function useJournal() {
         if (!currentAuthUser) return;
         const entryRef = doc(db, 'journals', entryId);
 
-        // This is a simplified delete. For full recursive delete, a Cloud Function is better.
-        // This will leave orphaned replies in the database.
         const commentRef = doc(db, `journals/${entryId}/comments`, commentId);
         await deleteDoc(commentRef);
         await updateDoc(entryRef, { commentCount: increment(-1) });
@@ -908,14 +864,11 @@ export function useJournal() {
     const getUserEntries = useCallback((userId: string) => {
         return entries.filter(entry => {
             if (entry.ownerId !== userId) return false;
-            // A user can always see their own private/restricted posts
             if (entry.ownerId === currentAuthUser?.uid) return true;
             
-            // Others can see public posts
             if (entry.visibility === 'public') return true;
             
-            // Others can see restricted posts if they are allowed
-            if (entry.visibility === 'restricted' && entry.allowedUserIds.includes(currentAuthUser?.uid || '')) return true;
+            if (entry.visibility === 'restricted' && (entry.allowedUserIds || []).includes(currentAuthUser?.uid || '')) return true;
 
             return false;
         });
@@ -943,14 +896,12 @@ export function useJournal() {
         const messagesCol = collection(db, 'chats', roomId, 'messages');
         const chatDocRef = doc(db, 'chats', roomId);
 
-        // Add the message
         await addDoc(messagesCol, {
             text,
             senderId: currentAuthUser.uid,
             createdAt: serverTimestamp()
         });
         
-        // Update the conversation summary document
         const conversationData: Conversation = {
             id: roomId,
             lastMessage: text,

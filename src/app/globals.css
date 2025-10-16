@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,6 +34,20 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.8rem;
+    
+    /* Card Themes */
+    --default-bg: var(--card);
+    --default-fg: var(--card-foreground);
+    --rose-bg: 350 100% 97%;
+    --rose-fg: 350 90% 25%;
+    --sky-bg: 200 100% 96%;
+    --sky-fg: 210 90% 25%;
+    --jade-bg: 150 100% 96%;
+    --jade-fg: 155 90% 20%;
+    --sand-bg: 45 100% 96%;
+    --sand-fg: 35 80% 25%;
+    --dusk-bg: 260 30% 96%;
+    --dusk-fg: 260 50% 30%;
   }
   .dark {
     --background: 240 10% 3.9%;
@@ -59,6 +74,20 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    
+    /* Card Themes */
+    --default-bg: var(--card);
+    --default-fg: var(--card-foreground);
+    --rose-bg: 350 20% 12%;
+    --rose-fg: 350 100% 90%;
+    --sky-bg: 210 30% 12%;
+    --sky-fg: 200 100% 90%;
+    --jade-bg: 155 30% 11%;
+    --jade-fg: 150 90% 88%;
+    --sand-bg: 35 25% 12%;
+    --sand-fg: 45 90% 88%;
+    --dusk-bg: 260 25% 11%;
+    --dusk-fg: 260 80% 90%;
   }
 }
 

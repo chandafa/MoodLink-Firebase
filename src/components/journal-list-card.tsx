@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
@@ -34,8 +34,13 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const hasVoted = entry.votedBy?.includes(currentAuthUserId || '');
-  const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
+  const hasVoted = useMemo(() => 
+    entry.votedBy?.includes(currentAuthUserId || '')
+  , [entry.votedBy, currentAuthUserId]);
+  
+  const totalVotes = useMemo(() => 
+    entry.options.reduce((sum, opt) => sum + opt.votes, 0)
+  , [entry.options]);
 
   const handleVote = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
@@ -84,7 +89,10 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   const { toast } = useToast();
   const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
   const [boosts, setBoosts] = useState<number[]>([]);
-  const isBookmarked = entry.bookmarkedBy?.includes(currentAuthUserId || '');
+
+  const isBookmarked = useMemo(() => 
+    entry.bookmarkedBy?.includes(currentAuthUserId || '')
+  , [entry.bookmarkedBy, currentAuthUserId]);
   
   const timeAgo = entry.createdAt ? formatDistanceToNow(entry.createdAt.toDate(), { addSuffix: true, locale: id }) : 'baru saja';
   
@@ -98,7 +106,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   }
 
   const handleDeleteClick = (e: React.MouseEvent) => {
-      e.stopPropagation(); // Prevent card click
+      e.stopPropagation();
       onDelete(entry.id);
   }
 
@@ -112,17 +120,16 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     toggleBookmark(entry.id);
   }
   
-  const handleBoost = () => {
+  const handleBoost = (e: React.MouseEvent) => {
+      e.stopPropagation();
       const newBoostId = Date.now();
       setBoosts(prev => [...prev, newBoostId]);
       setTimeout(() => {
           setBoosts(prev => prev.filter(id => id !== newBoostId));
-      }, 1000); // Remove after 1 second
+      }, 1000);
   };
 
-  const cardStyle = entry.cardColor ? { backgroundColor: `hsl(${entry.cardColor})` } : {};
-  const isDarkColor = entry.cardColor ? parseInt(entry.cardColor.split(" ")[2]) < 50 : false;
-
+  const cardStyle = entry.cardColor ? { ["--card-theme-bg" as any]: `var(--${entry.cardColor}-bg)`, ["--card-theme-fg" as any]: `var(--${entry.cardColor}-fg)` } : {};
 
   return (
     <motion.div
@@ -134,9 +141,10 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
         className="h-full"
     >
         <Card 
-            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden" 
+            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden bg-[var(--card-theme-bg)] text-[var(--card-theme-fg)]"
             onClick={onSelect}
             style={cardStyle}
+            data-theme={entry.cardColor || 'default'}
         >
             <AnimatePresence>
                 {boosts.map(id => (
@@ -162,14 +170,14 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                         <Avatar>
                             <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
                         </Avatar>
-                        <div className={cn(isDarkColor && "text-primary-foreground")}>
+                        <div className="text-[var(--card-theme-fg)]">
                             <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
-                            <span className={cn("text-xs", isDarkColor ? "text-primary-foreground/80" : "text-muted-foreground")}>{timeAgo}</span>
+                            <span className="text-xs text-[var(--card-theme-fg)] opacity-80">{timeAgo}</span>
                         </div>
                     </div>
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className={cn("h-8 w-8 -mr-2 flex-shrink-0", isDarkColor && "text-primary-foreground hover:bg-white/20") } onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 flex-shrink-0 text-[var(--card-theme-fg)] hover:bg-black/10 dark:hover:bg-white/10" onClick={(e) => e.stopPropagation()}>
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -197,7 +205,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                     </DropdownMenu>
                 </div>
 
-                <div className={cn("mt-3", isDarkColor && "text-primary-foreground")}>
+                <div className="mt-3 text-[var(--card-theme-fg)]">
                     {entry.postType === 'journal' ? (
                       <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
                     ) : (
@@ -229,7 +237,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                 )}
             </div>
             
-            <div className={cn("mt-2 pt-2 border-t -ml-2 -mr-2", isDarkColor ? "border-white/20" : "border-border")}>
+            <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-black/10 dark:border-white/10">
                 <SupportBar entry={entry} onCommentClick={onSelect} onBoostClick={handleBoost} />
             </div>
         </Card>
