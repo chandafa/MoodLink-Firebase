@@ -1,3 +1,4 @@
+
 'use client';
 import { Bell, Heart, MessageCircle, UserPlus, ArrowLeft, CornerUpLeft } from 'lucide-react';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -135,5 +136,3 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
         </div>
     );
 }
-
-    
