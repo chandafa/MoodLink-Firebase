@@ -226,7 +226,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                     </DropdownMenu>
                 </div>
 
-                <div className="mt-3 text-card-foreground">
+                <div className={cn("mt-3 text-card-foreground", entry.fontFamily)}>
                     {entry.postType === 'journal' ? (
                       <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
                     ) : (

@@ -27,6 +27,7 @@ import {
   Edit,
   Music,
   Palette,
+  CaseSensitive,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
@@ -68,6 +69,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 // --- START: Threaded Comment Section ---
 
@@ -443,6 +445,13 @@ const cardThemes = [
     { name: 'dusk', label: 'Dusk' },
 ];
 
+const fontOptions = [
+    { value: 'font-body', label: 'Poppins' },
+    { value: 'font-serif', label: 'Lora' },
+    { value: 'font-script', label: 'Dancing Script' },
+    { value: 'font-mono', label: 'Inconsolata' },
+];
+
 type JournalAppProps = {
   selectedEntryId: string | null;
   onBack: () => void;
@@ -469,6 +478,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   const [allowedUsers, setAllowedUsers] = useState<string[]>([]);
   const [followers, setFollowers] = useState<User[]>([]);
   const [cardColor, setCardColor] = useState<string | undefined>(undefined);
+  const [fontFamily, setFontFamily] = useState<string>('font-body');
   
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === selectedEntryId) || null;
@@ -505,6 +515,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setVisibility(activeEntry.visibility || 'public');
       setAllowedUsers(activeEntry.allowedUserIds || []);
       setCardColor(activeEntry.cardColor);
+      setFontFamily(activeEntry.fontFamily || 'font-body');
       if (activeEntry.postType === 'voting') {
         setVoteOptions(activeEntry.options.map(opt => opt.text));
       }
@@ -519,6 +530,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setVisibility('public');
       setAllowedUsers([]);
       setCardColor(undefined);
+      setFontFamily('font-body');
     }
   }, [activeEntry, newPostType]);
 
@@ -599,11 +611,11 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   const handleSave = async () => {
     if (activeEntry) {
       if(isOwner) {
-         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, voteOptions, visibility, allowedUsers, cardColor);
+         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, voteOptions, visibility, allowedUsers, cardColor, fontFamily);
       }
     } else {
        let optionsForEntry = postType === 'voting' ? voteOptions.filter(o => o.trim() !== '') : [];
-       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor);
+       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -754,12 +766,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                     postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
                                     "Tulis pesan untuk masa depan... Gunakan # untuk topik."
                                 }
-                                className="text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-card-foreground placeholder:text-muted-foreground"
+                                className={cn(
+                                    "text-base resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-card-foreground placeholder:text-muted-foreground",
+                                    fontFamily
+                                )}
                                 value={editorContent}
                                 onChange={e => setEditorContent(e.target.value)}
                             />
                         ) : (
-                            <div className="flex-1 text-base py-2 text-card-foreground">
+                            <div className={cn("flex-1 text-base py-2 text-card-foreground", activeEntry?.fontFamily)}>
                                <HashtagRenderer text={editorContent} onViewHashtag={onViewHashtag} />
                             </div>
                         )}
@@ -826,7 +841,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                         { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
                         
                          {isOwner && (
-                            <div className="space-y-4 mt-6 pt-4 border-t border-border/20">
+                            <div className="space-y-6 mt-6 pt-6 border-t border-border/20">
                               <h3 className="text-sm font-medium text-card-foreground">Pengaturan Postingan</h3>
                                { !activeEntry && (
                                <div className="flex flex-wrap gap-2 mb-4">
@@ -870,7 +885,44 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                         <p className="text-sm mt-1">Postingan ini akan disegel dan baru bisa dibuka dalam 30 hari.</p>
                                     </div>
                                 )}
-                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-x-4 gap-y-2">
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-card-foreground"><Palette className="inline-block mr-2 h-4 w-4" /> Tema Kartu</Label>
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {cardThemes.map((theme) => (
+                                                <button
+                                                    key={theme.name}
+                                                    type="button"
+                                                    title={theme.label}
+                                                    onClick={() => setCardColor(theme.name === 'default' ? undefined : theme.name)}
+                                                    className={cn(
+                                                        "h-8 w-8 rounded-full border-2 transition-transform transform hover:scale-110",
+                                                        (cardColor === theme.name || (!cardColor && theme.name === 'default')) ? "border-ring" : "border-transparent"
+                                                    )}
+                                                    style={{ backgroundColor: `hsl(var(--${theme.name}-bg))` }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                     <div>
+                                        <Label className="text-card-foreground"><CaseSensitive className="inline-block mr-2 h-4 w-4" /> Font</Label>
+                                        <Select value={fontFamily} onValueChange={setFontFamily}>
+                                            <SelectTrigger className="mt-2">
+                                                <SelectValue placeholder="Pilih font" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {fontOptions.map(font => (
+                                                     <SelectItem key={font.value} value={font.value} className={font.value}>
+                                                        {font.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                               
+                               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as Visibility)} className="flex flex-wrap gap-x-4 gap-y-2 pt-4">
                                    <div className="flex items-center space-x-2">
                                        <RadioGroupItem value="public" id="v-public" />
                                        <Label htmlFor="v-public" className="flex items-center gap-2 text-card-foreground"><Globe className="h-4 w-4" /> Publik</Label>
@@ -885,24 +937,6 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                    </div>
                                </RadioGroup>
 
-                                <div className="space-y-2">
-                                    <Label className="text-card-foreground"><Palette className="inline-block mr-2 h-4 w-4" /> Tema Kartu</Label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {cardThemes.map((theme) => (
-                                            <button
-                                                key={theme.name}
-                                                type="button"
-                                                title={theme.label}
-                                                onClick={() => setCardColor(theme.name === 'default' ? undefined : theme.name)}
-                                                className={cn(
-                                                    "h-8 w-8 rounded-full border-2 transition-transform transform hover:scale-110",
-                                                    (cardColor === theme.name || (!cardColor && theme.name === 'default')) ? "border-ring" : "border-transparent"
-                                                )}
-                                                style={{ backgroundColor: `hsl(var(--${theme.name}-bg))` }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
                                
                                {visibility === 'restricted' && (
                                  <div className="pt-4">

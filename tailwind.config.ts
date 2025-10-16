@@ -13,6 +13,9 @@ export default {
         body: ['"Poppins"', 'sans-serif'],
         headline: ['"Poppins"', 'sans-serif'],
         code: ['monospace'],
+        serif: ['"Lora"', 'serif'],
+        script: ['"Dancing Script"', 'cursive'],
+        mono: ['"Inconsolata"', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',

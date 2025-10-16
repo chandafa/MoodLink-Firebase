@@ -92,6 +92,7 @@ export type JournalEntry = {
   allowedUserIds: string[];
   hashtags: string[];
   cardColor?: string; // e.g. 'rose', 'sky'
+  fontFamily?: string; // e.g. 'font-serif'
 };
 
 export type JournalCollection = {
@@ -410,7 +411,7 @@ export function useJournal() {
   }, []);
 
   // --- JOURNAL ACTIONS ---
-  const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string) => {
+  const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string) => {
     if (!currentAuthUser) {
         toast({ title: 'Gagal memuat status autentikasi', variant: 'destructive'});
         return null;
@@ -467,6 +468,7 @@ export function useJournal() {
         allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
         hashtags,
         cardColor: cardColor || null,
+        fontFamily: fontFamily || 'font-body',
       };
 
       if (postType === 'capsule') {
@@ -492,7 +494,7 @@ export function useJournal() {
     }
   }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -539,6 +541,7 @@ export function useJournal() {
           allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
           hashtags: newHashtags,
           cardColor: cardColor || null,
+          fontFamily: fontFamily || 'font-body',
         };
 
         if (postType === 'voting' && voteOptions.length > 0) {
