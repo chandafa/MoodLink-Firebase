@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { db, collection, query, where, orderBy, onSnapshot, writeBatch, getDocs, doc } from '@/lib/firebase';
 import type { Timestamp } from '@/lib/firebase';
 
-export type NotificationType = 'like' | 'comment' | 'follow';
+export type NotificationType = 'like' | 'comment' | 'follow' | 'reply';
 
 export type Notification = {
   id: string;
@@ -84,3 +84,5 @@ export function useNotifications(userId: string | null) {
 
   return { notifications, isLoading, unreadCount, markNotificationsAsRead };
 }
+
+    

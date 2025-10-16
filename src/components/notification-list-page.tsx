@@ -1,5 +1,5 @@
 'use client';
-import { Bell, Heart, MessageCircle, UserPlus, ArrowLeft } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, ArrowLeft, CornerUpLeft } from 'lucide-react';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useJournal } from '@/hooks/use-journal';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,6 +22,8 @@ const NotificationIcon = ({ type }: { type: string }) => {
             return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/50"><MessageCircle className="h-5 w-5 text-blue-500" /></div>;
         case 'follow':
             return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/50"><UserPlus className="h-5 w-5 text-green-500" /></div>;
+        case 'reply':
+            return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/50"><CornerUpLeft className="h-5 w-5 text-purple-500" /></div>;
         default:
             return <div className="h-10 w-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-900/50"><Bell className="h-5 w-5" /></div>;
     }
@@ -58,6 +60,8 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
                 return <p className="leading-relaxed">{actorName} mengomentari postingan Anda: <span className="italic text-muted-foreground">"{notification.journalContent?.substring(0, 40)}..."</span></p>;
             case 'follow':
                 return <p className="leading-relaxed">{actorName} mulai mengikuti Anda.</p>;
+            case 'reply':
+                return <p className="leading-relaxed">{actorName} membalas komentar Anda di postingan: <span className="italic text-muted-foreground">"{notification.journalContent?.substring(0, 40)}..."</span></p>;
             default:
                 return <p>Notifikasi baru.</p>;
         }
@@ -131,3 +135,5 @@ export function NotificationListPage({ onSelectEntry }: NotificationListPageProp
         </div>
     );
 }
+
+    

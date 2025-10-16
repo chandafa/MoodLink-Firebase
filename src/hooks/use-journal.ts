@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -802,22 +801,41 @@ export function useJournal() {
         const commentsRef = collection(db, 'journals', entryId, 'comments');
         const entryRef = doc(db, 'journals', entryId);
         
-        await addDoc(commentsRef, commentData);
+        const newCommentRef = await addDoc(commentsRef, commentData);
         await updateDoc(entryRef, { commentCount: increment(1) });
+        
+        const entryDoc = await getDoc(entryRef);
+        const entryData = entryDoc.data();
 
-
-        if (authorId !== entryOwnerId && !isAnonymous && currentUser) {
+        // Notify post owner
+        if (authorId !== entryOwnerId && !isAnonymous && currentUser && entryData) {
            await addPoints(entryOwnerId, 2);
-            const entryDoc = await getDoc(entryRef);
-            if(entryDoc.exists()) {
-                await createNotification({
-                    userId: entryOwnerId,
-                    actorId: currentUser.id,
-                    actorName: currentUser.displayName,
-                    type: 'comment',
-                    journalId: entryId,
-                    journalContent: entryDoc.data().content,
-                });
+            await createNotification({
+                userId: entryOwnerId,
+                actorId: currentUser.id,
+                actorName: currentUser.displayName,
+                type: 'comment',
+                journalId: entryId,
+                journalContent: entryData.content,
+            });
+        }
+
+        // Notify parent comment author if it's a reply
+        if (parentId && !isAnonymous && currentUser && entryData) {
+            const parentCommentRef = doc(db, 'journals', entryId, 'comments', parentId);
+            const parentCommentDoc = await getDoc(parentCommentRef);
+            if (parentCommentDoc.exists()) {
+                const parentCommentData = parentCommentDoc.data();
+                if (parentCommentData.authorId !== authorId && parentCommentData.authorId !== entryOwnerId) {
+                    await createNotification({
+                        userId: parentCommentData.authorId,
+                        actorId: currentUser.id,
+                        actorName: currentUser.displayName,
+                        type: 'reply',
+                        journalId: entryId,
+                        journalContent: entryData.content,
+                    });
+                }
             }
         }
         
@@ -1087,3 +1105,5 @@ setIsLoading(false);
 
     return { conversations, isLoading };
 }
+
+    
