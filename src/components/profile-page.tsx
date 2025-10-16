@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -64,9 +64,10 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; }) {
+function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; onAnalyze: () => Promise<void>; }) {
   const { toast } = useToast();
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -111,6 +112,12 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
     }
   }
 
+  const handleAnalysisClick = async () => {
+      setIsAnalyzing(true);
+      await onAnalyze();
+      setIsAnalyzing(false);
+  }
+
   const handleResetData = () => {
     localStorage.clear();
     toast({
@@ -124,6 +131,25 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
 
   const pointsToNextLevel = currentUser ? POINTS_PER_LEVEL - (currentUser.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
   const progressToNextLevel = currentUser ? (currentUser.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100 : 0;
+  
+  const getBadgeIcon = (badge: string) => {
+    switch (badge) {
+        case 'pioneer': return '🚀';
+        case 'dream_builder': return '☁️';
+        case 'echo_thinker': return '🤔';
+        default: return '🎖️';
+    }
+};
+
+const getBadgeDescription = (badge: string) => {
+    switch (badge) {
+        case 'pioneer': return 'Pionir - Salah satu dari 10 pengguna pertama.';
+        case 'dream_builder': return 'Pembangun Mimpi - Sering menulis hal positif dan ide baru.';
+        case 'echo_thinker': return 'Pemikir Gema - Sering membalas dengan wawasan keren.';
+        default: return 'Lencana Spesial';
+    }
+}
+
 
   return (
      <Card>
@@ -160,6 +186,18 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
           <div className="pt-20 p-6 flex flex-col items-center">
              <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
              <CardDescription className="mt-1 text-center">{currentUser?.bio || 'No bio yet.'}</CardDescription>
+             
+              {currentUser && currentUser.badges && currentUser.badges.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 mt-4">
+                    {currentUser.badges.map(badge => (
+                         <div key={badge} className="flex items-center gap-1.5 bg-accent text-accent-foreground rounded-full px-3 py-1 text-xs font-medium">
+                            <span>{getBadgeIcon(badge)}</span>
+                            <span>{getBadgeDescription(badge).split(' - ')[0]}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
              <div className="flex justify-center gap-6 mt-4 w-full">
                 <div>
                     <p className="text-lg font-bold">{currentUser?.followers.length || 0}</p>
@@ -238,6 +276,17 @@ function ProfileForm({ currentUser, onUpdate, onSignOut }: { currentUser: User |
             </form>
           </Form>
         </CardContent>
+
+         <Separator className="my-4" />
+        <CardContent>
+            <h3 className="text-lg font-semibold mb-2">Analisis AI</h3>
+            <p className="text-sm text-muted-foreground mb-4">Minta AI untuk menganalisis aktivitas Anda dan memberikan lencana pencapaian unik berdasarkan kontribusi Anda.</p>
+             <Button onClick={handleAnalysisClick} disabled={isAnalyzing}>
+                {isAnalyzing ? <LoaderCircle className="animate-spin mr-2" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Analisis Esensi Saya
+            </Button>
+        </CardContent>
+
         <CardFooter className="flex-col sm:flex-row gap-2 justify-end bg-muted/50 p-4 border-t">
             <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -437,7 +486,7 @@ function GuestProfileView() {
 }
 
 export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; }) {
-  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser } = useJournal();
+  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges } = useJournal();
   const { toast } = useToast();
 
   const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
@@ -455,6 +504,17 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSe
         await updateDoc(userRef, updateData);
     }
   }
+  
+  const handleAnalyze = async () => {
+    if (!currentUser) return;
+    const result = await analyzeUserForBadges();
+    if(result.badgeAwarded) {
+        toast({ title: "Pencapaian Baru!", description: `Anda mendapatkan lencana: ${result.badgeName}`});
+    } else {
+        toast({ title: "Analisis Selesai", description: "Teruslah berkontribusi! Belum ada lencana baru yang sesuai saat ini."});
+    }
+  }
+
 
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
@@ -483,7 +543,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection }: { onSe
             {isAnonymous ? (
                 <GuestProfileView />
             ) : (
-                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} />
+                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} onAnalyze={handleAnalyze} />
             )}
           </TabsContent>
           <TabsContent value="collections" className="mt-6">

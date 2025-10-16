@@ -27,19 +27,16 @@ import {
   Timestamp,
   setDoc,
   increment,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  EmailAuthProvider,
+  limit,
   firebaseSendPasswordResetEmail,
-  confirmPasswordReset,
-  verifyPasswordResetCode,
-  enableIndexedDbPersistence,
 } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously, signOut, linkWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signOut, linkWithCredential, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
 import { Hashtag } from './use-hashtags';
+import { analyzeUserEssence, AnalyzeUserEssenceInput } from '@/ai/flows/analyze-user-essence';
+
 
 export type Visibility = 'public' | 'private' | 'restricted';
 
@@ -65,6 +62,7 @@ export type User = {
   points: number;
   level: number;
   bannerUrl?: string;
+  badges: string[];
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule';
@@ -170,6 +168,7 @@ export function useJournal() {
 
   // --- AUTHENTICATION ---
   useEffect(() => {
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentAuthUser(user);
@@ -179,9 +178,12 @@ export function useJournal() {
         onSnapshot(userRef, async (docSnap) => {
             if (docSnap.exists()) {
                 setCurrentUser({ id: docSnap.id, ...docSnap.data() } as User);
+                 if (!isLoaded) {
+                  setIsLoaded(true);
+                }
             } else if (!user.isAnonymous) {
                 const usersCollectionRef = collection(db, 'users');
-                const usersSnapshot = await getDocs(usersCollectionRef);
+                const usersSnapshot = await getDocs(query(usersCollectionRef, limit(10)));
                 const userCount = usersSnapshot.size;
 
                 const newUser: Omit<User, 'id'> = {
@@ -193,11 +195,13 @@ export function useJournal() {
                     points: 0,
                     level: 1,
                     bannerUrl: user.photoURL || '',
+                    badges: userCount < 10 ? ['pioneer'] : [],
                 };
                 await setDoc(userRef, newUser);
-            }
-            if (!isLoaded) {
-              setIsLoaded(true);
+            } else {
+                 if (!isLoaded) {
+                  setIsLoaded(true);
+                }
             }
         });
       } else {
@@ -301,21 +305,28 @@ export function useJournal() {
     });
 
     // Fetch collections for the current user
-    const collectionsQuery = query(collection(db, 'journal-collections'), where('ownerId', '==', currentAuthUser.uid));
-    const collectionsUnsub = onSnapshot(collectionsQuery, (snapshot) => {
-        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as JournalCollection[];
-        setCollections(collectionsData);
-    }, (error) => {
-        console.error("Error fetching collections:", error);
-    });
+    if (!isAnonymous && currentAuthUser) {
+        const collectionsQuery = query(collection(db, 'journal-collections'), where('ownerId', '==', currentAuthUser.uid));
+        const collectionsUnsub = onSnapshot(collectionsQuery, (snapshot) => {
+            const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as JournalCollection[];
+            setCollections(collectionsData);
+        }, (error) => {
+            console.error("Error fetching collections:", error);
+        });
+
+        return () => {
+            usersUnsub();
+            entriesUnsub();
+            collectionsUnsub();
+        };
+    }
 
 
     return () => {
         usersUnsub();
         entriesUnsub();
-        collectionsUnsub();
     };
-  }, [currentAuthUser]);
+  }, [currentAuthUser, isAnonymous]);
   
   // --- POINTS & LEVEL ---
   const addPoints = useCallback(async (userId: string, amount: number) => {
@@ -924,8 +935,62 @@ export function useJournal() {
 
     }, [currentAuthUser, currentUser, users, toast]);
 
+    const analyzeUserForBadges = useCallback(async () => {
+        if (!currentUser) {
+            toast({ title: 'Gagal', description: 'Pengguna tidak ditemukan.', variant: 'destructive'});
+            return { badgeAwarded: false, badgeName: null };
+        }
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection };
+        // 1. Ambil 5 postingan terakhir dan 10 komentar terakhir pengguna
+        const userPostsQuery = query(
+            collection(db, 'journals'), 
+            where('ownerId', '==', currentUser.id),
+            orderBy('createdAt', 'desc'),
+            limit(5)
+        );
+        const userCommentsQuery = query(
+            collection(db, 'comments'), // Asumsi koleksi komentar terpisah, perlu disesuaikan
+            where('authorId', '==', currentUser.id),
+            orderBy('createdAt', 'desc'),
+            limit(10)
+        );
+        
+        const [postsSnapshot, commentsSnapshot] = await Promise.all([
+            getDocs(userPostsQuery),
+            // getDocs(userCommentsQuery) // Perlu disesuaikan jika struktur komentar berbeda
+        ]);
+
+        const posts = postsSnapshot.docs.map(d => d.data().content as string);
+        const comments = [] as string[]; // commentsSnapshot.docs.map(d => d.data().content as string);
+
+        const analysisInput: AnalyzeUserEssenceInput = {
+            userId: currentUser.id,
+            recentPosts: posts,
+            recentComments: comments,
+            existingBadges: currentUser.badges || [],
+        };
+        
+        try {
+            const result = await analyzeUserEssence(analysisInput);
+            
+            if (result.badgeAwarded && result.badgeId) {
+                const userRef = doc(db, 'users', currentUser.id);
+                await updateDoc(userRef, {
+                    badges: arrayUnion(result.badgeId)
+                });
+                return { badgeAwarded: true, badgeName: result.badgeName };
+            }
+             return { badgeAwarded: false, badgeName: null };
+        } catch (error) {
+            console.error("AI analysis failed:", error);
+            toast({ title: 'Analisis Gagal', description: 'Tidak dapat terhubung dengan layanan AI.', variant: 'destructive'});
+            return { badgeAwarded: false, badgeName: null };
+        }
+
+    }, [currentUser, toast]);
+
+
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges };
 }
 
 
