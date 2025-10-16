@@ -1,3 +1,4 @@
+
 'use client';
 import { motion } from 'framer-motion';
 import { Heart, Link, Bookmark, MessageSquare, Flame } from 'lucide-react';
@@ -21,7 +22,7 @@ import { useMemo } from 'react';
 type SupportBarProps = {
   entry: JournalEntry;
   onCommentClick?: () => void;
-  onBoostClick?: () => void;
+  onBoostClick?: (e: React.MouseEvent) => void;
 };
 
 export function SupportBar({ entry, onCommentClick, onBoostClick }: SupportBarProps) {
@@ -67,11 +68,6 @@ export function SupportBar({ entry, onCommentClick, onBoostClick }: SupportBarPr
     }
   }
 
-  const handleBoost = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if(onBoostClick) onBoostClick();
-  }
-
   return (
     <div className="w-full flex items-center justify-around text-muted-foreground">
       <motion.div whileTap={{ scale: 0.9 }}>
@@ -93,7 +89,7 @@ export function SupportBar({ entry, onCommentClick, onBoostClick }: SupportBarPr
               variant="ghost"
               size="sm"
               className="flex items-center gap-1.5"
-              onClick={handleBoost}
+              onClick={onBoostClick}
             >
               <Flame className="h-4 w-4 text-orange-500" />
             </Button>
