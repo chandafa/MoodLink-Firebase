@@ -1,19 +1,23 @@
-
 'use client';
 import { Home, MessageSquare, User, Settings, Bell, Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/language-context';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useJournal } from '@/hooks/use-journal';
+
 
 export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) {
   const { t } = useLanguage();
+  const { currentUser } = useJournal();
+  const { unreadCount } = useNotifications(currentUser?.id || null);
 
   const navItems = [
-    { name: 'Home', label: 'Beranda', icon: Home },
-    { name: 'Explore', label: 'Jelajahi', icon: Compass },
-    { name: 'Pesan', label: 'Pesan', icon: MessageSquare },
-    { name: 'Notifikasi', label: 'Notifikasi', icon: Bell },
-    { name: 'Profile', label: 'Profil', icon: User },
+    { name: 'Home', label: 'Beranda', icon: Home, badgeCount: 0 },
+    { name: 'Explore', label: 'Jelajahi', icon: Compass, badgeCount: 0 },
+    { name: 'Pesan', label: 'Pesan', icon: MessageSquare, badgeCount: 0 },
+    { name: 'Notifikasi', label: 'Notifikasi', icon: Bell, badgeCount: unreadCount },
+    { name: 'Profile', label: 'Profil', icon: User, badgeCount: 0 },
   ];
 
   return (
@@ -41,6 +45,12 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
             <item.icon className="h-6 w-6 md:h-5 md:w-5" />
             <span className="text-xs mt-1 md:text-sm md:mt-0">{item.label}</span>
             
+            {item.badgeCount > 0 && (
+              <div className="absolute top-1 right-1/2 translate-x-4 md:static md:translate-x-0 md:ml-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+                {item.badgeCount}
+              </div>
+            )}
+
             {activeTab === item.name && (
               <motion.div
                 layoutId="active-mobile-nav-indicator"
