@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useJournal } from '@/hooks/use-journal';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Progress } from './ui/progress';
-import { CheckCircle2, Award, Target, LoaderCircle } from 'lucide-react';
+import { CheckCircle2, Award, Target, LoaderCircle, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,6 +53,7 @@ export function DailyQuest() {
     return null;
   }
 
+  const isVerifiedOwner = currentUser.displayName === 'cacann_aselii';
   const pointsToNextLevel = POINTS_PER_LEVEL - (currentUser.points % POINTS_PER_LEVEL);
   const progressToNextLevel = (currentUser.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100;
   
@@ -76,9 +78,14 @@ export function DailyQuest() {
                     </Avatar>
                     <div>
                         <h3 className="font-bold text-lg">{currentUser.displayName}</h3>
-                        <p className="text-sm text-muted-foreground">Teknik Informatika</p>
-                        <p className="text-sm text-muted-foreground">233040037</p>
-                        <div className="mt-1 inline-flex items-center rounded-full border border-yellow-500 bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-600">
+                        <div className={cn(
+                            "mt-1 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                            isVerifiedOwner ? "border-transparent bg-primary text-primary-foreground" : "border-transparent bg-secondary text-secondary-foreground"
+                        )}>
+                          {isVerifiedOwner ? <ShieldCheck className="mr-2 h-4 w-4"/> : <UserIcon className="mr-2 h-4 w-4"/>}
+                          {isVerifiedOwner ? 'Admin' : 'Member'}
+                        </div>
+                        <div className="mt-2 inline-flex items-center rounded-full border border-yellow-500 bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-600">
                             {currentUser.points} poin
                         </div>
                     </div>
