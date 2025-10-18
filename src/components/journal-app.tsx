@@ -520,6 +520,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   const [followers, setFollowers] = useState<User[]>([]);
   const [cardColor, setCardColor] = useState<string | undefined>(undefined);
   const [fontFamily, setFontFamily] = useState<string>('font-body');
+  const [isEditingMode, setIsEditingMode] = useState(false);
   
   const activeEntry = useMemo(() => {
     return entries.find(entry => entry.id === selectedEntryId) || null;
@@ -547,6 +548,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
           setFollowers([]);
       }
   }, [currentUser, visibility, getFollowersData]);
+  
+  useEffect(() => {
+    if (activeEntry) {
+      setIsEditingMode(false); // Default to view mode when opening an existing entry
+    } else {
+      setIsEditingMode(true); // Default to edit mode for a new entry
+    }
+  }, [activeEntry]);
+
 
   useEffect(() => {
     if (activeEntry) {
@@ -662,11 +672,13 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     if (activeEntry) {
       if(isOwner) {
          await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex);
+         setIsEditingMode(false);
       }
     } else {
        const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
+        setIsEditingMode(false);
       }
     }
   };
@@ -715,6 +727,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       onViewProfile(id);
     }
   };
+
+  const handleToggleEdit = () => {
+    if (isOwner) {
+      setIsEditingMode(!isEditingMode);
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -775,8 +793,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 {isOwner && (
-                                   <DropdownMenuItem onClick={() => {}}>
-                                      <Edit className="mr-2"/> Edit
+                                   <DropdownMenuItem onClick={handleToggleEdit}>
+                                      <Edit className="mr-2"/> {isEditingMode ? 'Batal Edit' : 'Edit'}
                                    </DropdownMenuItem>
                                 )}
                                 {!isOwner && entryOwner && currentUser && (
@@ -811,7 +829,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       </div>
 
                       <div className="mt-4">
-                        {isOwner ? (
+                        {isEditingMode ? (
                             <Textarea
                                 placeholder={
                                     postType === 'journal' ? "Mulai menulis jurnal... Gunakan # untuk topik." :
@@ -838,7 +856,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                           <audio controls src={musicUrl} className="w-full">
                             Browser Anda tidak mendukung elemen audio.
                           </audio>
-                           {isOwner && (
+                           {isEditingMode && (
                                <Button variant="link" size="sm" className="text-destructive" onClick={removeMusic}>Hapus musik</Button>
                            )}
                         </div>
@@ -849,7 +867,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             {imagePreviews.map((img, index) => (
                               <div key={index} className="relative group rounded-lg overflow-hidden">
                                   <Image src={img} alt={`Preview ${index + 1}`} width={400} height={400} className="object-cover aspect-video cursor-pointer" onClick={() => onViewImage(img)} />
-                                  {isOwner && (
+                                  {isEditingMode && (
                                     <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); removeImage(index);}}>
                                         <XCircle className="h-4 w-4" />
                                     </Button>
@@ -859,7 +877,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                         </div>
                       )}
                       
-                       {isOwner && postType !== 'capsule' && (
+                       {isEditingMode && postType !== 'capsule' && (
                           <div className="mt-4 flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={images.length >= 3}>
                                 <ImageIcon className="mr-2 h-4 w-4" />
@@ -886,14 +904,14 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                             />
                           </div>
                         )}
-                        {musicFile && isOwner && (
+                        {musicFile && isEditingMode && (
                              <div className="text-sm mt-2 text-muted-foreground">File musik dipilih: {musicFile.name}</div>
                         )}
 
 
                         { activeEntry && (activeEntry.postType === 'voting' || activeEntry.postType === 'quiz') && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
                         
-                         {isOwner && (
+                         {isEditingMode && (
                             <div className="space-y-6 mt-6 pt-6 border-t border-border/20">
                               <h3 className="text-sm font-medium text-card-foreground">Pengaturan Postingan</h3>
                                { !activeEntry && (
@@ -1047,5 +1065,3 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     </div>
   );
 }
-
-    
