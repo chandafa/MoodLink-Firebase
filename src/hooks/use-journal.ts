@@ -66,7 +66,7 @@ export type User = {
   notificationsEnabled?: boolean;
 };
 
-export type PostType = 'journal' | 'voting' | 'capsule';
+export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz';
 
 export type VoteOption = {
   text: string;
@@ -88,12 +88,13 @@ export type JournalEntry = {
   images: string[]; // URLs from Firebase Storage or cPanel hosting
   musicUrl?: string | null; // URL for the music file
   options: VoteOption[];
-  votedBy: string[];
+  votedBy: string[]; // Stores user IDs
   visibility: Visibility;
   allowedUserIds: string[];
   hashtags: string[];
   cardColor?: string; // e.g. 'rose', 'sky'
   fontFamily?: string; // e.g. 'font-body'
+  correctAnswerIndex?: number; // For quiz type
 };
 
 export type JournalCollection = {
@@ -424,7 +425,18 @@ export function useJournal() {
   }, []);
 
   // --- JOURNAL ACTIONS ---
-  const addEntry = useCallback(async (content: string, images: (File | string)[], musicFile: File | null, postType: PostType, options: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string) => {
+  const addEntry = useCallback(async (
+    content: string, 
+    images: (File | string)[], 
+    musicFile: File | null, 
+    postType: PostType, 
+    options: string[], 
+    visibility: Visibility, 
+    allowedUserIds: string[], 
+    cardColor?: string, 
+    fontFamily?: string,
+    correctAnswerIndex?: number
+  ) => {
     if (!currentAuthUser) {
         toast({ title: 'Gagal memuat status autentikasi', variant: 'destructive'});
         return null;
@@ -438,9 +450,14 @@ export function useJournal() {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
         return null;
     }
-     if (postType === 'voting' && options.some(opt => !opt.trim())) {
-      toast({ title: 'Opsi Voting Kosong', description: 'Opsi voting tidak boleh kosong.', variant: 'destructive' });
+     if ((postType === 'voting' || postType === 'quiz') && options.some(opt => !opt.trim())) {
+      toast({ title: 'Opsi Voting/Kuis Kosong', description: 'Opsi tidak boleh kosong.', variant: 'destructive' });
       return null;
+    }
+
+    if (postType === 'quiz' && (correctAnswerIndex === undefined || correctAnswerIndex < 0)) {
+        toast({ title: 'Jawaban Kuis Belum Dipilih', description: 'Pilih jawaban yang benar untuk kuis.', variant: 'destructive'});
+        return null;
     }
 
     try {
@@ -475,7 +492,7 @@ export function useJournal() {
         likedBy: [],
         bookmarkedBy: [],
         commentCount: 0,
-        options: postType === 'voting' ? options.map(opt => ({ text: opt, votes: 0 })) : [],
+        options: (postType === 'voting' || postType === 'quiz') ? options.map(opt => ({ text: opt, votes: 0 })) : [],
         votedBy: [],
         visibility,
         allowedUserIds: visibility === 'restricted' ? allowedUserIds : [],
@@ -483,6 +500,10 @@ export function useJournal() {
         cardColor: cardColor || null,
         fontFamily: fontFamily || 'font-body',
       };
+      
+      if (postType === 'quiz') {
+          newEntryData.correctAnswerIndex = correctAnswerIndex;
+      }
 
       if (postType === 'capsule') {
           const openDate = addDays(new Date(), 30);
@@ -507,7 +528,7 @@ export function useJournal() {
     }
   }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string, correctAnswerIndex?: number) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -557,11 +578,15 @@ export function useJournal() {
           fontFamily: fontFamily || 'font-body',
         };
 
-        if (postType === 'voting' && voteOptions.length > 0) {
-          updateData.options = voteOptions.map((optText, index) => ({
-            text: optText,
-            votes: oldEntryData.options[index]?.votes || 0,
-          }));
+        if (postType === 'voting' || postType === 'quiz') {
+            updateData.options = voteOptions.map((optText, index) => ({
+                text: optText,
+                votes: oldEntryData.options[index]?.votes || 0,
+            }));
+        }
+
+        if (postType === 'quiz') {
+            updateData.correctAnswerIndex = correctAnswerIndex;
         }
 
         await updateDoc(entryRef, updateData);
@@ -767,8 +792,9 @@ export function useJournal() {
             const entryDoc = await transaction.get(entryRef);
             if (!entryDoc.exists()) throw "Document does not exist!";
             
-            const data = entryDoc.data();
-            if (data.postType !== 'voting' || data.votedBy.includes(currentAuthUser.uid)) {
+            const data = entryDoc.data() as JournalEntry;
+            // For both voting and quiz, check if user has already participated
+            if (data.votedBy?.includes(currentAuthUser.uid)) {
                 return;
             }
 

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeToggle } from './theme-toggle';
-import { ArrowLeft, ArrowRight, BookText, FilePlus, Search, Hourglass, Vote } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookText, FilePlus, Search, Hourglass, Vote, CheckCircle2 } from 'lucide-react';
 import { JournalEntryCard } from './journal-list-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {

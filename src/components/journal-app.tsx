@@ -29,6 +29,7 @@ import {
   Palette,
   CaseSensitive,
   BadgeCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
@@ -408,14 +409,39 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const hasVoted = entry.votedBy?.includes(currentAuthUserId || '');
+  const [votedOption, setVotedOption] = useState<number | null>(null);
+
+  const userVote = useMemo(() => {
+      const vote = entry.votedBy?.find(v => v.startsWith(`${currentAuthUserId}_`));
+      if (vote) {
+          return parseInt(vote.split('_')[1], 10);
+      }
+      return null;
+  }, [entry.votedBy, currentAuthUserId]);
+
+  useEffect(() => {
+    setVotedOption(userVote);
+  }, [userVote]);
+
+
   const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
-  const handleVote = (index: number) => {
-    if (!hasVoted) {
+  const handleVote = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    if (votedOption === null) {
       onVote(entry.id, index);
+      setVotedOption(index);
     }
   };
+  
+  const getProgressColor = (index: number, entry: JournalEntry) => {
+      if (votedOption === null) return "bg-primary";
+      if (entry.postType === 'quiz') {
+          if (index === entry.correctAnswerIndex) return "bg-green-500";
+          if (index === votedOption) return "bg-destructive";
+      }
+      return "bg-primary";
+  }
 
   return (
     <div className="space-y-3 mt-4">
@@ -423,18 +449,26 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
         const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
         return (
           <div key={index}>
-            <Button
-              variant={hasVoted ? 'secondary' : 'outline'}
-              className="w-full justify-start h-auto"
-              onClick={() => handleVote(index)}
-              disabled={hasVoted}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span>{option.text}</span>
-                {hasVoted && <span className="text-xs font-bold">{Math.round(percentage)}%</span>}
-              </div>
-            </Button>
-            {hasVoted && <Progress value={percentage} className="h-2 mt-1" />}
+            {votedOption !== null ? (
+                <div className="relative">
+                    <Progress value={percentage} className="h-10" progressColor={getProgressColor(index, entry)} />
+                    <div className="absolute inset-0 flex items-center justify-between px-3 text-white font-bold">
+                       <div className="flex items-center gap-2">
+                         {votedOption !== null && entry.postType === 'quiz' && index === entry.correctAnswerIndex && <CheckCircle2 />}
+                         <span>{option.text}</span>
+                       </div>
+                       <span>{Math.round(percentage)}%</span>
+                    </div>
+                </div>
+            ) : (
+                <Button
+                    variant='outline'
+                    className="w-full justify-start h-10"
+                    onClick={(e) => handleVote(e, index)}
+                >
+                    {option.text}
+                </Button>
+            )}
           </div>
         );
       })}
@@ -477,6 +511,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>('journal');
   const [voteOptions, setVoteOptions] = useState<string[]>(['', '']);
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(-1);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const musicInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -525,8 +560,11 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setAllowedUsers(activeEntry.allowedUserIds || []);
       setCardColor(activeEntry.cardColor);
       setFontFamily(activeEntry.fontFamily || 'font-body');
-      if (activeEntry.postType === 'voting') {
+      if (activeEntry.postType === 'voting' || activeEntry.postType === 'quiz') {
         setVoteOptions(activeEntry.options.map(opt => opt.text));
+      }
+       if (activeEntry.postType === 'quiz') {
+        setCorrectAnswerIndex(activeEntry.correctAnswerIndex ?? -1);
       }
     } else {
       setPostType(newPostType);
@@ -536,6 +574,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       setMusicFile(null);
       setMusicUrl(null);
       setVoteOptions(['', '']);
+      setCorrectAnswerIndex(-1);
       setVisibility('public');
       setAllowedUsers([]);
       setCardColor(undefined);
@@ -618,13 +657,14 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   };
 
   const handleSave = async () => {
+    let optionsForEntry = (postType === 'voting' || postType === 'quiz') ? voteOptions.filter(o => o.trim() !== '') : [];
+
     if (activeEntry) {
       if(isOwner) {
-         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, voteOptions, visibility, allowedUsers, cardColor, fontFamily);
+         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex);
       }
     } else {
-       let optionsForEntry = postType === 'voting' ? voteOptions.filter(o => o.trim() !== '') : [];
-       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily);
+       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
       }
@@ -776,6 +816,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                 placeholder={
                                     postType === 'journal' ? "Mulai menulis jurnal... Gunakan # untuk topik." :
                                     postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
+                                    postType === 'quiz' ? "Tulis pertanyaan kuis... Gunakan # untuk topik." :
                                     "Tulis pesan untuk masa depan... Gunakan # untuk topik."
                                 }
                                 className={cn(
@@ -850,7 +891,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                         )}
 
 
-                        { activeEntry?.postType === 'voting' && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
+                        { activeEntry && (activeEntry.postType === 'voting' || activeEntry.postType === 'quiz') && <VotingSection entry={activeEntry} onVote={voteOnEntry} /> }
                         
                          {isOwner && (
                             <div className="space-y-6 mt-6 pt-6 border-t border-border/20">
@@ -863,16 +904,25 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                  <Button size="sm" variant={postType === 'voting' ? 'default' : 'outline'} onClick={() => setPostType('voting')}>
                                    <Vote className="mr-2 h-4 w-4" />Voting
                                  </Button>
+                                 <Button size="sm" variant={postType === 'quiz' ? 'default' : 'outline'} onClick={() => setPostType('quiz')}>
+                                   <CheckCircle2 className="mr-2 h-4 w-4" />Kuis
+                                 </Button>
                                  <Button size="sm" variant={postType === 'capsule' ? 'default' : 'outline'} onClick={() => setPostType('capsule')}>
                                    <Hourglass className="mr-2 h-4 w-4" />Kapsul
                                  </Button>
                                </div>
                              )}
-                               {postType === 'voting' && (
+                               {(postType === 'voting' || postType === 'quiz') && (
                                     <div className="space-y-2">
-                                        <h3 className="text-sm font-medium">Opsi Voting</h3>
+                                        <h3 className="text-sm font-medium">
+                                          {postType === 'voting' ? 'Opsi Voting' : 'Opsi Kuis'}
+                                        </h3>
+                                        <RadioGroup value={postType === 'quiz' ? String(correctAnswerIndex) : undefined} onValueChange={(val) => setCorrectAnswerIndex(Number(val))}>
                                         {voteOptions.map((option, index) => (
                                            <div key={index} className="flex items-center gap-2">
+                                               {postType === 'quiz' && (
+                                                    <RadioGroupItem value={String(index)} id={`option-${index}`} />
+                                               )}
                                                <Input 
                                                    value={option}
                                                    onChange={(e) => handleOptionChange(index, e.target.value)}
@@ -883,6 +933,8 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                                </Button>
                                            </div>
                                         ))}
+                                        </RadioGroup>
+                                        {postType === 'quiz' && <p className="text-xs text-muted-foreground">Pilih salah satu opsi sebagai jawaban yang benar.</p>}
                                         <Button variant="outline" size="sm" onClick={addVoteOption}>
                                            <PlusCircle className="mr-2 h-4 w-4" /> Tambah Opsi
                                         </Button>

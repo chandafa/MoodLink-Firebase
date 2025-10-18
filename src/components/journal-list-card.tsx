@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake, BadgeCheck } from 'lucide-react';
+import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake, BadgeCheck, CheckCircle2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -43,9 +43,17 @@ const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => {
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const hasVoted = useMemo(() => 
-    entry.votedBy?.includes(currentAuthUserId || '')
-  , [entry.votedBy, currentAuthUserId]);
+  
+  const userVoteData = useMemo(() => {
+    const voteString = entry.votedBy?.find(v => v.startsWith(`${currentAuthUserId}_`));
+    if (voteString) {
+      const parts = voteString.split('_');
+      return { hasVoted: true, votedIndex: parseInt(parts[1], 10) };
+    }
+    return { hasVoted: false, votedIndex: null };
+  }, [entry.votedBy, currentAuthUserId]);
+
+  const { hasVoted, votedIndex } = userVoteData;
   
   const totalVotes = useMemo(() => 
     entry.options.reduce((sum, opt) => sum + opt.votes, 0)
@@ -58,37 +66,44 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
     }
   };
   
-  if (hasVoted) {
-      return (
-          <div className="space-y-2 mt-4">
-              {entry.options.map((option, index) => {
-                  const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
-                  return (
-                      <div key={index}>
-                           <div className="flex items-center justify-between text-sm mb-1">
-                              <span>{option.text}</span>
-                              <span className="font-bold">{Math.round(percentage)}%</span>
-                           </div>
-                           <Progress value={percentage} className="h-2" />
-                      </div>
-                  )
-              })}
-          </div>
-      )
+  const getProgressColor = (index: number) => {
+      if (!hasVoted) return "bg-primary";
+      if (entry.postType === 'quiz') {
+          if (index === entry.correctAnswerIndex) return "bg-green-500";
+          if (index === votedIndex) return "bg-destructive";
+      }
+      return "bg-primary";
   }
 
   return (
-    <div className="flex flex-col space-y-2 mt-4">
-      {entry.options.map((option, index) => (
-        <Button
-          key={index}
-          variant="outline"
-          className="w-full justify-center"
-          onClick={(e) => handleVote(e, index)}
-        >
-          {option.text}
-        </Button>
-      ))}
+    <div className="space-y-2 mt-4">
+      {entry.options.map((option, index) => {
+        const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
+        return (
+          <div key={index}>
+            {hasVoted ? (
+                <div className="relative">
+                    <Progress value={percentage} className="h-10" progressColor={getProgressColor(index)} />
+                     <div className="absolute inset-0 flex items-center justify-between px-3 text-white font-bold text-sm">
+                       <div className="flex items-center gap-2">
+                         {entry.postType === 'quiz' && index === entry.correctAnswerIndex && <CheckCircle2 />}
+                         <span>{option.text}</span>
+                       </div>
+                       <span>{Math.round(percentage)}%</span>
+                    </div>
+                </div>
+            ) : (
+                <Button
+                  variant="outline"
+                  className="w-full justify-center"
+                  onClick={(e) => handleVote(e, index)}
+                >
+                  {option.text}
+                </Button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -234,12 +249,12 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                 <div className={cn("mt-3 text-card-foreground", entry.fontFamily)}>
                     {entry.postType === 'journal' ? (
                       <HashtagRenderer text={entry.content} onViewHashtag={onViewHashtag} isExcerpt />
-                    ) : (
+                    ) : (entry.postType === 'voting' || entry.postType === 'quiz') ? (
                       <>
                         <p className="font-semibold text-sm line-clamp-2">{entry.content.split('\n')[0]}</p>
                         <VotingSection entry={entry} onVote={voteOnEntry} />
                       </>
-                    )}
+                    ) : null}
                 </div>
 
                 {entry.musicUrl && (
