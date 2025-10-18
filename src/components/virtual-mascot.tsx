@@ -8,26 +8,23 @@ import { Button } from './ui/button';
 import { Icons } from './icons';
 import { User } from '@/hooks/use-journal';
 
-const greetings = [
-    "Gimana tidurmu semalam? 😴",
-    "Ada kegiatan seru apa hari ini?",
-    "Jangan lupa sarapan ya, biar semangat! 🍳",
-    "Semoga harimu menyenangkan!",
-    "Sudah siap untuk menulis jurnal hari ini?",
-];
-
-const getTimeOfDay = () => {
+const getDynamicGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 5) return 'dini hari';
-    if (hour < 12) return 'pagi';
-    if (hour < 15) return 'siang';
-    if (hour < 19) return 'sore';
-    return 'malam';
+    if (hour >= 5 && hour < 12) {
+        return { timeOfDay: 'pagi', message: 'Selamat pagi 🌞, semoga hari ini cerah kayak kamu.' };
+    }
+    if (hour >= 12 && hour < 15) {
+        return { timeOfDay: 'siang', message: 'Sudah makan siang belum? Jangan terlalu sibuk ya 🍱.' };
+    }
+    if (hour >= 15 && hour < 18) {
+        return { timeOfDay: 'sore', message: 'Semangat sore! Sebentar lagi waktunya santai.' };
+    }
+    return { timeOfDay: 'malam', message: 'Waktunya istirahat, recharge dulu ⚡.' };
 };
 
+
 export function VirtualMascot({ user, onClose }: { user: User, onClose: () => void }) {
-    const randomGreeting = useMemo(() => greetings[Math.floor(Math.random() * greetings.length)], []);
-    const timeOfDay = useMemo(() => getTimeOfDay(), []);
+    const { timeOfDay, message } = useMemo(() => getDynamicGreeting(), []);
     
     return (
         <AnimatePresence>
@@ -75,7 +72,7 @@ export function VirtualMascot({ user, onClose }: { user: User, onClose: () => vo
                     </h2>
                     
                     <p className="text-muted-foreground mt-2">
-                        {randomGreeting}
+                        {message}
                     </p>
                     
                     <Button onClick={onClose} className="mt-6 w-full">
