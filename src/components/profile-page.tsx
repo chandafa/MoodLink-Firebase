@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -191,6 +191,12 @@ const getBadgeDescription = (badge: string) => {
              <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
              <CardDescription className="mt-1 text-center">{currentUser?.bio || 'No bio yet.'}</CardDescription>
              
+              {currentUser?.displayName === 'cacann_aselii' && (
+                <div className="mt-4 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground">
+                  <ShieldCheck className="mr-2 h-4 w-4"/> Admin
+                </div>
+              )}
+
               {currentUser && currentUser.badges && currentUser.badges.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-2 mt-4">
                     {currentUser.badges.map(badge => (
