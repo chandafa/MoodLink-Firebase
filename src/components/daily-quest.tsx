@@ -22,10 +22,10 @@ const POINTS_PER_LEVEL = 50;
 
 const dailyQuests = [
     { id: 'login', title: 'Login ke MoodLink', points: 10, completed: true },
-    { id: 'attend', title: 'Menghadiri sesi kelas', points: 10, completed: false },
-    { id: 'study', title: 'Mempelajari materi', points: 10, completed: false },
-    { id: 'task', title: 'Mengumpulkan tugas', points: 0, completed: true },
-    { id: 'quiz', title: 'Mengerjakan kuis', points: 40, completed: false },
+    { id: 'grateful', title: 'Tulis apa yang paling kamu syukuri hari ini', points: 20, completed: false },
+    { id: 'comment', title: 'Komentari 1 jurnal orang lain hari ini', points: 15, completed: false },
+    { id: 'like', title: 'Like 1 jurnal orang lain hari ini', points: 10, completed: false },
+    { id: 'secret', title: 'Tulis jurnal rahasia dan kunci dengan kode', points: 25, completed: false },
 ];
 
 
