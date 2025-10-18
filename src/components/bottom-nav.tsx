@@ -1,3 +1,4 @@
+
 'use client';
 import { Home, MessageSquare, User, Settings, Bell, Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
