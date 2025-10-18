@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon } from 'lucide-react';
+import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, BadgeCheck } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -52,6 +52,9 @@ export default function PublicProfilePage({
     if (!currentUser || !userProfile) return false;
     return currentUser.following.includes(userProfile.id);
   }, [currentUser, userProfile]);
+
+  const isVerifiedOwner = userProfile?.displayName === 'cacann_aselii';
+
 
   const handleFollowToggle = () => {
     if (userProfile) {
@@ -138,7 +141,10 @@ export default function PublicProfilePage({
                  </div>
               </div>
               <div className="pt-20 p-6 flex flex-col items-center">
-                 <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
+                 <div className="flex items-center gap-2">
+                    <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
+                    {isVerifiedOwner && <BadgeCheck className="h-6 w-6 text-primary" />}
+                 </div>
                  <CardDescription className="mt-1 text-center">{userProfile.bio}</CardDescription>
                  <div className="flex justify-center gap-6 mt-4 w-full">
                     <div>
@@ -199,3 +205,5 @@ export default function PublicProfilePage({
     </motion.div>
   );
 }
+
+    

@@ -28,6 +28,7 @@ import {
   Music,
   Palette,
   CaseSensitive,
+  BadgeCheck,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
@@ -201,6 +202,8 @@ function CommentItem({
   const displayContent = isReply && parentAuthorName 
     ? `@${parentAuthorName} ${comment.content}` 
     : comment.content;
+    
+  const isVerifiedOwner = comment.authorName === 'cacann_aselii';
 
   return (
     <div className={cn("flex gap-3", isReply && "ml-5 md:ml-6 mt-3 pt-3 border-l")}>
@@ -210,7 +213,10 @@ function CommentItem({
       <div className="flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
+                <div className="flex items-center gap-1">
+                  <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
+                  {isVerifiedOwner && <BadgeCheck className="h-4 w-4 text-primary" />}
+                </div>
                 <p className="text-xs text-muted-foreground">
                     {comment.createdAt ? `· ${formatDistanceToNow(comment.createdAt.toDate(), { locale: id, addSuffix: true })}` : ''}
                 </p>
@@ -496,6 +502,9 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       return currentUser.following.includes(activeEntry.ownerId);
   }, [currentUser, activeEntry]);
 
+  const isVerifiedOwner = useMemo(() => (isOwner ? currentUser?.displayName : entryOwner?.displayName) === 'cacann_aselii', [isOwner, currentUser, entryOwner]);
+
+
   useEffect(() => {
       if (currentUser && visibility === 'restricted') {
           setFollowers(getFollowersData(currentUser.followers));
@@ -710,9 +719,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                    <div className="flex-1">
                       <div className="flex items-center justify-between text-card-foreground">
                          <div>
-                            <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
-                              {isOwner ? currentUser?.displayName || 'Tamu' : entryOwner?.displayName}
-                            </p>
+                            <div className="flex items-center gap-2">
+                               <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
+                                {isOwner ? currentUser?.displayName || 'Tamu' : entryOwner?.displayName}
+                               </p>
+                               {isVerifiedOwner && <BadgeCheck className="h-5 w-5 text-primary" />}
+                            </div>
                             <p className="text-sm text-muted-foreground">
                                 {activeEntry ? `Dibuat pada ${activeEntry.createdAt?.toDate().toLocaleString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}`: 'Membuat postingan baru'}
                             </p>
@@ -983,3 +995,5 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     </div>
   );
 }
+
+    

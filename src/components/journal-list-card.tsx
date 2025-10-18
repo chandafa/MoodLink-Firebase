@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake } from 'lucide-react';
+import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake, BadgeCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -106,6 +106,8 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   const timeAgo = entry.createdAt ? formatDistanceToNow(entry.createdAt.toDate(), { addSuffix: true, locale: id }) : 'baru saja';
   
   const isOwner = entry.ownerId === currentAuthUserId;
+  const isVerifiedOwner = author?.displayName === 'cacann_aselii';
+
 
   const handleReport = () => {
     toast({
@@ -192,7 +194,10 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                             <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
                         </Avatar>
                         <div className="text-card-foreground">
-                            <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
+                              {isVerifiedOwner && <BadgeCheck className="h-4 w-4 text-primary" />}
+                            </div>
                             <span className="text-xs text-muted-foreground">{timeAgo}</span>
                         </div>
                     </div>
@@ -265,3 +270,5 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     </motion.div>
   );
 }
+
+    
