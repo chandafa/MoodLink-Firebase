@@ -93,7 +93,7 @@ export type JournalEntry = {
   allowedUserIds: string[];
   hashtags: string[];
   cardColor?: string; // e.g. 'rose', 'sky'
-  fontFamily?: string; // e.g. 'font-serif'
+  fontFamily?: string; // e.g. 'font-body'
 };
 
 export type JournalCollection = {
@@ -123,6 +123,9 @@ export type Conversation = {
             displayName: string;
             avatar: string;
         }
+    };
+    unreadCounts: {
+        [key: string]: number;
     };
 };
 
@@ -945,27 +948,48 @@ export function useJournal() {
             senderId: currentAuthUser.uid,
             createdAt: serverTimestamp()
         });
-        
-        const conversationData: Conversation = {
-            id: roomId,
-            lastMessage: text,
-            lastMessageTimestamp: serverTimestamp(),
-            participantIds: [currentAuthUser.uid, targetUserId],
-            participantDetails: {
-                [currentAuthUser.uid]: {
-                    displayName: currentUser.displayName,
-                    avatar: currentUser.avatar
-                },
-                [targetUserId]: {
-                    displayName: targetUser.displayName,
-                    avatar: targetUser.avatar,
-                }
-            }
-        };
 
-        await setDoc(chatDocRef, conversationData, { merge: true });
+        // Update conversation metadata including unread count
+        await runTransaction(db, async (transaction) => {
+            const chatDoc = await transaction.get(chatDocRef);
+            let unreadCounts = {};
+            if (chatDoc.exists() && chatDoc.data().unreadCounts) {
+                unreadCounts = { ...chatDoc.data().unreadCounts };
+            }
+            // Increment unread count for the recipient
+            unreadCounts[targetUserId] = (unreadCounts[targetUserId] || 0) + 1;
+            
+            const conversationData: Conversation = {
+                id: roomId,
+                lastMessage: text,
+                lastMessageTimestamp: serverTimestamp(),
+                participantIds: [currentAuthUser.uid, targetUserId],
+                participantDetails: {
+                    [currentAuthUser.uid]: {
+                        displayName: currentUser.displayName,
+                        avatar: currentUser.avatar
+                    },
+                    [targetUserId]: {
+                        displayName: targetUser.displayName,
+                        avatar: targetUser.avatar,
+                    }
+                },
+                unreadCounts: unreadCounts,
+            };
+            transaction.set(chatDocRef, conversationData, { merge: true });
+        });
 
     }, [currentAuthUser, currentUser, users, toast]);
+    
+    const markConversationAsRead = useCallback(async (roomId: string) => {
+        if (!currentAuthUser) return;
+        const chatDocRef = doc(db, 'chats', roomId);
+        const updateData = {
+            [`unreadCounts.${currentAuthUser.uid}`]: 0
+        };
+        await updateDoc(chatDocRef, updateData);
+    }, [currentAuthUser]);
+
 
     const analyzeUserForBadges = useCallback(async () => {
         if (!currentUser) {
@@ -1039,7 +1063,7 @@ export function useJournal() {
     }, [currentAuthUser, toast]);
 
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges, toggleNotifications };
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges, toggleNotifications, markConversationAsRead };
 }
 
 

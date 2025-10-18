@@ -1,23 +1,33 @@
 
 'use client';
+import { useMemo } from 'react';
 import { Home, MessageSquare, User, Settings, Bell, Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/language-context';
 import { useNotifications } from '@/hooks/use-notifications';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournal, useConversations } from '@/hooks/use-journal';
 
 
 export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) {
   const { t } = useLanguage();
   const { currentUser } = useJournal();
-  const { unreadCount } = useNotifications(currentUser?.id || null);
+  const { unreadCount: unreadNotifications } = useNotifications(currentUser?.id || null);
+  const { conversations } = useConversations(currentUser?.id || null);
+
+  const unreadMessages = useMemo(() => {
+    if (!conversations || !currentUser) return 0;
+    return conversations.reduce((acc, convo) => {
+        return acc + (convo.unreadCounts?.[currentUser.id] || 0);
+    }, 0);
+  }, [conversations, currentUser]);
+
 
   const navItems = [
     { name: 'Home', label: 'Beranda', icon: Home, badgeCount: 0 },
     { name: 'Explore', label: 'Jelajahi', icon: Compass, badgeCount: 0 },
-    { name: 'Pesan', label: 'Pesan', icon: MessageSquare, badgeCount: 0 },
-    { name: 'Notifikasi', label: 'Notifikasi', icon: Bell, badgeCount: unreadCount },
+    { name: 'Pesan', label: 'Pesan', icon: MessageSquare, badgeCount: unreadMessages },
+    { name: 'Notifikasi', label: 'Notifikasi', icon: Bell, badgeCount: unreadNotifications },
     { name: 'Profile', label: 'Profil', icon: User, badgeCount: 0 },
   ];
 

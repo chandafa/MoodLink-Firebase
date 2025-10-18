@@ -20,11 +20,18 @@ type PrivateChatPageProps = {
 
 export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageProps) {
   const [inputValue, setInputValue] = useState('');
-  const { currentUser, currentAuthUserId, getChatRoomId, sendMessage } = useJournal();
+  const { currentUser, currentAuthUserId, getChatRoomId, sendMessage, markConversationAsRead } = useJournal();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const roomId = currentAuthUserId ? getChatRoomId(currentAuthUserId, targetUser.id) : '';
   const { messages, isLoading } = useChatMessages(roomId);
+
+  useEffect(() => {
+    if (roomId) {
+        markConversationAsRead(roomId);
+    }
+  }, [roomId, markConversationAsRead, messages]);
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
