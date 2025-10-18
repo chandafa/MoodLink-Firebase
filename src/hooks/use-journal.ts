@@ -88,7 +88,7 @@ export type JournalEntry = {
   images: string[]; // URLs from Firebase Storage or cPanel hosting
   musicUrl?: string | null; // URL for the music file
   options: VoteOption[];
-  votedBy: string[]; // Stores user IDs
+  votedBy: string[]; // Stores "userId_optionIndex" for quizzes, or just "userId" for polls
   visibility: Visibility;
   allowedUserIds: string[];
   hashtags: string[];
@@ -793,17 +793,20 @@ export function useJournal() {
             if (!entryDoc.exists()) throw "Document does not exist!";
             
             const data = entryDoc.data() as JournalEntry;
-            // For both voting and quiz, check if user has already participated
-            if (data.votedBy?.includes(currentAuthUser.uid)) {
+            const userHasVoted = data.votedBy?.some(vote => vote.startsWith(`${currentAuthUser.uid}_`));
+
+            if (userHasVoted) {
                 return;
             }
 
             const newOptions = [...data.options];
             newOptions[optionIndex].votes += 1;
+            
+            const voteRecord = `${currentAuthUser.uid}_${optionIndex}`;
 
             transaction.update(entryRef, {
                 options: newOptions,
-                votedBy: arrayUnion(currentAuthUser.uid)
+                votedBy: arrayUnion(voteRecord)
             });
         });
         addPoints(currentAuthUser.uid, 1);

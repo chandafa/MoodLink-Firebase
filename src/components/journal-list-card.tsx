@@ -71,6 +71,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
       if (entry.postType === 'quiz') {
           if (index === entry.correctAnswerIndex) return "bg-green-500";
           if (index === votedIndex) return "bg-destructive";
+          return "bg-primary/50"; // Other incorrect answers
       }
       return "bg-primary";
   }

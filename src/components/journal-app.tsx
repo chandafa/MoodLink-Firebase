@@ -409,36 +409,36 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
 
 function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryId: string, optionIndex: number) => void; }) {
   const { currentAuthUserId } = useJournal();
-  const [votedOption, setVotedOption] = useState<number | null>(null);
-
-  const userVote = useMemo(() => {
-      const vote = entry.votedBy?.find(v => v.startsWith(`${currentAuthUserId}_`));
-      if (vote) {
-          return parseInt(vote.split('_')[1], 10);
-      }
-      return null;
+  
+  const userVoteData = useMemo(() => {
+    const voteString = entry.votedBy?.find(v => v.startsWith(`${currentAuthUserId}_`));
+    if (voteString) {
+      const parts = voteString.split('_');
+      return { hasVoted: true, votedIndex: parseInt(parts[1], 10) };
+    }
+    return { hasVoted: false, votedIndex: null };
   }, [entry.votedBy, currentAuthUserId]);
 
-  useEffect(() => {
-    setVotedOption(userVote);
-  }, [userVote]);
+  const { hasVoted, votedIndex } = userVoteData;
+  
+  const totalVotes = useMemo(() => 
+    entry.options.reduce((sum, opt) => sum + opt.votes, 0)
+  , [entry.options]);
 
-
-  const totalVotes = entry.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const handleVote = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
-    if (votedOption === null) {
+    if (!hasVoted) {
       onVote(entry.id, index);
-      setVotedOption(index);
     }
   };
   
-  const getProgressColor = (index: number, entry: JournalEntry) => {
-      if (votedOption === null) return "bg-primary";
+  const getProgressColor = (index: number) => {
+      if (!hasVoted) return "bg-primary";
       if (entry.postType === 'quiz') {
           if (index === entry.correctAnswerIndex) return "bg-green-500";
-          if (index === votedOption) return "bg-destructive";
+          if (index === votedIndex) return "bg-destructive";
+          return "bg-primary/50";
       }
       return "bg-primary";
   }
@@ -449,12 +449,12 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
         const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
         return (
           <div key={index}>
-            {votedOption !== null ? (
+            {hasVoted ? (
                 <div className="relative">
-                    <Progress value={percentage} className="h-10" progressColor={getProgressColor(index, entry)} />
+                    <Progress value={percentage} className="h-10" progressColor={getProgressColor(index)} />
                     <div className="absolute inset-0 flex items-center justify-between px-3 text-white font-bold">
                        <div className="flex items-center gap-2">
-                         {votedOption !== null && entry.postType === 'quiz' && index === entry.correctAnswerIndex && <CheckCircle2 />}
+                         {hasVoted && entry.postType === 'quiz' && index === entry.correctAnswerIndex && <CheckCircle2 />}
                          <span>{option.text}</span>
                        </div>
                        <span>{Math.round(percentage)}%</span>
@@ -472,6 +472,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
           </div>
         );
       })}
+       {hasVoted && <p className="text-xs text-muted-foreground text-center mt-2">Total Suara: {totalVotes}</p>}
     </div>
   );
 }
