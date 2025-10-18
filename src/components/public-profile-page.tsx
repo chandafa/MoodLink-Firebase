@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, BadgeCheck } from 'lucide-react';
+import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, BadgeCheck, ShieldCheck } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -146,6 +146,13 @@ export default function PublicProfilePage({
                     {isVerifiedOwner && <BadgeCheck className="h-6 w-6 text-primary" />}
                  </div>
                  <CardDescription className="mt-1 text-center">{userProfile.bio}</CardDescription>
+                 
+                 {isVerifiedOwner && (
+                    <div className="mt-4 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground">
+                      <ShieldCheck className="mr-2 h-4 w-4"/> Admin
+                    </div>
+                  )}
+
                  <div className="flex justify-center gap-6 mt-4 w-full">
                     <div>
                         <p className="text-lg font-bold">{userProfile.followers.length}</p>
