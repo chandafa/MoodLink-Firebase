@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -32,7 +31,7 @@ import {
 } from '@/lib/firebase';
 import { onAuthStateChanged, signInAnonymously, signOut, linkWithCredential, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
-import { addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { Notification, NotificationType } from './use-notifications';
 import { Hashtag } from './use-hashtags';
 import { analyzeUserEssence, AnalyzeUserEssenceInput } from '@/ai/flows/analyze-user-essence';
@@ -64,6 +63,8 @@ export type User = {
   bannerUrl?: string;
   badges: string[];
   notificationsEnabled?: boolean;
+  questState?: { [key: string]: boolean | 'claimed' };
+  lastQuestReset?: string; // YYYY-MM-DD
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz';
@@ -88,7 +89,7 @@ export type JournalEntry = {
   images: string[]; // URLs from Firebase Storage or cPanel hosting
   musicUrl?: string | null; // URL for the music file
   options: VoteOption[];
-  votedBy: string[]; // Stores "userId_optionIndex" for quizzes, or just "userId" for polls
+  votedBy: string[]; // Stores "userId_optionIndex"
   visibility: Visibility;
   allowedUserIds: string[];
   hashtags: string[];
@@ -180,6 +181,45 @@ export function useJournal() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(true);
 
+  // --- POINTS & LEVEL ---
+  const addPoints = useCallback(async (userId: string, amount: number) => {
+    if (!userId) return;
+    const userRef = doc(db, 'users', userId);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+          console.warn(`User document ${userId} does not exist. Cannot add points.`);
+          return;
+        }
+        const oldPoints = userDoc.data().points || 0;
+        const oldLevel = userDoc.data().level || 1;
+        const newPoints = oldPoints + amount;
+        const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
+        
+        transaction.update(userRef, { points: newPoints, level: newLevel });
+
+        if (newLevel > oldLevel) {
+          setTimeout(() => {
+            toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
+          }, 0);
+        }
+      });
+    } catch (e) {
+      console.error("Transaction failed: ", e);
+    }
+  }, [toast]);
+
+  const resetDailyQuests = useCallback(async (userId: string) => {
+    const userRef = doc(db, 'users', userId);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    await updateDoc(userRef, {
+      lastQuestReset: todayStr,
+      questState: { login: true }, // Auto-complete login quest on reset
+    });
+    console.log(`Quests reset for user ${userId} for date ${todayStr}`);
+  }, []);
+
   // --- AUTHENTICATION ---
   useEffect(() => {
     
@@ -189,10 +229,19 @@ export function useJournal() {
         setIsAnonymous(user.isAnonymous);
 
         const userRef = doc(db, 'users', user.uid);
-        onSnapshot(userRef, async (docSnap) => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+        const unsubUser = onSnapshot(userRef, async (docSnap) => {
             if (docSnap.exists()) {
-                setCurrentUser({ id: docSnap.id, ...docSnap.data() } as User);
-                 if (!isLoaded) {
+                const userData = { id: docSnap.id, ...docSnap.data() } as User;
+                // Check if quests need to be reset
+                if (userData.lastQuestReset !== todayStr) {
+                  await resetDailyQuests(user.uid);
+                } else {
+                  setCurrentUser(userData);
+                }
+
+                if (!isLoaded) {
                   setIsLoaded(true);
                 }
             } else if (!user.isAnonymous) {
@@ -211,6 +260,8 @@ export function useJournal() {
                     bannerUrl: user.photoURL || '',
                     badges: userCount < 10 ? ['pioneer'] : [],
                     notificationsEnabled: true,
+                    lastQuestReset: todayStr,
+                    questState: { login: true },
                 };
                 await setDoc(userRef, newUser);
             } else {
@@ -219,6 +270,7 @@ export function useJournal() {
                 }
             }
         });
+        return () => unsubUser();
       } else {
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
@@ -228,7 +280,7 @@ export function useJournal() {
     });
 
     return () => unsubscribe();
-  }, [toast, isLoaded]);
+  }, [toast, isLoaded, resetDailyQuests]);
   
   const signOutUser = async () => {
     try {
@@ -342,35 +394,36 @@ export function useJournal() {
         entriesUnsub();
     };
   }, [currentAuthUser, isAnonymous]);
-  
-  // --- POINTS & LEVEL ---
-  const addPoints = useCallback(async (userId: string, amount: number) => {
-    if (!userId) return;
-    const userRef = doc(db, 'users', userId);
-    try {
-      await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-          console.warn(`User document ${userId} does not exist. Cannot add points.`);
-          return;
-        }
-        const oldPoints = userDoc.data().points || 0;
-        const oldLevel = userDoc.data().level || 1;
-        const newPoints = oldPoints + amount;
-        const newLevel = Math.floor(newPoints / POINTS_PER_LEVEL) + 1;
-        
-        transaction.update(userRef, { points: newPoints, level: newLevel });
 
-        if (newLevel > oldLevel) {
-          setTimeout(() => {
-            toast({ title: "Level Up!", description: `Selamat, Anda mencapai Level ${newLevel}!`});
-          }, 0);
+    // --- QUEST ACTIONS ---
+    const updateQuestState = useCallback(async (userId: string, questId: string, value: boolean | 'claimed' = true) => {
+        if (!userId || !currentUser) return;
+        
+        // Prevent updating if already claimed or if trying to set to true when already claimed
+        if (currentUser.questState?.[questId] === 'claimed' || (value === true && currentUser.questState?.[questId] === true)) {
+            return;
         }
-      });
-    } catch (e) {
-      console.error("Transaction failed: ", e);
-    }
-  }, [toast]);
+
+        const userRef = doc(db, 'users', userId);
+        try {
+            await updateDoc(userRef, {
+                [`questState.${questId}`]: value
+            });
+        } catch (e) {
+            console.error(`Failed to update quest state for ${questId}:`, e);
+        }
+    }, [currentUser]);
+
+    const claimQuestReward = useCallback(async (questId: string, points: number) => {
+        if (!currentAuthUser || !currentUser) return;
+        if (currentUser.questState?.[questId] !== true) {
+            throw new Error("Quest is not completed or already claimed.");
+        }
+        await addPoints(currentAuthUser.uid, points);
+        await updateQuestState(currentAuthUser.uid, questId, 'claimed');
+    }, [currentAuthUser, currentUser, addPoints, updateQuestState]);
+  
+  
 
   // --- IMAGE UPLOAD TO HOSTING ---
   const uploadImageToHosting = useCallback(async (file: File): Promise<string | null> => {
@@ -517,6 +570,14 @@ export function useJournal() {
       
       if (!isAnonymous) {
         await addPoints(currentAuthUser.uid, 5);
+        // Check for gratitude quest
+        if (/syukur|bersyukur|syukuri/i.test(content)) {
+            await updateQuestState(currentAuthUser.uid, 'grateful');
+        }
+        // Check for secret quest
+        if (visibility === 'private') {
+            await updateQuestState(currentAuthUser.uid, 'secret');
+        }
       }
       
       return { id: docRef.id, ...newEntryData } as JournalEntry;
@@ -526,7 +587,7 @@ export function useJournal() {
         toast({ title: 'Gagal Menyimpan', description: 'Terjadi kesalahan saat menyimpan postingan.', variant: 'destructive' });
         return null;
     }
-  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous]);
+  }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous, updateQuestState]);
 
   const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string, correctAnswerIndex?: number) => {
     if (!currentAuthUser) return;
@@ -701,6 +762,9 @@ export function useJournal() {
         });
 
         if (notificationData && currentUser) {
+            if (!isAnonymous) {
+                await updateQuestState(currentAuthUser.uid, 'like');
+            }
             await addPoints(notificationData.ownerId, 1);
             await createNotification({
                 userId: notificationData.ownerId,
@@ -714,7 +778,7 @@ export function useJournal() {
     } catch (error) {
         console.error("Like transaction failed: ", error);
     }
-  }, [currentAuthUser, currentUser, toast, addPoints]);
+  }, [currentAuthUser, currentUser, toast, addPoints, isAnonymous, updateQuestState]);
 
   const toggleBookmark = useCallback(async (entryId: string) => {
     if (!currentAuthUser) {
@@ -850,9 +914,10 @@ export function useJournal() {
         const entryDoc = await getDoc(entryRef);
         const entryData = entryDoc.data();
 
-        // Notify post owner
+        // Notify post owner and update quest state
         if (authorId !== entryOwnerId && !isAnonymous && currentUser && entryData) {
            await addPoints(entryOwnerId, 2);
+            await updateQuestState(authorId, 'comment');
             await createNotification({
                 userId: entryOwnerId,
                 actorId: currentUser.id,
@@ -883,7 +948,7 @@ export function useJournal() {
         }
         
         toast({ title: 'Komentar ditambahkan' });
-    }, [toast, addPoints, currentAuthUser, currentUser, isAnonymous]);
+    }, [toast, addPoints, currentAuthUser, currentUser, isAnonymous, updateQuestState]);
     
     const toggleCommentLike = useCallback(async (entryId: string, commentId: string) => {
         if (!currentAuthUser) {
@@ -1092,7 +1157,7 @@ export function useJournal() {
     }, [currentAuthUser, toast]);
 
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges, toggleNotifications, markConversationAsRead };
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward };
 }
 
 

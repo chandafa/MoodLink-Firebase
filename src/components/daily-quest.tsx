@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -14,23 +13,40 @@ import { Button } from '@/components/ui/button';
 import { useJournal } from '@/hooks/use-journal';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Progress } from './ui/progress';
-import { CheckCircle2, Award, Target } from 'lucide-react';
+import { CheckCircle2, Award, Target, LoaderCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 
 const POINTS_PER_LEVEL = 50;
 
-const dailyQuests = [
-    { id: 'login', title: 'Login ke MoodLink', points: 10, completed: true },
-    { id: 'grateful', title: 'Tulis apa yang paling kamu syukuri hari ini', points: 20, completed: false },
-    { id: 'comment', title: 'Komentari 1 jurnal orang lain hari ini', points: 15, completed: false },
-    { id: 'like', title: 'Like 1 jurnal orang lain hari ini', points: 10, completed: false },
-    { id: 'secret', title: 'Tulis jurnal rahasia dan kunci dengan kode', points: 25, completed: false },
+const dailyQuestsList = [
+    { id: 'login', title: 'Login ke MoodLink', points: 10 },
+    { id: 'grateful', title: 'Tulis apa yang paling kamu syukuri hari ini', points: 20 },
+    { id: 'comment', title: 'Komentari 1 jurnal orang lain hari ini', points: 15 },
+    { id: 'like', title: 'Like 1 jurnal orang lain hari ini', points: 10 },
+    { id: 'secret', title: 'Tulis jurnal rahasia dan kunci dengan kode', points: 25 },
 ];
 
 
 export function DailyQuest() {
-  const { currentUser } = useJournal();
+  const { currentUser, claimQuestReward } = useJournal();
+  const [claimingQuestId, setClaimingQuestId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleClaim = async (questId: string, points: number) => {
+    if (!currentUser) return;
+    setClaimingQuestId(questId);
+    try {
+        await claimQuestReward(questId, points);
+        toast({ title: 'Misi Selesai!', description: `Anda mendapatkan ${points} poin!` });
+    } catch (error) {
+        toast({ title: 'Gagal Klaim', description: 'Terjadi kesalahan saat mengklaim hadiah.', variant: 'destructive'});
+        console.error(error);
+    } finally {
+        setClaimingQuestId(null);
+    }
+  }
   
   if (!currentUser) {
     return null;
@@ -69,7 +85,7 @@ export function DailyQuest() {
                 </div>
                  <div className="mt-4 w-full">
                     <div className="flex justify-between items-center mb-1">
-                        <p className="text-sm font-semibold">Bronze</p>
+                        <p className="text-sm font-semibold">Level {currentUser.level}</p>
                         <p className="text-xs text-muted-foreground">{pointsToNextLevel} poin lagi naik level!</p>
                     </div>
                     <Progress value={progressToNextLevel} className="h-2" />
@@ -78,25 +94,35 @@ export function DailyQuest() {
 
             {/* Quests Section */}
             <div className="space-y-3">
-                {dailyQuests.map((quest) => (
-                    <div key={quest.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                       <div className="flex items-center gap-3">
-                         {quest.completed ? (
-                            <CheckCircle2 className="h-8 w-8 text-green-500" />
-                         ) : (
-                             <div className="h-8 w-8 rounded-full bg-yellow-400 text-white flex items-center justify-center font-bold text-sm">
-                                {quest.points}
-                             </div>
-                         )}
-                         <p className={cn("font-medium", quest.completed && "text-muted-foreground line-through")}>
-                            {quest.title}
-                         </p>
-                       </div>
-                       <Button variant="outline" disabled={quest.completed || quest.points === 0}>
-                         Klaim
-                       </Button>
-                    </div>
-                ))}
+                {dailyQuestsList.map((quest) => {
+                    const isCompleted = currentUser.questState?.[quest.id] === true;
+                    const isClaimed = currentUser.questState?.[quest.id] === 'claimed';
+                    const isClaiming = claimingQuestId === quest.id;
+
+                    return (
+                        <div key={quest.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                           <div className="flex items-center gap-3">
+                             {isClaimed ? (
+                                <CheckCircle2 className="h-8 w-8 text-green-500" />
+                             ) : (
+                                 <div className={cn("h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm", isCompleted ? "bg-green-400 text-white" : "bg-yellow-400 text-white")}>
+                                    {isCompleted ? <CheckCircle2 /> : quest.points}
+                                 </div>
+                             )}
+                             <p className={cn("font-medium", isClaimed && "text-muted-foreground line-through")}>
+                                {quest.title}
+                             </p>
+                           </div>
+                           <Button 
+                             variant="outline" 
+                             disabled={!isCompleted || isClaimed || isClaiming}
+                             onClick={() => handleClaim(quest.id, quest.points)}
+                           >
+                            {isClaiming ? <LoaderCircle className="animate-spin" /> : isClaimed ? 'Diklaim' : 'Klaim'}
+                           </Button>
+                        </div>
+                    )
+                })}
             </div>
         </div>
       </SheetContent>
