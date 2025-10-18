@@ -17,9 +17,10 @@ import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle } from 'lucide-react';
+import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle, Target } from 'lucide-react';
 import { CollectionBuilderPage } from '@/components/collection-builder-page';
 import { VirtualMascot } from '@/components/virtual-mascot';
+import { DailyQuest } from '@/components/daily-quest';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -259,7 +260,8 @@ export default function Home() {
           </div>
           
           {activeTab === 'Home' && !isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
-            <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-20">
+            <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-20 flex flex-col gap-4">
+              <DailyQuest />
                <Button size="icon" className="rounded-full h-16 w-16 shadow-lg" onClick={() => handleNewPost('journal')}>
                   <FilePlus className="h-8 w-8" />
                </Button>
