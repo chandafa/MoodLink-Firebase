@@ -9,8 +9,8 @@ type HashtagRendererProps = {
 };
 
 const HashtagRenderer: React.FC<HashtagRendererProps> = ({ text, onViewHashtag, isExcerpt = false, mentionTarget }) => {
-  // Regex for both hashtags and @mentions, but we only make hashtags clickable
-  const pattern = /([#@]\w+)/g;
+  // Regex for hashtags, @mentions, and URLs
+  const pattern = /(https?:\/\/\S+|www\.\S+|[#@]\w+)/g;
   
   let processedText = text;
   if(isExcerpt) {
@@ -23,6 +23,10 @@ const HashtagRenderer: React.FC<HashtagRendererProps> = ({ text, onViewHashtag, 
   const handleHashtagClick = (e: React.MouseEvent<HTMLSpanElement>, tag: string) => {
     e.stopPropagation(); // Prevent the parent card's onClick from firing
     onViewHashtag(tag.substring(1)); // Remove '#' before passing
+  };
+  
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.stopPropagation(); // Prevent the parent card's onClick from firing
   };
 
   return (
@@ -48,6 +52,21 @@ const HashtagRenderer: React.FC<HashtagRendererProps> = ({ text, onViewHashtag, 
                 </span>
               );
             }
+        }
+        if (part.match(/^(https?:\/\/\S+|www\.\S+)/)) {
+            const href = part.startsWith('www.') ? `http://${part}` : part;
+            return (
+                <a
+                  key={index}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline cursor-pointer"
+                  onClick={handleLinkClick}
+                >
+                  {part}
+                </a>
+            );
         }
         return <React.Fragment key={index}>{part}</React.Fragment>;
       })}
