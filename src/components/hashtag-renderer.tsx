@@ -13,9 +13,12 @@ const HashtagRenderer: React.FC<HashtagRendererProps> = ({ text, onViewHashtag, 
   const pattern = /(https?:\/\/\S+|www\.\S+|[#@]\w+)/g;
   
   let processedText = text;
-  if(isExcerpt) {
-      const excerpt = text.substring(text.indexOf('\n') + 1).slice(0, 100) + '...';
-      processedText = excerpt.length > 3 ? excerpt : text.slice(0, 100);
+  if (isExcerpt) {
+    if (text.length > 150) {
+      processedText = text.slice(0, 150) + '...';
+    } else {
+      processedText = text;
+    }
   }
 
   const parts = processedText.split(pattern);
