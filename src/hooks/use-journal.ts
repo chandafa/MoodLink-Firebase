@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -1102,7 +1103,8 @@ export function useJournal() {
         const updateData = {
             [`unreadCounts.${currentAuthUser.uid}`]: 0
         };
-        await updateDoc(chatDocRef, updateData);
+        // Use set with merge to avoid error if the document doesn't exist yet
+        await setDoc(chatDocRef, updateData, { merge: true });
     }, [currentAuthUser]);
 
 
