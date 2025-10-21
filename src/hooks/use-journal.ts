@@ -45,6 +45,7 @@ export type Comment = {
   authorName: string; // denormalized for easier display
   authorAvatar: string; // denormalized
   content: string;
+  imageUrl?: string;
   createdAt: any; // Firestore Timestamp
   parentId: string | null; // For threading
   likes: number;
@@ -415,7 +416,9 @@ export function useJournal() {
     }, [currentUser]);
 
     const claimQuestReward = useCallback(async (questId: string, points: number) => {
-        if (!currentAuthUser || !currentUser) return;
+        if (!currentAuthUser || !currentUser) {
+            throw new Error("User not authenticated.");
+        }
         if (currentUser.questState?.[questId] !== true) {
             throw new Error("Quest is not completed or already claimed.");
         }
@@ -876,8 +879,8 @@ export function useJournal() {
         addPoints(currentAuthUser.uid, 1);
     }, [currentAuthUser, toast, addPoints]);
 
-    const addComment = useCallback(async (entryId: string, commentContent: string, author: User | null, entryOwnerId: string, parentId: string | null = null) => {
-        if (!commentContent.trim()) {
+    const addComment = useCallback(async (entryId: string, commentContent: string, author: User | null, entryOwnerId: string, imageFile: File | null = null, parentId: string | null = null) => {
+        if (!commentContent.trim() && !imageFile) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
@@ -894,11 +897,17 @@ export function useJournal() {
         const authorName = author?.displayName || 'Tamu';
         const authorAvatar = author?.avatar || '👤';
 
-        const commentData = {
+        let imageUrl: string | null = null;
+        if (imageFile) {
+            imageUrl = await uploadImageToHosting(imageFile);
+        }
+
+        const commentData: Omit<Comment, 'id'> = {
             authorId,
             authorName,
             authorAvatar,
             content: commentContent,
+            imageUrl: imageUrl || undefined,
             createdAt: serverTimestamp(),
             parentId,
             likes: 0,
@@ -908,7 +917,7 @@ export function useJournal() {
         const commentsRef = collection(db, 'journals', entryId, 'comments');
         const entryRef = doc(db, 'journals', entryId);
         
-        const newCommentRef = await addDoc(commentsRef, commentData);
+        await addDoc(commentsRef, commentData);
         await updateDoc(entryRef, { commentCount: increment(1) });
         
         const entryDoc = await getDoc(entryRef);
@@ -948,7 +957,7 @@ export function useJournal() {
         }
         
         toast({ title: 'Komentar ditambahkan' });
-    }, [toast, addPoints, currentAuthUser, currentUser, isAnonymous, updateQuestState]);
+    }, [toast, addPoints, currentAuthUser, currentUser, isAnonymous, updateQuestState, uploadImageToHosting]);
     
     const toggleCommentLike = useCallback(async (entryId: string, commentId: string) => {
         if (!currentAuthUser) {

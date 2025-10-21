@@ -122,6 +122,7 @@ function CommentItem({
   allComments,
   onViewHashtag,
   onViewProfile,
+  onViewImage,
 }: {
   comment: Comment;
   entryId: string;
@@ -129,6 +130,7 @@ function CommentItem({
   allComments: Comment[];
   onViewHashtag: (tag: string) => void;
   onViewProfile: (userId: string) => void;
+  onViewImage: (url: string) => void;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
   const [replyContent, setReplyContent] = useState('');
@@ -137,6 +139,10 @@ function CommentItem({
   const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
 
   const isLiked = (comment.likedBy || []).includes(currentAuthUserId || '');
   const isOwner = comment.authorId === currentAuthUserId;
@@ -150,14 +156,16 @@ function CommentItem({
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyContent.trim()) {
+    if (!replyContent.trim() && !imageFile) {
       toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
     try {
-      await addComment(entryId, replyContent, currentUser, entryOwnerId, comment.id);
+      await addComment(entryId, replyContent, currentUser, entryOwnerId, imageFile, comment.id);
       setReplyContent('');
+      setImageFile(null);
+      setImagePreview(null);
       setIsReplying(false);
     } catch (error) {
       console.error("Error submitting reply:", error);
@@ -206,6 +214,27 @@ function CommentItem({
     
   const isVerifiedOwner = comment.authorName === 'cacann_aselii';
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+      setImageFile(null);
+      setImagePreview(null);
+      if (imageInputRef.current) {
+          imageInputRef.current.value = '';
+      }
+  };
+
+
   return (
     <div className={cn("flex gap-3", isReply && "ml-5 md:ml-6 mt-3 pt-3 border-l")}>
       <Avatar className="cursor-pointer h-8 w-8" onClick={() => onViewProfile(comment.authorId)}>
@@ -222,7 +251,7 @@ function CommentItem({
                     {comment.createdAt ? `· ${formatDistanceToNow(comment.createdAt.toDate(), { locale: id, addSuffix: true })}` : ''}
                 </p>
             </div>
-            {isOwner && (
+            {isOwner && !isEditing && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -276,11 +305,26 @@ function CommentItem({
                   </div>
               </form>
           ) : (
-            <HashtagRenderer
-              text={displayContent}
-              onViewHashtag={onViewHashtag}
-              mentionTarget={parentAuthorName}
-            />
+            <>
+            {comment.content && (
+              <HashtagRenderer
+                text={displayContent}
+                onViewHashtag={onViewHashtag}
+                mentionTarget={parentAuthorName}
+              />
+            )}
+            {comment.imageUrl && (
+                <div className="mt-2 relative w-48 h-48 rounded-lg overflow-hidden border">
+                    <Image
+                        src={comment.imageUrl}
+                        alt="Comment image"
+                        fill
+                        className="object-cover cursor-pointer"
+                        onClick={() => onViewImage(comment.imageUrl)}
+                    />
+                </div>
+            )}
+            </>
           )}
 
         {!isEditing && (
@@ -312,11 +356,26 @@ function CommentItem({
                     className="text-sm"
                     rows={2}
                   />
-                  <div className="flex justify-end gap-2">
-                     <Button type="button" variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Batal</Button>
-                     <Button type="submit" size="sm" disabled={isSubmitting}>
-                       {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
-                     </Button>
+                  {imagePreview && (
+                    <div className="relative w-24 h-24 rounded-md overflow-hidden">
+                      <Image src={imagePreview} alt="Pratinjau gambar" fill className="object-cover" />
+                      <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={removeImage}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
+                      <ImageIcon className="h-5 w-5" />
+                    </Button>
+                    <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+
+                    <div className="flex gap-2">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Batal</Button>
+                      <Button type="submit" size="sm" disabled={isSubmitting}>
+                        {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </motion.div>
@@ -328,12 +387,15 @@ function CommentItem({
 }
 
 
-function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }: { entryId: string, entryOwnerId: string, onViewHashtag: (tag: string) => void, onViewProfile: (userId: string) => void }) {
+function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile, onViewImage }: { entryId: string, entryOwnerId: string, onViewHashtag: (tag: string) => void, onViewProfile: (userId: string) => void, onViewImage: (url: string) => void }) {
     const { comments, isLoading: isLoadingComments } = useComments(entryId);
     const { currentUser, addComment } = useJournal();
     const [newComment, setNewComment] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const flattenedComments = useMemo(() => {
         const commentTree = buildCommentTree(comments);
@@ -344,16 +406,37 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
         return flatList;
     }, [comments]);
 
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        if (imageInputRef.current) {
+            imageInputRef.current.value = '';
+        }
+    };
+
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newComment.trim()) {
+        if (!newComment.trim() && !imageFile) {
             toast({ title: 'Komentar tidak boleh kosong', variant: 'destructive' });
             return;
         }
         setIsSubmitting(true);
         try {
-            await addComment(entryId, newComment, currentUser, entryOwnerId);
+            await addComment(entryId, newComment, currentUser, entryOwnerId, imageFile);
             setNewComment('');
+            removeImage();
         } catch (error) {
             console.error("Error submitting comment:", error);
             toast({ title: 'Gagal mengirim komentar', variant: 'destructive' });
@@ -369,21 +452,42 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
                 Komentar ({comments.length})
             </h2>
             
-            <form onSubmit={handleCommentSubmit} className="flex gap-4 mb-6">
-                 <Avatar><AvatarFallback>{currentUser?.avatar || 'T'}</AvatarFallback></Avatar>
-                 <Textarea 
-                    placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Tamu'}...`}
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    disabled={isSubmitting}
-                    rows={1}
-                    className="flex-1"
-                 />
-                 <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
-                 </Button>
+            <form onSubmit={handleCommentSubmit} className="flex flex-col gap-2 mb-6">
+                <div className="flex gap-4">
+                    <Avatar><AvatarFallback>{currentUser?.avatar || 'T'}</AvatarFallback></Avatar>
+                    <Textarea 
+                        placeholder={`Beri komentar sebagai ${currentUser?.displayName || 'Tamu'}...`}
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        disabled={isSubmitting}
+                        rows={1}
+                        className="flex-1"
+                    />
+                </div>
+
+                {imagePreview && (
+                    <div className="flex justify-start pl-16">
+                        <div className="relative w-24 h-24 rounded-md overflow-hidden">
+                            <Image src={imagePreview} alt="Pratinjau gambar" fill className="object-cover" />
+                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={removeImage}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="flex justify-between items-center pl-12">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
+                        <ImageIcon className="h-5 w-5" />
+                    </Button>
+                    <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Kirim'}
+                    </Button>
+                </div>
             </form>
-            
+
             <div className="space-y-4">
               {isLoadingComments ? (
                  <Skeleton className="h-40 w-full" />
@@ -396,6 +500,7 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile }:
                         allComments={comments}
                         onViewHashtag={onViewHashtag} 
                         onViewProfile={onViewProfile}
+                        onViewImage={onViewImage}
                     />
                 )) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
@@ -1059,7 +1164,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                    </div>
               </div>
             </Card>
-            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile}/>}
+            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} onViewImage={onViewImage}/>}
             </>
           )}
         </main>
