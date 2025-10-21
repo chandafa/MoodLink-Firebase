@@ -97,8 +97,8 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
         if (audioChunksRef.current.length > 0) {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             await sendMessage(targetUser.id, '', undefined, audioBlob);
-            audioChunksRef.current = [];
         }
+        audioChunksRef.current = [];
         // Stop all tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
       };
@@ -257,5 +257,3 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
     </div>
   );
 }
-
-  
