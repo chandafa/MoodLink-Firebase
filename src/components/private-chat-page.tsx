@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
+import { Send, ArrowLeft, Image as ImageIcon, X, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -26,6 +26,10 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
   const { currentUser, currentAuthUserId, getChatRoomId, sendMessage, markConversationAsRead } = useJournal();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const roomId = currentAuthUserId ? getChatRoomId(currentAuthUserId, targetUser.id) : '';
   const { messages, isLoading } = useChatMessages(roomId);
@@ -75,6 +79,40 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
     setInputValue('');
     removeImage();
   };
+  
+    const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await sendMessage(targetUser.id, '', undefined, audioBlob);
+        // Stop all tracks to release the microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      alert("Izin mikrofon diperlukan untuk mengirim pesan suara.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -143,6 +181,11 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
                                             className="rounded-md mb-2 object-cover"
                                         />
                                     )}
+                                    {message.audioUrl && (
+                                        <audio controls src={message.audioUrl} className="w-full h-10">
+                                            Browser Anda tidak mendukung elemen audio.
+                                        </audio>
+                                    )}
                                     {message.text && <p>{message.text}</p>}
                                 </div>
                                 {message.senderId === currentAuthUserId && currentUser && (
@@ -165,6 +208,12 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
                             </Button>
                         </div>
                     )}
+                    {isRecording && (
+                        <div className="flex items-center gap-2 text-destructive animate-pulse">
+                            <Mic className="h-5 w-5" />
+                            <p>Merekam...</p>
+                        </div>
+                    )}
                     <div className="relative flex items-center gap-2">
                          <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
                             <ImageIcon className="h-5 w-5" />
@@ -174,16 +223,29 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
                         placeholder="Ketik pesan..."
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
-                        className="flex-1 pr-12"
+                        className="flex-1"
                         />
-                        <Button
-                        type="submit"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                        disabled={!inputValue.trim() && !imageFile}
-                        >
-                        <Send className="h-4 w-4" />
-                        </Button>
+                        {inputValue.trim() || imageFile ? (
+                             <Button
+                                type="submit"
+                                size="icon"
+                                className="h-10 w-10 shrink-0"
+                            >
+                                <Send className="h-5 w-5" />
+                            </Button>
+                        ) : (
+                             <Button
+                                type="button"
+                                size="icon"
+                                className={cn("h-10 w-10 shrink-0", isRecording && "bg-destructive")}
+                                onMouseDown={startRecording}
+                                onMouseUp={stopRecording}
+                                onTouchStart={startRecording}
+                                onTouchEnd={stopRecording}
+                            >
+                                <Mic className="h-5 w-5" />
+                            </Button>
+                        )}
                     </div>
                 </form>
             </Card>
@@ -191,3 +253,5 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
     </div>
   );
 }
+
+    

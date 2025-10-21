@@ -115,6 +115,7 @@ export type ChatMessage = {
     senderId: string;
     text: string;
     imageUrl?: string;
+    audioUrl?: string;
     createdAt: any;
 };
 
@@ -431,7 +432,7 @@ export function useJournal() {
   
 
   // --- IMAGE UPLOAD TO HOSTING ---
-  const uploadImageToHosting = useCallback(async (file: File): Promise<string | null> => {
+  const uploadImageToHosting = useCallback(async (file: File | Blob): Promise<string | null> => {
       const formData = new FormData();
       formData.append('file', file);
       
@@ -1032,12 +1033,12 @@ export function useJournal() {
         return [user1Id, user2Id].sort().join('_');
     };
 
-    const sendMessage = useCallback(async (targetUserId: string, text: string, imageFile?: File) => {
+    const sendMessage = useCallback(async (targetUserId: string, text: string, imageFile?: File, audioBlob?: Blob) => {
         if (!currentUser || !currentAuthUser) {
              toast({ title: 'Harus Masuk', description: 'Masuk untuk mengirim pesan.', variant: 'destructive'});
              return;
         }
-        if (!text.trim() && !imageFile) {
+        if (!text.trim() && !imageFile && !audioBlob) {
             return;
         }
         
@@ -1056,11 +1057,20 @@ export function useJournal() {
             imageUrl = await uploadImageToHosting(imageFile);
         }
         
-        const lastMessageText = text || 'Mengirim gambar...';
+        let audioUrl: string | null = null;
+        if (audioBlob) {
+            audioUrl = await uploadImageToHosting(audioBlob);
+        }
+        
+        let lastMessageText = text;
+        if (audioUrl) lastMessageText = 'Mengirim pesan suara...';
+        else if (imageUrl) lastMessageText = 'Mengirim gambar...';
+
 
         await addDoc(messagesCol, {
             text,
             imageUrl: imageUrl || null,
+            audioUrl: audioUrl || null,
             senderId: currentAuthUser.uid,
             createdAt: serverTimestamp()
         });
@@ -1274,3 +1284,5 @@ setIsLoading(false);
 
     return { conversations, isLoading };
 }
+
+    
