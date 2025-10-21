@@ -72,28 +72,37 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() && !imageFile) return;
+    if (!inputValue.trim() && !imageFile && !audioBlob) return;
     
-    await sendMessage(targetUser.id, inputValue, imageFile || undefined);
+    // Create a new audioBlob from chunks before sending
+    const audioBlob = audioChunksRef.current.length > 0 ? new Blob(audioChunksRef.current, { type: 'audio/webm' }) : undefined;
+    
+    await sendMessage(targetUser.id, inputValue, imageFile || undefined, audioBlob);
 
     setInputValue('');
     removeImage();
+    audioChunksRef.current = [];
   };
   
     const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await sendMessage(targetUser.id, '', undefined, audioBlob);
+        if (audioChunksRef.current.length > 0) {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            await sendMessage(targetUser.id, '', undefined, audioBlob);
+            audioChunksRef.current = [];
+        }
         // Stop all tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
       };
@@ -112,11 +121,12 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
       setIsRecording(false);
     }
   };
-
+  
+  const audioBlob = audioChunksRef.current.length > 0 ? new Blob(audioChunksRef.current, { type: 'audio/webm' }) : undefined;
 
   return (
     <div className="flex flex-col h-screen bg-background">
-        <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-sm">
+        <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-sm shrink-0">
          <div className="flex items-center gap-3">
           <Button onClick={onBack} size="icon" variant="ghost">
             <ArrowLeft />
@@ -134,124 +144,122 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
            </div>
         </div>
       </header>
-        <div className="flex-1 overflow-hidden p-4 md:p-6">
-            <Card className="h-full flex flex-col">
-                <CardContent className="flex-1 p-0">
-                    <ScrollArea className="h-full" ref={scrollAreaRef}>
-                        <div className="p-4 space-y-4">
-                        {isLoading ? (
-                            <div className="space-y-4">
-                                <Skeleton className="h-12 w-2/3" />
-                                <Skeleton className="h-12 w-1/2 self-end" />
-                                <Skeleton className="h-8 w-1/3" />
-                            </div>
-                        ) : messages.length === 0 ? (
-                            <div className="text-center text-muted-foreground py-10">
-                                <p>Belum ada pesan.</p>
-                                <p>Mulai percakapan dengan {targetUser.displayName}!</p>
-                            </div>
-                        ) : (
-                            messages.map(message => (
-                                <div
-                                key={message.id}
-                                className={cn(
-                                    'flex items-end gap-2',
-                                    message.senderId === currentAuthUserId ? 'justify-end' : 'justify-start'
-                                )}
-                                >
-                                {message.senderId !== currentAuthUserId && (
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{targetUser.avatar}</AvatarFallback>
-                                    </Avatar>
-                                )}
-                                <div
-                                    className={cn(
-                                    'max-w-xs rounded-lg p-3 text-sm',
-                                    message.senderId === currentAuthUserId
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted'
-                                    )}
-                                >
-                                    {message.imageUrl && (
-                                        <Image
-                                            src={message.imageUrl}
-                                            alt="Chat image"
-                                            width={200}
-                                            height={200}
-                                            className="rounded-md mb-2 object-cover"
-                                        />
-                                    )}
-                                    {message.audioUrl && (
-                                        <audio controls src={message.audioUrl} className="w-full h-10">
-                                            Browser Anda tidak mendukung elemen audio.
-                                        </audio>
-                                    )}
-                                    {message.text && <p>{message.text}</p>}
-                                </div>
-                                {message.senderId === currentAuthUserId && currentUser && (
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarFallback>{currentUser.avatar}</AvatarFallback>
-                                    </Avatar>
-                                )}
-                                </div>
-                            ))
-                        )}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-                <form onSubmit={handleSendMessage} className="p-4 border-t space-y-2">
-                    {imagePreview && (
-                        <div className="relative w-24 h-24 rounded-md overflow-hidden border">
-                            <Image src={imagePreview} alt="Pratinjau gambar" fill className="object-cover" />
-                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={removeImage}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
+      
+      <div className="flex-1 overflow-y-auto">
+        <ScrollArea className="h-full" ref={scrollAreaRef}>
+            <div className="p-4 space-y-4">
+            {isLoading ? (
+                <div className="space-y-4">
+                    <Skeleton className="h-12 w-2/3" />
+                    <Skeleton className="h-12 w-1/2 ml-auto" />
+                    <Skeleton className="h-8 w-1/3" />
+                </div>
+            ) : messages.length === 0 ? (
+                <div className="text-center text-muted-foreground py-10">
+                    <p>Belum ada pesan.</p>
+                    <p>Mulai percakapan dengan {targetUser.displayName}!</p>
+                </div>
+            ) : (
+                messages.map(message => (
+                    <div
+                    key={message.id}
+                    className={cn(
+                        'flex items-end gap-2',
+                        message.senderId === currentAuthUserId ? 'justify-end' : 'justify-start'
                     )}
-                    {isRecording && (
-                        <div className="flex items-center gap-2 text-destructive animate-pulse">
-                            <Mic className="h-5 w-5" />
-                            <p>Merekam...</p>
-                        </div>
+                    >
+                    {message.senderId !== currentAuthUserId && (
+                        <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{targetUser.avatar}</AvatarFallback>
+                        </Avatar>
                     )}
-                    <div className="relative flex items-center gap-2">
-                         <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
-                            <ImageIcon className="h-5 w-5" />
-                        </Button>
-                        <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
-                        <Input
-                        placeholder="Ketik pesan..."
-                        value={inputValue}
-                        onChange={e => setInputValue(e.target.value)}
-                        className="flex-1"
-                        />
-                        {inputValue.trim() || imageFile ? (
-                             <Button
-                                type="submit"
-                                size="icon"
-                                className="h-10 w-10 shrink-0"
-                            >
-                                <Send className="h-5 w-5" />
-                            </Button>
-                        ) : (
-                             <Button
-                                type="button"
-                                size="icon"
-                                className={cn("h-10 w-10 shrink-0", isRecording && "bg-destructive")}
-                                onMouseDown={startRecording}
-                                onMouseUp={stopRecording}
-                                onTouchStart={startRecording}
-                                onTouchEnd={stopRecording}
-                            >
-                                <Mic className="h-5 w-5" />
-                            </Button>
+                    <div
+                        className={cn(
+                        'max-w-xs rounded-lg p-3 text-sm',
+                        message.senderId === currentAuthUserId
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
                         )}
+                    >
+                        {message.imageUrl && (
+                            <Image
+                                src={message.imageUrl}
+                                alt="Chat image"
+                                width={200}
+                                height={200}
+                                className="rounded-md mb-2 object-cover"
+                            />
+                        )}
+                        {message.audioUrl && (
+                            <audio controls src={message.audioUrl} className="w-full h-10">
+                                Browser Anda tidak mendukung elemen audio.
+                            </audio>
+                        )}
+                        {message.text && <p>{message.text}</p>}
                     </div>
-                </form>
-            </Card>
-        </div>
+                    {message.senderId === currentAuthUserId && currentUser && (
+                        <Avatar className="h-8 w-8">
+                        <AvatarFallback>{currentUser.avatar}</AvatarFallback>
+                        </Avatar>
+                    )}
+                    </div>
+                ))
+            )}
+            </div>
+        </ScrollArea>
+      </div>
+
+      <div className="p-4 border-t shrink-0 bg-background">
+        <form onSubmit={handleSendMessage} className="space-y-2">
+            {imagePreview && (
+                <div className="relative w-24 h-24 rounded-md overflow-hidden border">
+                    <Image src={imagePreview} alt="Pratinjau gambar" fill className="object-cover" />
+                    <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={removeImage}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+            {isRecording && (
+                <div className="flex items-center gap-2 text-destructive animate-pulse">
+                    <Mic className="h-5 w-5" />
+                    <p>Merekam...</p>
+                </div>
+            )}
+            <div className="relative flex items-center gap-2">
+                 <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
+                    <ImageIcon className="h-5 w-5" />
+                </Button>
+                <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+                <Input
+                placeholder="Ketik pesan..."
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                className="flex-1"
+                />
+                {inputValue.trim() || imageFile ? (
+                     <Button
+                        type="submit"
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                    >
+                        <Send className="h-5 w-5" />
+                    </Button>
+                ) : (
+                     <Button
+                        type="button"
+                        size="icon"
+                        className={cn("h-10 w-10 shrink-0", isRecording && "bg-destructive")}
+                        onMouseDown={startRecording}
+                        onMouseUp={stopRecording}
+                        onTouchStart={startRecording}
+                        onTouchEnd={stopRecording}
+                    >
+                        <Mic className="h-5 w-5" />
+                    </Button>
+                )}
+            </div>
+        </form>
+      </div>
     </div>
   );
 }
-
-    
