@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft } from 'lucide-react';
+import { Send, ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { User, useJournal, useChatMessages } from '@/hooks/use-journal';
 import { Skeleton } from './ui/skeleton';
+import Image from 'next/image';
 
 type PrivateChatPageProps = {
     targetUser: User;
@@ -20,8 +21,11 @@ type PrivateChatPageProps = {
 
 export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageProps) {
   const [inputValue, setInputValue] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { currentUser, currentAuthUserId, getChatRoomId, sendMessage, markConversationAsRead } = useJournal();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const roomId = currentAuthUserId ? getChatRoomId(currentAuthUserId, targetUser.id) : '';
   const { messages, isLoading } = useChatMessages(roomId);
@@ -42,14 +46,34 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
     }
   }, [messages]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+      setImageFile(null);
+      setImagePreview(null);
+      if (imageInputRef.current) {
+          imageInputRef.current.value = '';
+      }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || !currentUser) return;
+    if (!inputValue.trim() && !imageFile) return;
     
-    await sendMessage(targetUser.id, inputValue);
+    await sendMessage(targetUser.id, inputValue, imageFile || undefined);
 
     setInputValue('');
+    removeImage();
   };
 
   return (
@@ -110,7 +134,16 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
                                         : 'bg-muted'
                                     )}
                                 >
-                                    <p>{message.text}</p>
+                                    {message.imageUrl && (
+                                        <Image
+                                            src={message.imageUrl}
+                                            alt="Chat image"
+                                            width={200}
+                                            height={200}
+                                            className="rounded-md mb-2 object-cover"
+                                        />
+                                    )}
+                                    {message.text && <p>{message.text}</p>}
                                 </div>
                                 {message.senderId === currentAuthUserId && currentUser && (
                                     <Avatar className="h-8 w-8">
@@ -123,19 +156,31 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
                         </div>
                     </ScrollArea>
                 </CardContent>
-                <form onSubmit={handleSendMessage} className="p-4 border-t">
-                    <div className="relative">
+                <form onSubmit={handleSendMessage} className="p-4 border-t space-y-2">
+                    {imagePreview && (
+                        <div className="relative w-24 h-24 rounded-md overflow-hidden border">
+                            <Image src={imagePreview} alt="Pratinjau gambar" fill className="object-cover" />
+                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={removeImage}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                    <div className="relative flex items-center gap-2">
+                         <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
+                            <ImageIcon className="h-5 w-5" />
+                        </Button>
+                        <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                         <Input
                         placeholder="Ketik pesan..."
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
-                        className="pr-12"
+                        className="flex-1 pr-12"
                         />
                         <Button
                         type="submit"
                         size="icon"
                         className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                        disabled={!inputValue.trim()}
+                        disabled={!inputValue.trim() && !imageFile}
                         >
                         <Send className="h-4 w-4" />
                         </Button>

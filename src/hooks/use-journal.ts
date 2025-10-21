@@ -113,6 +113,7 @@ export type ChatMessage = {
     id: string;
     senderId: string;
     text: string;
+    imageUrl?: string;
     createdAt: any;
 };
 
@@ -1030,10 +1031,13 @@ export function useJournal() {
         return [user1Id, user2Id].sort().join('_');
     };
 
-    const sendMessage = useCallback(async (targetUserId: string, text: string) => {
-        if (!currentUser || !currentAuthUser || !text.trim()) {
+    const sendMessage = useCallback(async (targetUserId: string, text: string, imageFile?: File) => {
+        if (!currentUser || !currentAuthUser) {
              toast({ title: 'Harus Masuk', description: 'Masuk untuk mengirim pesan.', variant: 'destructive'});
              return;
+        }
+        if (!text.trim() && !imageFile) {
+            return;
         }
         
         const targetUser = users.find(u => u.id === targetUserId);
@@ -1046,8 +1050,16 @@ export function useJournal() {
         const messagesCol = collection(db, 'chats', roomId, 'messages');
         const chatDocRef = doc(db, 'chats', roomId);
 
+        let imageUrl: string | null = null;
+        if (imageFile) {
+            imageUrl = await uploadImageToHosting(imageFile);
+        }
+        
+        const lastMessageText = text || 'Mengirim gambar...';
+
         await addDoc(messagesCol, {
             text,
+            imageUrl: imageUrl || null,
             senderId: currentAuthUser.uid,
             createdAt: serverTimestamp()
         });
@@ -1064,7 +1076,7 @@ export function useJournal() {
             
             const conversationData: Conversation = {
                 id: roomId,
-                lastMessage: text,
+                lastMessage: lastMessageText,
                 lastMessageTimestamp: serverTimestamp(),
                 participantIds: [currentAuthUser.uid, targetUserId],
                 participantDetails: {
@@ -1082,7 +1094,7 @@ export function useJournal() {
             transaction.set(chatDocRef, conversationData, { merge: true });
         });
 
-    }, [currentAuthUser, currentUser, users, toast]);
+    }, [currentAuthUser, currentUser, users, toast, uploadImageToHosting]);
     
     const markConversationAsRead = useCallback(async (roomId: string) => {
         if (!currentAuthUser) return;
