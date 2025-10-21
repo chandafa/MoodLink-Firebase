@@ -72,16 +72,12 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() && !imageFile && !audioBlob) return;
+    if (!inputValue.trim() && !imageFile) return;
     
-    // Create a new audioBlob from chunks before sending
-    const audioBlob = audioChunksRef.current.length > 0 ? new Blob(audioChunksRef.current, { type: 'audio/webm' }) : undefined;
-    
-    await sendMessage(targetUser.id, inputValue, imageFile || undefined, audioBlob);
+    await sendMessage(targetUser.id, inputValue, imageFile || undefined);
 
     setInputValue('');
     removeImage();
-    audioChunksRef.current = [];
   };
   
     const startRecording = async () => {
@@ -122,8 +118,6 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
     }
   };
   
-  const audioBlob = audioChunksRef.current.length > 0 ? new Blob(audioChunksRef.current, { type: 'audio/webm' }) : undefined;
-
   return (
     <div className="flex flex-col h-screen bg-background">
         <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-sm shrink-0">
@@ -263,3 +257,5 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
     </div>
   );
 }
+
+  
