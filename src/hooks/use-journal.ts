@@ -915,7 +915,7 @@ export function useJournal() {
             authorName,
             authorAvatar,
             content: commentContent,
-            imageUrl: imageUrl || undefined,
+            imageUrl: imageUrl || null,
             createdAt: serverTimestamp(),
             parentId,
             likes: 0,
@@ -1288,5 +1288,7 @@ setIsLoading(false);
 
     return { conversations, isLoading };
 }
+
+    
 
     
