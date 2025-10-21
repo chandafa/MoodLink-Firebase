@@ -25,6 +25,7 @@ if (isset($_FILES['file'])) {
         'audio/wav',
         'audio/ogg',
         'audio/webm',
+        'video/webm', // Add this to handle browser inconsistencies
         'application/octet-stream'   // fallback kalau server tidak deteksi dengan benar
     ];
     
