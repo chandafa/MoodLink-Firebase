@@ -13,6 +13,7 @@ import { Separator } from './ui/separator';
 import { Skeleton } from './ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { Badge } from './ui/badge';
 
 type MessagesPageProps = {
   onStartChat: (user: User) => void;
@@ -109,22 +110,28 @@ export function MessagesPage({ onStartChat }: MessagesPageProps) {
                         if (!otherUser) return null;
 
                         const timeAgo = convo.lastMessageTimestamp ? formatDistanceToNow(convo.lastMessageTimestamp.toDate(), { addSuffix: true, locale: id }) : '';
+                        const unreadCount = convo.unreadCounts?.[currentAuthUserId || ''] || 0;
                         
                         return (
                           <li key={convo.id} className="p-4 hover:bg-accent cursor-pointer" onClick={() => onStartChat(otherUser)}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                  <Avatar className="h-12 w-12">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-4 min-w-0">
+                                  <Avatar className="h-12 w-12 flex-shrink-0">
                                       <AvatarFallback className="bg-secondary text-secondary-foreground text-xl">
                                           {otherUser.avatar}
                                       </AvatarFallback>
                                   </Avatar>
-                                  <div>
-                                      <p className="font-semibold">{otherUser.displayName}</p>
-                                      <p className="text-sm text-muted-foreground truncate max-w-xs">{convo.lastMessage}</p>
+                                  <div className="flex-1 min-w-0">
+                                      <p className="font-semibold truncate">{otherUser.displayName}</p>
+                                      <p className="text-sm text-muted-foreground truncate">{convo.lastMessage}</p>
                                   </div>
                               </div>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo}</span>
+                              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo}</span>
+                                {unreadCount > 0 && (
+                                    <Badge className="h-5 w-5 p-0 flex items-center justify-center">{unreadCount}</Badge>
+                                )}
+                              </div>
                             </div>
                           </li>
                         )

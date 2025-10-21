@@ -1083,12 +1083,12 @@ export function useJournal() {
         // Update conversation metadata including unread count
         await runTransaction(db, async (transaction) => {
             const chatDoc = await transaction.get(chatDocRef);
-            let unreadCounts = {};
+            let unreadCountsData = {};
             if (chatDoc.exists() && chatDoc.data().unreadCounts) {
-                unreadCounts = { ...chatDoc.data().unreadCounts };
+                unreadCountsData = { ...chatDoc.data().unreadCounts };
             }
             // Increment unread count for the recipient
-            unreadCounts[targetUserId] = (unreadCounts[targetUserId] || 0) + 1;
+            unreadCountsData[targetUserId] = (unreadCountsData[targetUserId] || 0) + 1;
             
             const conversationData: Conversation = {
                 id: roomId,
@@ -1105,7 +1105,7 @@ export function useJournal() {
                         avatar: targetUser.avatar,
                     }
                 },
-                unreadCounts: unreadCounts,
+                unreadCounts: unreadCountsData,
             };
             transaction.set(chatDocRef, conversationData, { merge: true });
         });
@@ -1126,7 +1126,7 @@ export function useJournal() {
     const analyzeUserForBadges = useCallback(async () => {
         if (!currentUser) {
             toast({ title: 'Gagal', description: 'Pengguna tidak ditemukan.', variant: 'destructive'});
-            return { badgeAwarded: false, badgeName: null };
+            return { badgeAwarded: false, badgeName: null, reasoning: '' };
         }
 
         // 1. Ambil 5 postingan terakhir dan 10 komentar terakhir pengguna
@@ -1166,13 +1166,12 @@ export function useJournal() {
                 await updateDoc(userRef, {
                     badges: arrayUnion(result.badgeId)
                 });
-                return { badgeAwarded: true, badgeName: result.badgeName };
             }
-             return { badgeAwarded: false, badgeName: null };
+             return result;
         } catch (error) {
             console.error("AI analysis failed:", error);
             toast({ title: 'Analisis Gagal', description: 'Tidak dapat terhubung dengan layanan AI.', variant: 'destructive'});
-            return { badgeAwarded: false, badgeName: null };
+            return { badgeAwarded: false, badgeName: null, reasoning: 'Gagal terhubung ke layanan AI.' };
         }
 
     }, [currentUser, toast]);
