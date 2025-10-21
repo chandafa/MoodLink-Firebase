@@ -23,7 +23,8 @@ if (isset($_FILES['file'])) {
         'image/webp',
         'audio/mpeg', // for MP3
         'audio/wav',
-        'audio/ogg'
+        'audio/ogg',
+        'audio/webm'
     ];
     
     // Pastikan direktori upload ada
@@ -56,7 +57,7 @@ if (isset($_FILES['file'])) {
     finfo_close($finfo);
 
     if (!in_array($mimeType, $allowedMimeTypes)) {
-        $response['message'] = "Invalid file type. Only images (JPG, PNG, WEBP) and audio (MP3, WAV, OGG) are allowed.";
+        $response['message'] = "Invalid file type. Only images (JPG, PNG, WEBP) and audio (MP3, WAV, OGG, WEBM) are allowed.";
         echo json_encode($response);
         exit;
     }
