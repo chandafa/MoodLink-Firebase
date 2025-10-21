@@ -432,9 +432,14 @@ export function useJournal() {
   
 
   // --- IMAGE UPLOAD TO HOSTING ---
-  const uploadImageToHosting = useCallback(async (file: File | Blob): Promise<string | null> => {
+  const uploadImageToHosting = useCallback(async (file: File | Blob, fileName?: string): Promise<string | null> => {
       const formData = new FormData();
-      formData.append('file', file);
+      // If a fileName is provided (like for audio blobs), use it.
+      if (fileName) {
+          formData.append('file', file, fileName);
+      } else {
+          formData.append('file', file);
+      }
       
       const uploadUrl = 'https://beruangrasa.academychan.my.id/upload.php';
 
@@ -1059,7 +1064,7 @@ export function useJournal() {
         
         let audioUrl: string | null = null;
         if (audioBlob) {
-            audioUrl = await uploadImageToHosting(audioBlob);
+            audioUrl = await uploadImageToHosting(audioBlob, 'voicenote.webm');
         }
         
         let lastMessageText = text;

@@ -24,7 +24,8 @@ if (isset($_FILES['file'])) {
         'audio/mpeg', // for MP3
         'audio/wav',
         'audio/ogg',
-        'audio/webm'
+        'audio/webm',
+        'application/octet-stream'   // fallback kalau server tidak deteksi dengan benar
     ];
     
     // Pastikan direktori upload ada
