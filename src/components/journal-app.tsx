@@ -30,6 +30,7 @@ import {
   CaseSensitive,
   BadgeCheck,
   CheckCircle2,
+  Paintbrush,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
@@ -72,6 +73,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import SharedCanvasPage from './shared-canvas-page';
 
 // --- START: Threaded Comment Section ---
 
@@ -772,16 +774,16 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (canvasPreview?: string) => {
     let optionsForEntry = (postType === 'voting' || postType === 'quiz') ? voteOptions.filter(o => o.trim() !== '') : [];
 
     if (activeEntry) {
       if(isOwner) {
-         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex);
+         await updateEntry(activeEntry.id, editorContent, images, musicFile, musicUrl, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex, canvasPreview);
          setIsEditingMode(false);
       }
     } else {
-       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex);
+       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex, canvasPreview);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
         setIsEditingMode(false);
@@ -838,6 +840,10 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
     if (isOwner) {
       setIsEditingMode(!isEditingMode);
     }
+  }
+
+  if (activeEntry?.postType === 'shared-canvas' && !isEditingMode) {
+      return <SharedCanvasPage entryId={activeEntry.id} onBack={onBack} />;
   }
 
   return (
@@ -941,6 +947,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                     postType === 'journal' ? "Mulai menulis jurnal... Gunakan # untuk topik." :
                                     postType === 'voting' ? "Tulis pertanyaan voting... Gunakan # untuk topik." :
                                     postType === 'quiz' ? "Tulis pertanyaan kuis... Gunakan # untuk topik." :
+                                    postType === 'shared-canvas' ? "Beri judul untuk kanvas Anda... Gunakan # untuk topik." :
                                     "Tulis pesan untuk masa depan... Gunakan # untuk topik."
                                 }
                                 className={cn(
@@ -983,7 +990,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                         </div>
                       )}
                       
-                       {isEditingMode && postType !== 'capsule' && (
+                       {isEditingMode && postType !== 'capsule' && postType !== 'shared-canvas' && (
                           <div className="mt-4 flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={images.length >= 3}>
                                 <ImageIcon className="mr-2 h-4 w-4" />
@@ -1019,7 +1026,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                         
                          {isEditingMode && (
                             <div className="space-y-6 mt-6 pt-6 border-t border-border/20">
-                              <h3 className="text-sm font-medium text-card-foreground">Pengaturan Postingan</h3>
+                              {postType !== 'shared-canvas' && <h3 className="text-sm font-medium text-card-foreground">Pengaturan Postingan</h3>}
                                { !activeEntry && (
                                <div className="flex flex-wrap gap-2 mb-4">
                                  <Button size="sm" variant={postType === 'journal' ? 'default' : 'outline'} onClick={() => setPostType('journal')}>
@@ -1034,7 +1041,19 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                  <Button size="sm" variant={postType === 'capsule' ? 'default' : 'outline'} onClick={() => setPostType('capsule')}>
                                    <Hourglass className="mr-2 h-4 w-4" />Kapsul
                                  </Button>
+                                 <Button size="sm" variant={postType === 'shared-canvas' ? 'default' : 'outline'} onClick={() => setPostType('shared-canvas')}>
+                                    <Paintbrush className="mr-2 h-4 w-4" />Kanvas
+                                 </Button>
                                </div>
+                             )}
+                             {postType === 'shared-canvas' && (
+                                <div className="mt-4 p-4 bg-accent rounded-lg text-accent-foreground">
+                                    <div className="flex items-center gap-2">
+                                        <Paintbrush className="h-5 w-5" />
+                                        <p className="font-semibold">Anda sedang membuat Kanvas Bersama.</p>
+                                    </div>
+                                    <p className="text-sm mt-1">Setelah disimpan, Anda dan pengguna lain dapat menggambar bersama di kanvas ini secara real-time.</p>
+                                </div>
                              )}
                                {(postType === 'voting' || postType === 'quiz') && (
                                     <div className="space-y-2">
@@ -1150,7 +1169,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                                  </div>
                                )}
                                <div className="flex justify-end mt-4">
-                                <Button onClick={handleSave} size="lg">
+                                <Button onClick={() => handleSave()} size="lg">
                                   <Save className="mr-2 h-5 w-5" />
                                   Simpan
                                 </Button>
@@ -1164,7 +1183,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                    </div>
               </div>
             </Card>
-            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} onViewImage={onViewImage}/>}
+            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && activeEntry.postType !== 'shared-canvas' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} onViewImage={onViewImage}/>}
             </>
           )}
         </main>

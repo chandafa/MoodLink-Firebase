@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake, BadgeCheck, CheckCircle2 } from 'lucide-react';
+import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake, BadgeCheck, CheckCircle2, Paintbrush } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SupportBar } from './support-bar';
@@ -252,6 +252,13 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                         <p className="font-semibold text-sm line-clamp-2">{entry.content.split('\n')[0]}</p>
                         <VotingSection entry={entry} onVote={voteOnEntry} />
                       </>
+                    ) : entry.postType === 'shared-canvas' ? (
+                        <div>
+                            <p className="font-semibold text-sm line-clamp-2 flex items-center gap-2">
+                                <Paintbrush className="h-4 w-4" />
+                                {entry.content || "Kanvas Bersama"}
+                            </p>
+                        </div>
                     ) : null}
                 </div>
 
@@ -263,17 +270,18 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                   </div>
                 )}
                 
-                {entry.images && entry.images.length > 0 && (
-                  <div className="relative w-full aspect-video mt-2 rounded-lg border overflow-hidden">
-                    <Image
-                      src={entry.images[0]}
-                      alt={entry.content.split('\n')[0]}
-                      fill
-                      className="object-cover cursor-pointer"
-                      onClick={(e) => { e.stopPropagation(); onViewImage(entry.images[0]);}}
-                    />
-                  </div>
-                )}
+                {(entry.images && entry.images.length > 0) || entry.canvasPreview ? (
+                    <div className="relative w-full aspect-video mt-2 rounded-lg border overflow-hidden">
+                        <Image
+                        src={entry.canvasPreview || entry.images[0]}
+                        alt={entry.content.split('\n')[0]}
+                        fill
+                        className="object-cover cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); onViewImage(entry.canvasPreview || entry.images[0]);}}
+                        />
+                    </div>
+                ): null}
+
             </div>
             
             <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-border/20">

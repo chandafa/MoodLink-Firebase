@@ -70,11 +70,18 @@ export type User = {
   isBlocked?: boolean;
 };
 
-export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz';
+export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz' | 'shared-canvas';
 
 export type VoteOption = {
   text: string;
   votes: number;
+};
+
+export type CanvasPath = {
+    id?: string;
+    points: { x: number; y: number }[];
+    color: string;
+    strokeWidth: number;
 };
 
 export type JournalEntry = {
@@ -99,6 +106,7 @@ export type JournalEntry = {
   cardColor?: string; // e.g. 'rose', 'sky'
   fontFamily?: string; // e.g. 'font-body'
   correctAnswerIndex?: number; // For quiz type
+  canvasPreview?: string; // For shared-canvas
 };
 
 export type Report = {
@@ -522,7 +530,8 @@ export function useJournal() {
     allowedUserIds: string[], 
     cardColor?: string, 
     fontFamily?: string,
-    correctAnswerIndex?: number
+    correctAnswerIndex?: number,
+    canvasPreview?: string
   ) => {
     if (!currentAuthUser) {
         toast({ title: 'Gagal memuat status autentikasi', variant: 'destructive'});
@@ -533,7 +542,7 @@ export function useJournal() {
         toast({ title: 'Anda Memposting sebagai Tamu', description: 'Masuk untuk menyimpan postingan Anda secara permanen.'});
     }
     
-    if (!content.trim()) {
+    if (postType !== 'shared-canvas' && !content.trim()) {
         toast({ title: 'Konten Kosong', description: "Konten tidak boleh kosong.", variant: 'destructive' });
         return null;
     }
@@ -586,6 +595,7 @@ export function useJournal() {
         hashtags,
         cardColor: cardColor || null,
         fontFamily: fontFamily || 'font-body',
+        canvasPreview: canvasPreview || null,
       };
       
       if (postType === 'quiz') {
@@ -623,7 +633,7 @@ export function useJournal() {
     }
   }, [currentAuthUser, toast, addPoints, uploadImageToHosting, updateHashtagCounts, isAnonymous, updateQuestState]);
 
-  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string, correctAnswerIndex?: number) => {
+  const updateEntry = useCallback(async (id: string, content: string, images: (File | string)[], musicFile: File | null, musicUrl: string | null, voteOptions: string[], visibility: Visibility, allowedUserIds: string[], cardColor?: string, fontFamily?: string, correctAnswerIndex?: number, canvasPreview?: string) => {
     if (!currentAuthUser) return;
 
     const entryRef = doc(db, 'journals', id);
@@ -671,6 +681,7 @@ export function useJournal() {
           hashtags: newHashtags,
           cardColor: cardColor || null,
           fontFamily: fontFamily || 'font-body',
+          canvasPreview: canvasPreview || oldEntryData.canvasPreview,
         };
 
         if (postType === 'voting' || postType === 'quiz') {
@@ -1396,7 +1407,43 @@ export function useReportedEntries() {
     return { reportedEntries, isLoading };
 }
 
+export function useCanvas(entryId: string) {
+    const [paths, setPaths] = useState<CanvasPath[]>([]);
+    
+    useEffect(() => {
+        if (!entryId) return;
+        const pathsRef = collection(db, 'journals', entryId, 'paths');
+        const q = query(pathsRef);
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const newPaths: CanvasPath[] = [];
+            snapshot.forEach(doc => {
+                newPaths.push({ id: doc.id, ...doc.data() } as CanvasPath);
+            });
+            setPaths(newPaths);
+        });
+
+        return () => unsubscribe();
+    }, [entryId]);
+
+    const addPath = async (path: Omit<CanvasPath, 'id'>) => {
+        if (!entryId) return;
+        const pathsRef = collection(db, 'journals', entryId, 'paths');
+        await addDoc(pathsRef, path);
+    };
+    
+    const updateCanvasPreview = async (entryId: string, dataUrl: string) => {
+        const entryRef = doc(db, 'journals', entryId);
+        await updateDoc(entryRef, {
+            canvasPreview: dataUrl,
+            updatedAt: serverTimestamp()
+        });
+    };
+
+    return { paths, addPath, updateCanvasPreview };
+}
     
 
     
+
 
