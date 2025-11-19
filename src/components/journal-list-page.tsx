@@ -120,7 +120,7 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage, sea
 
   return (
     <div className="container mx-auto px-4">
-        <Tabs defaultValue="for-you" className="w-full">
+        <Tabs defaultValue="for-you" className="w-full mt-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="for-you">For You</TabsTrigger>
             <TabsTrigger value="following">Following</TabsTrigger>
