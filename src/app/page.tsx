@@ -17,10 +17,15 @@ import { ExplorePage } from '@/components/explore-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle, Target } from 'lucide-react';
+import { ShieldCheck, FilePlus, BookText, Vote, Hourglass, LoaderCircle, Target, Search } from 'lucide-react';
 import { CollectionBuilderPage } from '@/components/collection-builder-page';
 import { VirtualMascot } from '@/components/virtual-mascot';
 import { DailyQuest } from '@/components/daily-quest';
+import { Sidebar } from '@/components/sidebar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -87,7 +92,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { isLoaded, isAnonymous, currentUser } = useJournal();
+  const { isLoaded, isAnonymous, currentUser, signOutUser } = useJournal();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
@@ -101,6 +106,9 @@ export default function Home() {
   const [isBuildingCollection, setIsBuildingCollection] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [showMascot, setShowMascot] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
 
   useEffect(() => {
@@ -148,6 +156,7 @@ export default function Home() {
     setViewingHashtag(null);
     setIsBuildingCollection(false);
     setSelectedCollectionId(null);
+    setIsSidebarOpen(false);
   }
 
   const handleSelectEntry = (id: string | null) => {
@@ -195,6 +204,11 @@ export default function Home() {
     setIsBuildingCollection(true);
   };
 
+  const handleSidebarNavigate = (tabName: string) => {
+      resetViews();
+      setActiveTab(tabName);
+  }
+
 
   const renderContent = () => {
     if (chattingWith) {
@@ -215,7 +229,7 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
       case 'Explore':
         return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
@@ -225,7 +239,7 @@ export default function Home() {
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage}/>;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
     }
   };
 
@@ -237,6 +251,16 @@ export default function Home() {
       </AnimatePresence>
       <AnimatePresence>
         {showOnboarding && <OnboardingScreen onLogin={handleLogin} onGuest={handleGuest} />}
+      </AnimatePresence>
+       <AnimatePresence>
+          {isSidebarOpen && (
+            <Sidebar 
+                user={currentUser} 
+                onClose={() => setIsSidebarOpen(false)} 
+                onNavigate={handleSidebarNavigate}
+                onSignOut={signOutUser}
+            />
+          )}
       </AnimatePresence>
       <AnimatePresence>
         {showMascot && currentUser && (
@@ -255,6 +279,44 @@ export default function Home() {
           className="flex flex-col h-screen"
         >
           {viewingImageUrl && <ImageViewer imageUrl={viewingImageUrl} onClose={() => setViewingImageUrl(null)} />}
+          
+          {!isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
+            <header className="sticky top-0 z-10 flex items-center justify-between py-2 px-4 bg-background/80 backdrop-blur-sm border-b">
+                <div className="flex items-center gap-3 w-1/3">
+                    {currentUser && <Avatar className="h-8 w-8 cursor-pointer" onClick={() => setIsSidebarOpen(true)}><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
+                </div>
+                 <div className="flex items-center gap-3 w-1/3 justify-center">
+                    <Icons.logo className="h-7 w-7 text-primary" />
+                </div>
+                <div className="flex w-1/3 justify-end items-center gap-2">
+                     <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
+                        <Search className="h-5 w-5" />
+                    </Button>
+                    <ThemeToggle />
+                </div>
+            </header>
+          )}
+
+           <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Cari Postingan</DialogTitle>
+                  <DialogDescription>
+                    Cari berdasarkan konten atau tagar.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari postingan atau #tag..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+
           <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
@@ -276,3 +338,5 @@ export default function Home() {
     </>
   );
 }
+
+    

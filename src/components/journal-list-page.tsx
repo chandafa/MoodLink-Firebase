@@ -76,10 +76,8 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
     )
 }
 
-export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
+export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage, searchTerm }: { onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; searchTerm: string; }) {
   const { entries, users, deleteEntry, isLoaded, currentAuthUserId, currentUser } = useJournal();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const forYouEntries = useMemo(() => {
     return entries
@@ -122,41 +120,6 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
 
   return (
     <div className="container mx-auto px-4">
-        <header className="sticky top-0 z-10 flex items-center justify-between py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
-            <div className="flex items-center gap-3 w-1/3">
-                {currentUser && <Avatar className="h-8 w-8"><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
-            </div>
-             <div className="flex items-center gap-3 w-1/3 justify-center">
-                <Icons.logo className="h-7 w-7 text-primary" />
-            </div>
-            <div className="flex w-1/3 justify-end items-center gap-2">
-                 <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
-                    <Search className="h-5 w-5" />
-                </Button>
-                <ThemeToggle />
-            </div>
-        </header>
-
-        <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Cari Postingan</DialogTitle>
-              <DialogDescription>
-                Cari berdasarkan konten atau tagar.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Cari postingan atau #tag..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-
         <Tabs defaultValue="for-you" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="for-you">For You</TabsTrigger>
@@ -209,3 +172,5 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
     </div>
   );
 }
+
+    
