@@ -1,7 +1,7 @@
 
 'use client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Link, Bookmark, MessageSquare, Flame, Wind, Snowflake } from 'lucide-react';
+import { Heart, Link, Bookmark, MessageSquare, Repeat } from 'lucide-react';
 import { Button } from './ui/button';
 import { useJournal, type JournalEntry } from '@/hooks/use-journal';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +14,7 @@ type SupportBarProps = {
 };
 
 export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
-  const { toggleLike, toggleBookmark, currentAuthUserId } = useJournal();
+  const { toggleLike, toggleBookmark, repostEntry, currentAuthUserId } = useJournal();
   const { toast } = useToast();
   
   const isLiked = useMemo(() => 
@@ -52,6 +52,11 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
     }
   }
 
+  const handleRepostClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    repostEntry(entry.id);
+  }
+
   return (
     <div className="w-full flex items-center justify-around text-muted-foreground">
       <motion.div whileTap={{ scale: 0.9 }}>
@@ -67,15 +72,31 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
         </Button>
       </motion.div>
       
-       <motion.div whileTap={{ scale: 0.9 }}>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex items-center gap-1.5"
-          onClick={handleCopyLink}
-        >
-          <Link className="h-4 w-4" />
-        </Button>
+      {onCommentClick && (
+         <motion.div whileTap={{ scale: 0.9 }}>
+            <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1.5"
+            onClick={handleCommentClick}
+            >
+            <MessageSquare className="h-4 w-4" />
+            <span className="text-xs font-semibold">{entry.commentCount || 0}</span>
+            </Button>
+        </motion.div>
+      )}
+
+      <motion.div whileTap={{ scale: 0.9 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1.5"
+            onClick={handleRepostClick}
+            disabled={!currentAuthUserId}
+          >
+            <Repeat className="h-4 w-4" />
+             <span className="text-xs font-semibold">{entry.repostCount || 0}</span>
+          </Button>
       </motion.div>
 
         <motion.div whileTap={{ scale: 0.9 }}>
@@ -90,19 +111,17 @@ export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
           </Button>
         </motion.div>
 
-      {onCommentClick && (
-         <motion.div whileTap={{ scale: 0.9 }}>
-            <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-1.5"
-            onClick={handleCommentClick}
-            >
-            <MessageSquare className="h-4 w-4" />
-            <span className="text-xs font-semibold">{entry.commentCount || 0}</span>
-            </Button>
-        </motion.div>
-      )}
+       <motion.div whileTap={{ scale: 0.9 }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-1.5"
+          onClick={handleCopyLink}
+        >
+          <Link className="h-4 w-4" />
+        </Button>
+      </motion.div>
+
     </div>
   );
 }

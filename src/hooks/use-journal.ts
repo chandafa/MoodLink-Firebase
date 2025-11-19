@@ -107,6 +107,10 @@ export type JournalEntry = {
   fontFamily?: string; // e.g. 'font-body'
   correctAnswerIndex?: number; // For quiz type
   canvasPreview?: string; // For shared-canvas
+  repostCount?: number;
+  isRepost?: boolean;
+  originalAuthorId?: string;
+  originalAuthorName?: string;
 };
 
 export type Report = {
@@ -588,6 +592,7 @@ export function useJournal() {
         likedBy: [],
         bookmarkedBy: [],
         commentCount: 0,
+        repostCount: 0,
         options: (postType === 'voting' || postType === 'quiz') ? options.map(opt => ({ text: opt, votes: 0 })) : [],
         votedBy: [],
         visibility,
@@ -755,6 +760,58 @@ export function useJournal() {
       toast({ title: 'Postingan Dilaporkan', description: 'Terima kasih, kami akan meninjau laporan Anda.'});
       
   }, [currentAuthUser, toast]);
+
+    const repostEntry = useCallback(async (entryId: string) => {
+        if (!currentAuthUser || !currentUser) {
+            toast({ title: 'Harus Masuk', description: 'Masuk untuk me-repost.', variant: 'destructive' });
+            return;
+        }
+
+        const originalEntryRef = doc(db, 'journals', entryId);
+        const originalEntrySnap = await getDoc(originalEntryRef);
+
+        if (!originalEntrySnap.exists()) {
+            toast({ title: 'Gagal', description: 'Postingan asli tidak ditemukan.', variant: 'destructive' });
+            return;
+        }
+
+        const originalEntryData = originalEntrySnap.data() as JournalEntry;
+        const originalAuthor = users.find(u => u.id === originalEntryData.ownerId);
+
+        if (originalEntryData.ownerId === currentAuthUser.uid) {
+            toast({ title: 'Tidak Dapat Me-repost', description: 'Anda tidak dapat me-repost postingan Anda sendiri.', variant: 'destructive' });
+            return;
+        }
+
+        const repostContent = `Repost dari @${originalAuthor?.displayName || 'Anonim'}\n\n"${originalEntryData.content}"`;
+
+        try {
+            // Create the new repost entry
+            await addEntry(
+                repostContent,
+                originalEntryData.images,
+                null, // music file
+                'journal', // postType
+                [], // options
+                'public', // visibility
+                [], // allowedUserIds
+                originalEntryData.cardColor,
+                originalEntryData.fontFamily
+            );
+
+            // Increment the repost count on the original entry
+            await updateDoc(originalEntryRef, {
+                repostCount: increment(1)
+            });
+
+            toast({ title: 'Berhasil Di-repost!' });
+            await addPoints(currentAuthUser.uid, 2);
+
+        } catch (error) {
+            console.error("Error reposting entry:", error);
+            toast({ title: 'Gagal Me-repost', variant: 'destructive' });
+        }
+    }, [currentAuthUser, currentUser, users, addEntry, toast, addPoints]);
 
   // --- COLLECTION ACTIONS ---
   const addCollection = useCallback(async (title: string, description: string, entryIds: string[]) => {
@@ -1270,7 +1327,7 @@ export function useJournal() {
     }, [currentUser, toast]);
 
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward, blockUser, unblockUser };
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward, blockUser, unblockUser };
 }
 
 
@@ -1445,5 +1502,6 @@ export function useCanvas(entryId: string) {
     
 
     
+
 
 
