@@ -68,6 +68,7 @@ export type User = {
   questState?: { [key: string]: boolean | 'claimed' };
   lastQuestReset?: string; // YYYY-MM-DD
   isBlocked?: boolean;
+  isPrivate?: boolean;
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz' | 'shared-canvas';
@@ -301,6 +302,7 @@ export function useJournal() {
                     lastQuestReset: todayStr,
                     questState: { login: true },
                     isBlocked: false,
+                    isPrivate: false,
                 };
                 await setDoc(userRef, newUser);
             } else {
@@ -1326,8 +1328,18 @@ export function useJournal() {
         await updateDoc(userRef, { isBlocked: false });
     }, [currentUser, toast]);
 
+    const toggleProfilePrivacy = useCallback(async (userId: string, isPrivate: boolean) => {
+        if (!currentUser || currentUser.displayName !== 'cacann_aselii') {
+            toast({ title: 'Akses Ditolak', description: 'Anda tidak memiliki izin untuk melakukan tindakan ini.', variant: 'destructive' });
+            return;
+        }
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, { isPrivate: isPrivate });
+        toast({ title: 'Privasi Profil Diperbarui' });
+    }, [currentUser, toast]);
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward, blockUser, unblockUser };
+
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy };
 }
 
 
@@ -1502,6 +1514,7 @@ export function useCanvas(entryId: string) {
     
 
     
+
 
 
 
