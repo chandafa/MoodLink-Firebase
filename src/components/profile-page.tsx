@@ -543,7 +543,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className={cn("grid w-full", isUserAdmin ? "grid-cols-7" : "grid-cols-6")}>
+          <TabsList className={cn("grid w-full", isUserAdmin ? "grid-cols-6" : "grid-cols-5")}>
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('profile')}</span>
             </TabsTrigger>
@@ -558,9 +558,6 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
             </TabsTrigger>
             <TabsTrigger value="leaderboard">
                 <Trophy className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('leaderboard')}</span>
-            </TabsTrigger>
-             <TabsTrigger value="settings">
-                <Settings className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('settings')}</span>
             </TabsTrigger>
             {isUserAdmin && (
                 <TabsTrigger value="reports">
@@ -586,9 +583,6 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
           </TabsContent>
           <TabsContent value="leaderboard" className="mt-6">
             <LeaderboardPage />
-          </TabsContent>
-           <TabsContent value="settings" className="mt-6">
-            <SettingsPage />
           </TabsContent>
           {isUserAdmin && (
               <TabsContent value="reports" className="mt-6">

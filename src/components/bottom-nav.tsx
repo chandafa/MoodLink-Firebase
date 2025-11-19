@@ -1,7 +1,8 @@
 
+
 'use client';
 import { useMemo } from 'react';
-import { Home, MessageSquare, User, Settings, Bell, Compass } from 'lucide-react';
+import { Home, MessageSquare, Settings, Bell, Compass } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/language-context';
@@ -28,7 +29,7 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
     { name: 'Explore', label: 'Jelajahi', icon: Compass, badgeCount: 0 },
     { name: 'Pesan', label: 'Pesan', icon: MessageSquare, badgeCount: unreadMessages },
     { name: 'Notifikasi', label: 'Notifikasi', icon: Bell, badgeCount: unreadNotifications },
-    { name: 'Profile', label: 'Profil', icon: User, badgeCount: 0 },
+    { name: 'Settings', label: 'Pengaturan', icon: Settings, badgeCount: 0 },
   ];
 
   return (

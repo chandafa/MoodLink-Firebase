@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -8,6 +9,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { Icons } from '@/components/icons';
 import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
+import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
 import { PostType, User, JournalCollection, useJournal } from '@/hooks/use-journal';
 import PublicProfilePage from '@/components/public-profile-page';
@@ -234,6 +236,8 @@ export default function Home() {
         return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
+      case 'Settings':
+        return <SettingsPage />;
       case 'Profile':
         return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Notifikasi':
