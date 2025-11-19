@@ -17,6 +17,7 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
   return (
     <AnimatePresence>
       <motion.div
+        key="sidebar-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -24,6 +25,7 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
         onClick={onClose}
       />
       <motion.div
+        key="sidebar-content"
         initial={{ x: '-100%' }}
         animate={{ x: 0 }}
         exit={{ x: '-100%' }}
@@ -72,5 +74,3 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
     </AnimatePresence>
   );
 }
-
-    
