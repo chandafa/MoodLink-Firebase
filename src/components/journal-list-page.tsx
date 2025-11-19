@@ -20,6 +20,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Icons } from './icons';
 
 
 function EmptyState() {
@@ -121,10 +123,13 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage }: {
   return (
     <div className="container mx-auto px-4">
         <header className="sticky top-0 z-10 flex items-center justify-between py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
-            <div className="flex items-center gap-3">
-                <BookText className="h-7 w-7 text-primary" />
+            <div className="flex items-center gap-3 w-1/3">
+                {currentUser && <Avatar className="h-8 w-8"><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
             </div>
-            <div className="flex flex-1 justify-end items-center gap-2">
+             <div className="flex items-center gap-3 w-1/3 justify-center">
+                <Icons.logo className="h-7 w-7 text-primary" />
+            </div>
+            <div className="flex w-1/3 justify-end items-center gap-2">
                  <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
                     <Search className="h-5 w-5" />
                 </Button>
