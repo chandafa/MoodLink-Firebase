@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { User, LogOut, X, User as UserIcon, BookCopy, Hourglass, Bookmark, Trophy } from 'lucide-react';
 
-export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
+export function Sidebar({ user, onClose, onNavigate, onSignOut, onAvatarClick }) {
   if (!user) return null;
 
   const handleNavigation = (tabName) => {
@@ -34,7 +34,7 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
       >
         <div className="p-6 border-b">
           <div className="flex justify-between items-center">
-             <Avatar className="h-12 w-12 cursor-pointer" onClick={() => handleNavigation('Profile')}>
+             <Avatar className="h-12 w-12 cursor-pointer" onClick={() => { handleNavigation('Profile'); onAvatarClick(); }}>
                 <AvatarFallback className="text-2xl">{user.avatar}</AvatarFallback>
              </Avatar>
              <Button variant="ghost" size="icon" onClick={onClose}><X/></Button>
@@ -74,3 +74,5 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
     </AnimatePresence>
   );
 }
+
+    

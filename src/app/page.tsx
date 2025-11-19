@@ -28,6 +28,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DevTools } from '@/components/dev-tools';
 
 
 function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: () => void; }) {
@@ -111,6 +112,8 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [avatarClickCount, setAvatarClickCount] = useState(0);
+  const [showDevTools, setShowDevTools] = useState(false);
 
 
   useEffect(() => {
@@ -147,7 +150,7 @@ export default function Home() {
 
   const handleLogin = () => {
     setShowOnboarding(false);
-    setActiveTab('Profile');
+    setActiveTab('Settings');
   };
 
   const handleGuest = () => {
@@ -217,6 +220,15 @@ export default function Home() {
       setActiveTab(tabName);
   }
 
+  const handleAvatarClick = () => {
+    const newCount = avatarClickCount + 1;
+    setAvatarClickCount(newCount);
+    if (newCount >= 5) {
+      setShowDevTools(true);
+      setAvatarClickCount(0);
+    }
+  };
+
 
   const renderContent = () => {
     if (chattingWith) {
@@ -262,6 +274,7 @@ export default function Home() {
       <AnimatePresence>
         {showOnboarding && <OnboardingScreen onLogin={handleLogin} onGuest={handleGuest} />}
       </AnimatePresence>
+      <DevTools isOpen={showDevTools} onOpenChange={setShowDevTools} />
        <AnimatePresence>
           {isSidebarOpen && (
             <Sidebar 
@@ -269,6 +282,7 @@ export default function Home() {
                 onClose={() => setIsSidebarOpen(false)} 
                 onNavigate={handleSidebarNavigate}
                 onSignOut={signOutUser}
+                onAvatarClick={handleAvatarClick}
             />
           )}
       </AnimatePresence>
@@ -293,7 +307,7 @@ export default function Home() {
           {!isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
             <header className="sticky top-0 z-10 flex items-center justify-between py-2 px-4 bg-background/80 backdrop-blur-sm border-b">
                 <div className="flex items-center gap-3 w-1/3">
-                    {currentUser && <Avatar className="h-8 w-8 cursor-pointer" onClick={() => setIsSidebarOpen(true)}><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
+                    {currentUser && <Avatar className="h-8 w-8 cursor-pointer" onClick={() => { setIsSidebarOpen(true); handleAvatarClick(); }}><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
                 </div>
                  <div className="flex items-center gap-3 w-1/3 justify-center">
                     <Icons.logo className="h-7 w-7 text-primary" />
@@ -351,3 +365,4 @@ export default function Home() {
 
     
 
+    
