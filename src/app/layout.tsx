@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/contexts/language-context';
+import { AppearanceProvider } from '@/hooks/use-appearance';
 
 export const metadata: Metadata = {
   title: 'Moodlink – Ekspresikan Emosi, Temukan Ketenangan',
@@ -60,12 +61,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <LanguageProvider>
-          <ThemeProvider>
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </LanguageProvider>
+        <AppearanceProvider>
+          <LanguageProvider>
+            <ThemeProvider>
+              {children}
+              <Toaster />
+            </ThemeProvider>
+          </LanguageProvider>
+        </AppearanceProvider>
       </body>
     </html>
   );

@@ -19,12 +19,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from './theme-toggle';
 import { useTheme } from "./theme-provider";
-import { LogIn, LogOut, User, Trash2, Bell, CaseSensitive, Languages } from "lucide-react";
+import { LogIn, LogOut, User, Trash2, Bell, CaseSensitive, Languages, Palette } from "lucide-react";
 import { useJournal } from "@/hooks/use-journal";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
 import { useLanguage } from "@/contexts/language-context";
+import { AppearanceSettings } from "./appearance-settings";
 
 export default function SettingsPage({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   const { toast } = useToast();
@@ -138,6 +139,8 @@ const handleResetData = () => {
             </div>
           </CardContent>
         </Card>
+        
+        <AppearanceSettings />
 
         <Card>
             <CardHeader>
