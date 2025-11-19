@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck, Flag } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -55,6 +55,7 @@ import {
 import { CollectionListPage } from './collection-list-page';
 import { BookmarkPage } from './bookmark-page';
 import SettingsPage from './settings-page';
+import { ReportManagementPage } from './report-management-page';
 import { useLanguage } from '@/contexts/language-context';
 
 
@@ -500,9 +501,11 @@ function GuestProfileView() {
 }
 
 export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
-  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges } = useJournal();
+  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges, deleteEntry } = useJournal();
   const { toast } = useToast();
   const { t } = useLanguage();
+  
+  const isUserAdmin = currentUser?.displayName === 'cacann_aselii';
 
   const handleUpdateUser = async (data: ProfileFormValues, bannerFile?: File) => {
     if (currentUser) {
@@ -540,7 +543,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
         </h1>
       </header>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className={cn("grid w-full", isUserAdmin ? "grid-cols-7" : "grid-cols-6")}>
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('profile')}</span>
             </TabsTrigger>
@@ -559,6 +562,11 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
              <TabsTrigger value="settings">
                 <Settings className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('settings')}</span>
             </TabsTrigger>
+            {isUserAdmin && (
+                <TabsTrigger value="reports">
+                    <Flag className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Laporan</span>
+                </TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="profile" className="mt-6">
             {isAnonymous ? (
@@ -582,6 +590,11 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
            <TabsContent value="settings" className="mt-6">
             <SettingsPage />
           </TabsContent>
+          {isUserAdmin && (
+              <TabsContent value="reports" className="mt-6">
+                <ReportManagementPage onDelete={deleteEntry} />
+              </TabsContent>
+          )}
         </Tabs>
     </div>
   );

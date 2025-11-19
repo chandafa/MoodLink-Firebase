@@ -46,7 +46,7 @@ export type Comment = {
   authorName: string; // denormalized for easier display
   authorAvatar: string; // denormalized
   content: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   createdAt: any; // Firestore Timestamp
   parentId: string | null; // For threading
   likes: number;
@@ -98,6 +98,15 @@ export type JournalEntry = {
   cardColor?: string; // e.g. 'rose', 'sky'
   fontFamily?: string; // e.g. 'font-body'
   correctAnswerIndex?: number; // For quiz type
+};
+
+export type Report = {
+    id: string;
+    entryId: string;
+    reportedBy: string;
+    createdAt: any;
+    entry: JournalEntry; 
+    reporter?: User;
 };
 
 export type JournalCollection = {
@@ -670,7 +679,7 @@ export function useJournal() {
   }, [currentAuthUser, toast, uploadImageToHosting, updateHashtagCounts]);
 
 
-  const deleteEntry = useCallback(async (id: string) => {
+  const deleteEntry = useCallback(async (id: string, reportId?: string) => {
     if (!currentAuthUser) return;
     
     const entryRef = doc(db, 'journals', id);
@@ -695,10 +704,32 @@ export function useJournal() {
             }
         });
     }
+    
+    if (reportId) {
+        const reportRef = doc(db, 'reports', reportId);
+        await deleteDoc(reportRef);
+    }
 
     await deleteDoc(entryRef);
     toast({ title: 'Postingan Dihapus', variant: 'destructive' });
   }, [currentAuthUser, toast, updateHashtagCounts]);
+  
+  const reportEntry = useCallback(async (entryId: string) => {
+      if (!currentAuthUser) {
+          toast({ title: 'Harus Masuk', description: 'Masuk untuk melaporkan postingan.', variant: 'destructive'});
+          return;
+      }
+      
+      const reportsRef = collection(db, 'reports');
+      await addDoc(reportsRef, {
+          entryId: entryId,
+          reportedBy: currentAuthUser.uid,
+          createdAt: serverTimestamp(),
+      });
+      
+      toast({ title: 'Postingan Dilaporkan', description: 'Terima kasih, kami akan meninjau laporan Anda.'});
+      
+  }, [currentAuthUser, toast]);
 
   // --- COLLECTION ACTIONS ---
   const addCollection = useCallback(async (title: string, description: string, entryIds: string[]) => {
@@ -1194,7 +1225,7 @@ export function useJournal() {
     }, [currentAuthUser, toast]);
 
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward };
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward };
 }
 
 
@@ -1287,6 +1318,48 @@ setIsLoading(false);
     }, [userId]);
 
     return { conversations, isLoading };
+}
+
+// Hook for admins to get reported entries
+export function useReportedEntries() {
+    const [reportedEntries, setReportedEntries] = useState<Report[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const reportsRef = collection(db, 'reports');
+        const q = query(reportsRef, orderBy('createdAt', 'desc'));
+
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+            const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            const enrichedReports: Report[] = [];
+
+            for (const report of reports) {
+                const entryRef = doc(db, 'journals', report.entryId);
+                const entrySnap = await getDoc(entryRef);
+
+                if (entrySnap.exists()) {
+                    const reporterRef = doc(db, 'users', report.reportedBy);
+                    const reporterSnap = await getDoc(reporterRef);
+                    
+                    enrichedReports.push({
+                        ...report,
+                        entry: { id: entrySnap.id, ...entrySnap.data() } as JournalEntry,
+                        reporter: reporterSnap.exists() ? { id: reporterSnap.id, ...reporterSnap.data() } as User : undefined,
+                    } as Report);
+                }
+            }
+            setReportedEntries(enrichedReports);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching reported entries:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    return { reportedEntries, isLoading };
 }
 
     

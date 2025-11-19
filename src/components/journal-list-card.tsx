@@ -110,9 +110,8 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 }
 
 
-export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
-  const { toast } = useToast();
-  const { toggleBookmark, voteOnEntry, currentAuthUserId } = useJournal();
+export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string, reportId?: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
+  const { toggleBookmark, voteOnEntry, reportEntry, currentAuthUserId } = useJournal();
   const [reactions, setReactions] = useState<Reaction[]>([]);
 
   const isBookmarked = useMemo(() => 
@@ -125,11 +124,9 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   const isVerifiedOwner = author?.displayName === 'cacann_aselii';
 
 
-  const handleReport = () => {
-    toast({
-        title: "Entri Dilaporkan",
-        description: "Terima kasih atas laporan Anda. Kami akan meninjaunya."
-    });
+  const handleReport = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    reportEntry(entry.id);
   }
 
   const handleDeleteClick = (e: React.MouseEvent) => {
