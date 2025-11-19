@@ -112,8 +112,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 
 export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string, reportId?: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toggleBookmark, voteOnEntry, reportEntry, currentAuthUserId } = useJournal();
-  const [reactions, setReactions] = useState<Reaction[]>([]);
-
+  
   const isBookmarked = useMemo(() => 
     entry.bookmarkedBy?.includes(currentAuthUserId || '')
   , [entry.bookmarkedBy, currentAuthUserId]);
@@ -144,32 +143,10 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     toggleBookmark(entry.id);
   }
   
-  const handleReaction = (e: React.MouseEvent, reactionType: ReactionType) => {
-      e.stopPropagation();
-      const newReaction: Reaction = {
-          id: Date.now(),
-          type: reactionType,
-          x: `${Math.random() * 80 + 10}%`,
-      };
-      setReactions(prev => [...prev, newReaction]);
-      setTimeout(() => {
-          setReactions(prev => prev.filter(r => r.id !== newReaction.id));
-      }, 1200);
-  };
-  
   const animationVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -20 },
-  };
-
-  const ReactionIcon = ({ type }: { type: ReactionType }) => {
-    switch (type) {
-        case 'fire': return <Flame className="text-orange-500 fill-orange-400" />;
-        case 'wind': return <Wind className="text-blue-400" />;
-        case 'snow': return <Snowflake className="text-sky-300" />;
-        default: return null;
-    }
   };
 
   return (
@@ -182,24 +159,6 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
             onClick={onSelect}
             data-theme={entry.cardColor || 'default'}
         >
-            <AnimatePresence>
-                {reactions.map(reaction => (
-                    <motion.div
-                        key={reaction.id}
-                        initial={{ y: 0, opacity: 1, scale: 0.5 }}
-                        animate={{ y: -100, opacity: 0, scale: 1.2 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1.2, ease: 'easeOut' }}
-                        className="absolute text-2xl pointer-events-none z-30"
-                        style={{
-                            left: reaction.x,
-                            bottom: '10%',
-                        }}
-                    >
-                       <ReactionIcon type={reaction.type} />
-                    </motion.div>
-                ))}
-            </AnimatePresence>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
@@ -285,7 +244,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
             </div>
             
             <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-border/20">
-                <SupportBar entry={entry} onCommentClick={onSelect} onReact={handleReaction} />
+                <SupportBar entry={entry} onCommentClick={onSelect} />
             </div>
         </Card>
     </motion.div>

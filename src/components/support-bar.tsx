@@ -8,69 +8,12 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useMemo, useState, useEffect, useRef } from 'react';
 
-type ReactionType = 'fire' | 'wind' | 'snow';
-
-type ReactionButtonProps = {
-    onReact: (e: React.MouseEvent, reaction: ReactionType) => void;
-};
-
-const reactionCycle: ReactionType[] = ['fire', 'wind', 'snow'];
-
-const ReactionIcon = ({ type, className }: { type: ReactionType, className?: string }) => {
-    switch (type) {
-        case 'fire': return <Flame className={cn("h-4 w-4 text-orange-500", className)} />;
-        case 'wind': return <Wind className={cn("h-4 w-4 text-blue-400", className)} />;
-        case 'snow': return <Snowflake className={cn("h-4 w-4 text-sky-300", className)} />;
-        default: return <Flame className={cn("h-4 w-4 text-orange-500", className)} />;
-    }
-};
-
-function ReactionButton({ onReact }: ReactionButtonProps) {
-    const [currentReactionIndex, setCurrentReactionIndex] = useState(0);
-
-    const activeReaction = reactionCycle[currentReactionIndex];
-
-    const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-
-        // Trigger the currently selected reaction
-        onReact(e, activeReaction);
-        
-        // Immediately cycle to the next reaction for the next click
-        setCurrentReactionIndex(prevIndex => (prevIndex + 1) % reactionCycle.length);
-    };
-
-    return (
-        <motion.div whileTap={{ scale: 0.9 }}>
-            <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center gap-1.5"
-                onClick={handleClick}
-            >
-                <AnimatePresence mode="popLayout">
-                     <motion.div
-                        key={activeReaction}
-                        initial={{ scale: 0.5, opacity: 0, y: 10 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.5, opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                     >
-                        <ReactionIcon type={activeReaction} />
-                     </motion.div>
-                </AnimatePresence>
-            </Button>
-        </motion.div>
-    );
-}
-
 type SupportBarProps = {
   entry: JournalEntry;
   onCommentClick?: () => void;
-  onReact: (e: React.MouseEvent, reaction: ReactionType) => void;
 };
 
-export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) {
+export function SupportBar({ entry, onCommentClick }: SupportBarProps) {
   const { toggleLike, toggleBookmark, currentAuthUserId } = useJournal();
   const { toast } = useToast();
   
@@ -124,8 +67,6 @@ export function SupportBar({ entry, onCommentClick, onReact }: SupportBarProps) 
         </Button>
       </motion.div>
       
-      <ReactionButton onReact={onReact} />
-
        <motion.div whileTap={{ scale: 0.9 }}>
         <Button
           variant="ghost"
