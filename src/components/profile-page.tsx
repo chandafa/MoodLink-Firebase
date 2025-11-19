@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck, Flag } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck, Flag, EyeOff } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -68,11 +68,12 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; onAnalyze: () => Promise<void>; }) {
+function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePrivacy }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; onAnalyze: () => Promise<void>; onTogglePrivacy: () => void; }) {
   const { toast } = useToast();
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t } = useLanguage();
+  const isAdmin = currentUser?.displayName === 'cacann_aselii';
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -302,7 +303,36 @@ const getBadgeDescription = (badge: string) => {
             </Button>
         </CardContent>
 
-        <CardFooter className="flex-col sm:flex-row gap-2 justify-end bg-muted/50 p-4 border-t">
+        {isAdmin && (
+            <>
+            <Separator className="my-4" />
+            <CardContent>
+                <h3 className="text-lg font-semibold mb-2">Kontrol Admin</h3>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="secondary">
+                            <EyeOff className="mr-2 h-4 w-4" />
+                            {currentUser?.isPrivate ? 'Jadikan Publik' : 'Jadikan Privat'}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Anda yakin ingin mengubah privasi profil Anda?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Ini akan mengubah visibilitas profil dan postingan Anda untuk pengguna lain.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={onTogglePrivacy}>Ya, Ubah</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+            </>
+        )}
+
+        <CardFooter className="flex-col sm:flex-row gap-2 justify-end bg-muted/50 p-4 border-t mt-6">
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> {t('signOut')}</Button>
@@ -501,7 +531,7 @@ function GuestProfileView() {
 }
 
 export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
-  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges, deleteEntry } = useJournal();
+  const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges, deleteEntry, toggleProfilePrivacy } = useJournal();
   const { toast } = useToast();
   const { t } = useLanguage();
   
@@ -531,6 +561,11 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
     } else {
         toast({ title: "Analisis Selesai", description: "Teruslah berkontribusi! Belum ada lencana baru yang sesuai saat ini."});
     }
+  }
+
+  const handleTogglePrivacy = async () => {
+    if (!currentUser) return;
+    await toggleProfilePrivacy(currentUser.id, !currentUser.isPrivate);
   }
 
 
@@ -569,7 +604,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
             {isAnonymous ? (
                 <GuestProfileView />
             ) : (
-                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} onAnalyze={handleAnalyze} />
+                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} onAnalyze={handleAnalyze} onTogglePrivacy={handleTogglePrivacy} />
             )}
           </TabsContent>
           <TabsContent value="collections" className="mt-6">
