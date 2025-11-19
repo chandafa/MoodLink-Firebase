@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, BadgeCheck, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, UserPlus, MessageSquare, Edit, Flag, Trash2, MoreVertical, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, BadgeCheck, ShieldCheck, UserX } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -18,6 +18,17 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import HashtagRenderer from './hashtag-renderer';
 import { SupportBar } from './support-bar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const POINTS_PER_LEVEL = 50;
 
@@ -37,7 +48,8 @@ export default function PublicProfilePage({
   onViewHashtag: (tag: string) => void;
   onViewImage: (url: string) => void;
 }) {
-  const { users, isLoaded, currentUser, toggleFollow, getUserEntries, deleteEntry } = useJournal();
+  const { users, isLoaded, currentUser, toggleFollow, getUserEntries, deleteEntry, blockUser, unblockUser } = useJournal();
+  const { toast } = useToast();
 
   const userProfile = useMemo(() => {
     return users.find(u => u.id === userId);
@@ -54,6 +66,7 @@ export default function PublicProfilePage({
   }, [currentUser, userProfile]);
 
   const isVerifiedOwner = userProfile?.displayName === 'cacann_aselii';
+  const isAdmin = currentUser?.displayName === 'cacann_aselii';
 
 
   const handleFollowToggle = () => {
@@ -66,6 +79,18 @@ export default function PublicProfilePage({
       if (userProfile) {
           onStartChat(userProfile);
       }
+  }
+
+  const handleBlockUser = async () => {
+    if (!userProfile) return;
+    await blockUser(userProfile.id);
+    toast({ title: 'Pengguna Diblokir', description: `${userProfile.displayName} telah diblokir.` });
+  }
+
+  const handleUnblockUser = async () => {
+    if (!userProfile) return;
+    await unblockUser(userProfile.id);
+    toast({ title: 'Blokir Dibuka', description: `Blokir untuk ${userProfile.displayName} telah dibuka.` });
   }
 
   const pointsToNextLevel = userProfile ? POINTS_PER_LEVEL - (userProfile.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
@@ -152,8 +177,12 @@ export default function PublicProfilePage({
                       <ShieldCheck className="mr-2 h-4 w-4"/> Admin
                     </div>
                   ) : (
-                    <div className="mt-4 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
-                        <UsersIcon className="mr-2 h-4 w-4"/> Member
+                    <div className={cn(
+                        "mt-4 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                        userProfile.isBlocked ? "border-transparent bg-destructive text-destructive-foreground" : "border-transparent bg-secondary text-secondary-foreground"
+                    )}>
+                        {userProfile.isBlocked ? <UserX className="mr-2 h-4 w-4"/> : <UsersIcon className="mr-2 h-4 w-4"/>}
+                        {userProfile.isBlocked ? 'Diblokir' : 'Member'}
                     </div>
                   )}
 
@@ -190,6 +219,29 @@ export default function PublicProfilePage({
                     Kirim Pesan
                 </Button>
             </CardContent>
+            {isAdmin && userProfile.id !== currentUser?.id && (
+                <CardFooter className="flex-col sm:flex-row gap-2 justify-center border-t mt-4 p-4">
+                    {userProfile.isBlocked ? (
+                        <Button variant="outline" onClick={handleUnblockUser}>Buka Blokir Pengguna</Button>
+                    ) : (
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive"><UserX className="mr-2 h-4 w-4" /> Blokir Pengguna</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Anda yakin ingin memblokir {userProfile.displayName}?</AlertDialogTitle>
+                                    <AlertDialogDescription>Pengguna ini tidak akan bisa masuk atau mengakses aplikasi.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleBlockUser} className="bg-destructive hover:bg-destructive/90">Ya, Blokir</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </CardFooter>
+            )}
         </Card>
 
         <Separator className="my-8" />

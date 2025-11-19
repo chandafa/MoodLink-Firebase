@@ -67,6 +67,7 @@ export type User = {
   notificationsEnabled?: boolean;
   questState?: { [key: string]: boolean | 'claimed' };
   lastQuestReset?: string; // YYYY-MM-DD
+  isBlocked?: boolean;
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz';
@@ -247,6 +248,18 @@ export function useJournal() {
         const unsubUser = onSnapshot(userRef, async (docSnap) => {
             if (docSnap.exists()) {
                 const userData = { id: docSnap.id, ...docSnap.data() } as User;
+                
+                if (userData.isBlocked) {
+                    toast({
+                        title: 'Akun Ditangguhkan',
+                        description: 'Akun Anda telah ditangguhkan. Silakan hubungi dukungan.',
+                        variant: 'destructive',
+                        duration: 10000,
+                    });
+                    signOut(auth);
+                    return;
+                }
+                
                 // Check if quests need to be reset
                 if (userData.lastQuestReset !== todayStr) {
                   await resetDailyQuests(user.uid);
@@ -275,6 +288,7 @@ export function useJournal() {
                     notificationsEnabled: true,
                     lastQuestReset: todayStr,
                     questState: { login: true },
+                    isBlocked: false,
                 };
                 await setDoc(userRef, newUser);
             } else {
@@ -1053,8 +1067,10 @@ export function useJournal() {
     const getUserEntries = useCallback((userId: string) => {
         return entries.filter(entry => {
             if (entry.ownerId !== userId) return false;
+            // If the user is viewing their own profile, show all posts
             if (entry.ownerId === currentAuthUser?.uid) return true;
             
+            // Otherwise, apply visibility rules
             if (entry.visibility === 'public') return true;
             
             if (entry.visibility === 'restricted' && (entry.allowedUserIds || []).includes(currentAuthUser?.uid || '')) return true;
@@ -1224,8 +1240,26 @@ export function useJournal() {
         }
     }, [currentAuthUser, toast]);
 
+    const blockUser = useCallback(async (userId: string) => {
+        if (!currentUser || currentUser.displayName !== 'cacann_aselii') {
+            toast({ title: 'Akses Ditolak', description: 'Anda tidak memiliki izin untuk melakukan tindakan ini.', variant: 'destructive' });
+            return;
+        }
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, { isBlocked: true });
+    }, [currentUser, toast]);
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward };
+    const unblockUser = useCallback(async (userId: string) => {
+        if (!currentUser || currentUser.displayName !== 'cacann_aselii') {
+            toast({ title: 'Akses Ditolak', description: 'Anda tidak memiliki izin untuk melakukan tindakan ini.', variant: 'destructive' });
+            return;
+        }
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, { isBlocked: false });
+    }, [currentUser, toast]);
+
+
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward, blockUser, unblockUser };
 }
 
 
@@ -1365,3 +1399,4 @@ export function useReportedEntries() {
     
 
     
+
