@@ -35,10 +35,10 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
   const { messages, isLoading } = useChatMessages(roomId);
 
   useEffect(() => {
-    if (roomId) {
+    if (roomId && messages) { // Check for messages to ensure it runs on new messages
         markConversationAsRead(roomId);
     }
-  }, [roomId, markConversationAsRead, messages]);
+  }, [roomId, markConversationAsRead, messages]); // Add messages to dependency array
 
 
   useEffect(() => {
