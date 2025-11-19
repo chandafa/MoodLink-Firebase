@@ -237,7 +237,7 @@ export default function Home() {
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Settings':
-        return <SettingsPage />;
+        return <SettingsPage setActiveTab={setActiveTab} />;
       case 'Profile':
         return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Notifikasi':

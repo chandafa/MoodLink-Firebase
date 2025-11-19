@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "./ui/switch";
 import { useLanguage } from "@/contexts/language-context";
 
-export default function SettingsPage() {
+export default function SettingsPage({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   const { toast } = useToast();
   const { currentUser, isAnonymous, signOutUser, toggleNotifications } = useJournal();
   const { theme, setTheme } = useTheme();
@@ -74,7 +74,7 @@ const handleResetData = () => {
                             <p className="text-sm text-muted-foreground">{t('guestAccountDescription')}</p>
                         </div>
                        </div>
-                       <Button><LogIn className="mr-2"/> {t('signIn')}</Button>
+                       <Button onClick={() => setActiveTab('Profile')}><LogIn className="mr-2"/> {t('signIn')}</Button>
                     </div>
                 ) : (
                     <div className="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
