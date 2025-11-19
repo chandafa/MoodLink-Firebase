@@ -80,7 +80,7 @@ export type VoteOption = {
 
 export type CanvasPath = {
     id?: string;
-    points: { x: number; y: number }[];
+    points: { x: number, y: number }[];
     color: string;
     strokeWidth: number;
 };
@@ -269,7 +269,9 @@ export function useJournal() {
                         variant: 'destructive',
                         duration: 10000,
                     });
-                    signOut(auth);
+                    setCurrentUser(userData); // Set the blocked user to handle UI state
+                    setIsLoaded(true); // Mark as loaded to show blocking screen
+                    // signOut(auth); // Don't sign out, just block access
                     return;
                 }
                 
@@ -389,6 +391,14 @@ export function useJournal() {
     // We only start loading data once we have an authenticated user (even an anonymous one)
     if (!currentAuthUser) return;
     
+    // Stop loading data if the user is blocked
+    if (currentUser?.isBlocked) {
+        setEntries([]);
+        setUsers([]);
+        setCollections([]);
+        return;
+    }
+
     // Fetch all users
     const usersUnsub = onSnapshot(collection(db, 'users'), (snapshot) => {
         const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
@@ -434,7 +444,7 @@ export function useJournal() {
         usersUnsub();
         entriesUnsub();
     };
-  }, [currentAuthUser, isAnonymous]);
+  }, [currentAuthUser, isAnonymous, currentUser?.isBlocked]);
 
     // --- QUEST ACTIONS ---
     const updateQuestState = useCallback(async (userId: string, questId: string, value: boolean | 'claimed' = true) => {
@@ -1514,6 +1524,7 @@ export function useCanvas(entryId: string) {
     
 
     
+
 
 
 

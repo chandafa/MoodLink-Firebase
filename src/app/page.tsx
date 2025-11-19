@@ -84,11 +84,11 @@ function OnboardingScreen({ onLogin, onGuest }: { onLogin: () => void; onGuest: 
   );
 }
 
-function LoadingScreen() {
+function LoadingScreen({ text = "Memuat data..." }: { text?: string }) {
     return (
         <div className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50">
             <LoaderCircle className="h-12 w-12 text-primary animate-spin" />
-            <p className="mt-4 text-muted-foreground">Memuat data...</p>
+            <p className="mt-4 text-muted-foreground">{text}</p>
         </div>
     );
 }
@@ -115,7 +115,13 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoaded) {
-      setIsLoading(false); // Hide main loading screen
+      if (currentUser?.isBlocked) {
+          // If user is blocked, we keep the loading screen up indefinitely.
+          // The useJournal hook will stop fetching data.
+          setIsLoading(true);
+          return;
+      }
+      setIsLoading(false); // Hide main loading screen for non-blocked users
       if (isAnonymous) {
         const lastShown = localStorage.getItem('onboardingLastShown');
         const today = new Date().toDateString();
@@ -137,7 +143,7 @@ export default function Home() {
         }
       }
     }
-  }, [isLoaded, isAnonymous]);
+  }, [isLoaded, isAnonymous, currentUser]);
 
   const handleLogin = () => {
     setShowOnboarding(false);
@@ -251,7 +257,7 @@ export default function Home() {
   return (
     <>
       <AnimatePresence>
-        {isLoading && <LoadingScreen />}
+        {isLoading && <LoadingScreen text={currentUser?.isBlocked ? "Akses ditangguhkan..." : "Memuat data..."} />}
       </AnimatePresence>
       <AnimatePresence>
         {showOnboarding && <OnboardingScreen onLogin={handleLogin} onGuest={handleGuest} />}
@@ -344,3 +350,4 @@ export default function Home() {
 }
 
     
+
