@@ -262,7 +262,7 @@ const getBadgeDescription = (badge: string) => {
                         <SelectValue placeholder="Pilih gelar..." />
                     </SelectTrigger>
                     <SelectContent>
-                        {currentUser?.unlockedTitles.map(titleId => {
+                        {(currentUser?.unlockedTitles || []).map(titleId => {
                             const title = titleMap.get(titleId);
                             return title ? (
                                 <SelectItem key={title.id} value={title.id}>

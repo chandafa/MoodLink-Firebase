@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -1267,11 +1268,11 @@ export function useJournal() {
                 
                 const userData = userDoc.data() as User;
                 
-                if (item.type === 'title' && userData.unlockedTitles.includes(item.id)) {
+                if (item.type === 'title' && (userData.unlockedTitles || []).includes(item.id)) {
                     toast({ title: 'Sudah Dimiliki' });
                     return;
                 }
-                if (item.type === 'avatar' && userData.unlockedAvatars.includes(item.id)) {
+                if (item.type === 'avatar' && (userData.unlockedAvatars || []).includes(item.id)) {
                     toast({ title: 'Sudah Dimiliki' });
                     return;
                 }
