@@ -250,19 +250,19 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} searchTerm={searchTerm} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
       case 'Explore':
-        return <ExplorePage onViewHashtag={onViewHashtag} />;
+        return <ExplorePage onViewHashtag={handleViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Settings':
         return <SettingsPage setActiveTab={setActiveTab} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} searchTerm={searchTerm} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
     }
   };
 
