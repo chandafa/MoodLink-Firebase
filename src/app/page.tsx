@@ -16,7 +16,7 @@ import type { PostType, User, JournalCollection } from '@/lib/types';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
-import { ExplorePage } from '@/components/explore-page';
+import { ShopPage } from '@/components/shop-page';
 import HashtagPage from '@/components/hashtag-page';
 import { ImageViewer } from '@/components/image-viewer';
 import { Button } from '@/components/ui/button';
@@ -113,7 +113,7 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [avatarClickCount, setAvatarClickCount] = useState(0);
+  const [bannerClickCount, setBannerClickCount] = useState(0);
   const [showDevTools, setShowDevTools] = useState(false);
 
 
@@ -221,12 +221,12 @@ export default function Home() {
       setActiveTab(tabName);
   }
 
-  const handleAvatarClick = () => {
-    const newCount = avatarClickCount + 1;
-    setAvatarClickCount(newCount);
+  const handleBannerClick = () => {
+    const newCount = bannerClickCount + 1;
+    setBannerClickCount(newCount);
     if (newCount >= 5) {
       setShowDevTools(true);
-      setAvatarClickCount(0);
+      setBannerClickCount(0);
     }
   };
 
@@ -251,14 +251,14 @@ export default function Home() {
     switch (activeTab) {
       case 'Home':
         return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
-      case 'Explore':
-        return <ExplorePage onViewHashtag={handleViewHashtag} />;
+      case 'Toko':
+        return <ShopPage />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Settings':
         return <SettingsPage setActiveTab={setActiveTab} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} onBannerClick={handleBannerClick} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       default:
@@ -283,7 +283,6 @@ export default function Home() {
                 onClose={() => setIsSidebarOpen(false)} 
                 onNavigate={handleSidebarNavigate}
                 onSignOut={signOutUser}
-                onAvatarClick={handleAvatarClick}
             />
           )}
       </AnimatePresence>
@@ -308,7 +307,7 @@ export default function Home() {
           {!isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
             <header className="sticky top-0 z-10 flex items-center justify-between py-2 px-4 bg-background/80 backdrop-blur-sm border-b">
                 <div className="flex items-center gap-3 w-1/3">
-                    {currentUser && <Avatar className="h-8 w-8 cursor-pointer" onClick={() => { setIsSidebarOpen(true); handleAvatarClick(); }}><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
+                    {currentUser && <Avatar className="h-8 w-8 cursor-pointer" onClick={() => setIsSidebarOpen(true)}><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
                 </div>
                  <div className="flex items-center gap-3 w-1/3 justify-center">
                     <Icons.logo className="h-7 w-7 text-primary" />

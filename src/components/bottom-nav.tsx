@@ -2,7 +2,7 @@
 
 'use client';
 import { useMemo } from 'react';
-import { Home, MessageSquare, Settings, Bell, Compass } from 'lucide-react';
+import { Home, MessageSquare, Settings, Bell, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/language-context';
@@ -27,7 +27,7 @@ export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setA
 
   const navItems = [
     { name: 'Home', label: 'Beranda', icon: Home, badgeCount: 0 },
-    { name: 'Explore', label: 'Jelajahi', icon: Compass, badgeCount: 0 },
+    { name: 'Toko', label: 'Toko', icon: Store, badgeCount: 0 },
     { name: 'Pesan', label: 'Pesan', icon: MessageSquare, badgeCount: unreadMessages },
     { name: 'Notifikasi', label: 'Notifikasi', icon: Bell, badgeCount: unreadNotifications },
     { name: 'Settings', label: 'Pengaturan', icon: Settings, badgeCount: 0 },

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Store, Gem, LoaderCircle } from 'lucide-react';

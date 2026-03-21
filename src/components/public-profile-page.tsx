@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useShopItems } from '@/hooks/use-shop';
 
 const POINTS_PER_LEVEL = 50;
 
@@ -50,6 +51,7 @@ export default function PublicProfilePage({
   onViewImage: (url: string) => void;
 }) {
   const { users, isLoaded, currentUser, toggleFollow, getUserEntries, deleteEntry, blockUser, unblockUser, toggleProfilePrivacy } = useJournal();
+  const { titleMap } = useShopItems();
   const { toast } = useToast();
 
   const userProfile = useMemo(() => {
@@ -175,6 +177,9 @@ export default function PublicProfilePage({
               </div>
               <div className="pt-20 p-6 flex flex-col items-center">
                  <div className="flex items-center gap-2">
+                    {userProfile?.activeTitle && titleMap.get(userProfile.activeTitle) && (
+                        <span className="text-lg font-bold text-primary">{titleMap.get(userProfile.activeTitle)?.icon} {titleMap.get(userProfile.activeTitle)?.name}</span>
+                    )}
                     <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
                     {isVerifiedOwner && <BadgeCheck className="h-6 w-6 text-primary" />}
                  </div>

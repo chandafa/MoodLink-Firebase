@@ -26,7 +26,7 @@ import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardPage } from './leaderboard-page';
-import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck, Flag, EyeOff } from 'lucide-react';
+import { User as UserIcon, Trophy, Hourglass, Camera, Trash2, LogOut, BookCopy, Sparkles, LoaderCircle, Bookmark, Settings, ShieldCheck, Flag, EyeOff, Crown } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CapsuleListPage } from './capsule-list-page';
@@ -57,6 +57,8 @@ import { BookmarkPage } from './bookmark-page';
 import SettingsPage from './settings-page';
 import { ReportManagementPage } from './report-management-page';
 import { useLanguage } from '@/contexts/language-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useShopItems } from '@/hooks/use-shop';
 
 
 const profileSchema = z.object({
@@ -68,8 +70,10 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 const POINTS_PER_LEVEL = 50;
 
-function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePrivacy }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; onAnalyze: () => Promise<void>; onTogglePrivacy: () => void; }) {
+function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePrivacy, onBannerClick }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; onAnalyze: () => Promise<void>; onTogglePrivacy: () => void; onBannerClick: () => void; }) {
   const { toast } = useToast();
+  const { equipTitle } = useJournal();
+  const { shopItems, titleMap } = useShopItems();
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t } = useLanguage();
@@ -160,7 +164,7 @@ const getBadgeDescription = (badge: string) => {
   return (
      <Card>
         <CardHeader className="p-0">
-          <div className="relative h-48 bg-secondary flex items-center justify-center">
+          <div className="relative h-48 bg-secondary flex items-center justify-center cursor-pointer" onClick={onBannerClick}>
              {currentUser?.bannerUrl && (
                 <Image
                     src={currentUser.bannerUrl}
@@ -171,12 +175,12 @@ const getBadgeDescription = (badge: string) => {
                 />
              )}
             <div className="absolute top-2 right-2 flex gap-2">
-                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => bannerInputRef.current?.click()}>
+                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); bannerInputRef.current?.click();}}>
                     <Camera className="h-4 w-4" />
                 </Button>
                 <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={handleBannerChange}/>
                  {currentUser?.bannerUrl && (
-                    <Button size="icon" variant="destructive" className="h-8 w-8 rounded-full" onClick={handleRemoveBanner}>
+                    <Button size="icon" variant="destructive" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); handleRemoveBanner();}}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                  )}
@@ -190,7 +194,12 @@ const getBadgeDescription = (badge: string) => {
              </div>
           </div>
           <div className="pt-20 p-6 flex flex-col items-center">
+            <div className="flex items-center gap-2">
+             {currentUser?.activeTitle && titleMap.get(currentUser.activeTitle) && (
+                <span className="text-lg font-bold text-primary">{titleMap.get(currentUser.activeTitle)?.icon} {titleMap.get(currentUser.activeTitle)?.name}</span>
+             )}
              <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
+            </div>
              <CardDescription className="mt-1 text-center">{currentUser?.bio || 'No bio yet.'}</CardDescription>
              
               {currentUser?.displayName === 'cacann_aselii' ? (
@@ -242,6 +251,28 @@ const getBadgeDescription = (badge: string) => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                <h3 className="text-lg font-semibold">{t('editProfile')}</h3>
+               <div className="space-y-2">
+                <Label>Gelar Aktif</Label>
+                <Select
+                    value={currentUser?.activeTitle || 'default'}
+                    onValueChange={(value) => equipTitle(value === 'default' ? null : value)}
+                    disabled={!currentUser}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Pilih gelar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {currentUser?.unlockedTitles.map(titleId => {
+                            const title = titleMap.get(titleId);
+                            return title ? (
+                                <SelectItem key={title.id} value={title.id}>
+                                   {title.icon} {title.name}
+                                </SelectItem>
+                            ) : null;
+                        })}
+                    </SelectContent>
+                </Select>
+               </div>
               <FormField
                 control={form.control}
                 name="displayName"
@@ -530,7 +561,7 @@ function GuestProfileView() {
     )
 }
 
-export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
+export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage, onBannerClick }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; onBannerClick: () => void; }) {
   const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges, deleteEntry, toggleProfilePrivacy } = useJournal();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -604,7 +635,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
             {isAnonymous ? (
                 <GuestProfileView />
             ) : (
-                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} onAnalyze={handleAnalyze} onTogglePrivacy={handleTogglePrivacy} />
+                <ProfileForm currentUser={currentUser} onUpdate={handleUpdateUser} onSignOut={signOutUser} onAnalyze={handleAnalyze} onTogglePrivacy={handleTogglePrivacy} onBannerClick={onBannerClick} />
             )}
           </TabsContent>
           <TabsContent value="collections" className="mt-6">

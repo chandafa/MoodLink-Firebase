@@ -32,6 +32,9 @@ export type User = {
   lastQuestReset?: string; // YYYY-MM-DD
   isBlocked?: boolean;
   isPrivate?: boolean;
+  activeTitle?: string | null;
+  unlockedTitles: string[];
+  unlockedAvatars: string[];
 };
 
 export type PostType = 'journal' | 'voting' | 'capsule' | 'quiz' | 'shared-canvas';
@@ -137,4 +140,13 @@ export type Hashtag = {
   name: string;
   count: number;
   updatedAt: Timestamp;
+};
+
+export type ShopItem = {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    type: 'title' | 'avatar' | 'banner';
+    icon?: string; // For titles or avatars
 };

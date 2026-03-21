@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -34,7 +33,8 @@ import { onAuthStateChanged, signInAnonymously, signOut, linkWithCredential, Goo
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { addDays, format } from 'date-fns';
 import { analyzeUserEssence, AnalyzeUserEssenceInput } from '@/ai/flows/analyze-user-essence';
-import type { User, JournalEntry, PostType, Visibility, JournalCollection, Notification } from '@/lib/types';
+import type { User, JournalEntry, PostType, Visibility, JournalCollection, Notification, ShopItem } from '@/lib/types';
+import { useShopItems } from './use-shop';
 
 
 const POINTS_PER_LEVEL = 50;
@@ -85,6 +85,7 @@ export function useJournal() {
   const [currentAuthUser, setCurrentAuthUser] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const { shopItems } = useShopItems();
 
   // --- POINTS & LEVEL ---
   const addPoints = useCallback(async (userId: string, amount: number) => {
@@ -183,6 +184,9 @@ export function useJournal() {
                     questState: { login: true },
                     isBlocked: false,
                     isPrivate: false,
+                    activeTitle: null,
+                    unlockedTitles: ['default'],
+                    unlockedAvatars: [],
                 };
                 await setDoc(userRef, newUser);
             } else {
@@ -1243,6 +1247,68 @@ export function useJournal() {
         toast({ title: 'Privasi Profil Diperbarui' });
     }, [currentUser, toast]);
 
+    // --- SHOP ACTIONS ---
+    const purchaseItem = useCallback(async (item: ShopItem) => {
+        if (!currentUser || !currentAuthUser) {
+            toast({ title: 'Harus Masuk', description: 'Masuk untuk berbelanja.', variant: 'destructive' });
+            return;
+        }
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, updateChatMessage, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy };
+        if (currentUser.points < item.price) {
+            toast({ title: 'Poin Tidak Cukup', description: `Anda memerlukan ${item.price} poin untuk membeli ini.`, variant: 'destructive' });
+            return;
+        }
+
+        const userRef = doc(db, 'users', currentAuthUser.uid);
+        try {
+            await runTransaction(db, async (transaction) => {
+                const userDoc = await transaction.get(userRef);
+                if (!userDoc.exists()) throw "User document does not exist!";
+                
+                const userData = userDoc.data() as User;
+                
+                if (item.type === 'title' && userData.unlockedTitles.includes(item.id)) {
+                    toast({ title: 'Sudah Dimiliki' });
+                    return;
+                }
+                if (item.type === 'avatar' && userData.unlockedAvatars.includes(item.id)) {
+                    toast({ title: 'Sudah Dimiliki' });
+                    return;
+                }
+                
+                const newPoints = userData.points - item.price;
+                let updateData = {};
+                if (item.type === 'title') {
+                    updateData = {
+                        points: newPoints,
+                        unlockedTitles: arrayUnion(item.id)
+                    };
+                } else if (item.type === 'avatar') {
+                     updateData = {
+                        points: newPoints,
+                        unlockedAvatars: arrayUnion(item.id)
+                    };
+                }
+                
+                transaction.update(userRef, updateData);
+            });
+            toast({ title: 'Pembelian Berhasil!', description: `Anda telah membeli ${item.name}.` });
+        } catch (error) {
+            console.error("Purchase transaction failed:", error);
+            toast({ title: 'Pembelian Gagal', variant: 'destructive' });
+        }
+    }, [currentUser, currentAuthUser, toast]);
+
+    const equipTitle = useCallback(async (titleId: string | null) => {
+        if (!currentAuthUser) return;
+        const userRef = doc(db, 'users', currentAuthUser.uid);
+        await updateDoc(userRef, {
+            activeTitle: titleId,
+        });
+        toast({ title: 'Gelar Dipasang!' });
+    }, [currentAuthUser, toast]);
+
+
+
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, updateChatMessage, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy, purchaseItem, equipTitle };
 }
