@@ -1,35 +1,37 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, Image as ImageIcon, X, Mic } from 'lucide-react';
+import { Send, ArrowLeft, Image as ImageIcon, X, Mic, MoreVertical, Edit, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { User, useJournal, useChatMessages } from '@/hooks/use-journal';
+import { User, useJournal, useChatMessages, ChatMessage } from '@/hooks/use-journal';
 import { Skeleton } from './ui/skeleton';
 import Image from 'next/image';
-
-type PrivateChatPageProps = {
-    targetUser: User;
-    onBack: () => void;
-};
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
 
-export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageProps) {
+export default function PrivateChatPage({ targetUser, onBack }: { targetUser: User; onBack: () => void; }) {
   const [inputValue, setInputValue] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const { currentUser, currentAuthUserId, getChatRoomId, sendMessage, markConversationAsRead } = useJournal();
+  const { currentUser, currentAuthUserId, getChatRoomId, sendMessage, markConversationAsRead, updateChatMessage } = useJournal();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   const roomId = currentAuthUserId ? getChatRoomId(currentAuthUserId, targetUser.id) : '';
   const { messages, isLoading } = useChatMessages(roomId);
@@ -117,6 +119,29 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
       setIsRecording(false);
     }
   };
+
+  const handleStartEditing = (message: ChatMessage) => {
+    setEditingMessageId(message.id);
+    setEditingText(message.text);
+  };
+
+  const handleCancelEditing = () => {
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMessageId || !editingText.trim()) {
+        handleCancelEditing();
+        return;
+    }
+    setIsSubmittingEdit(true);
+    await updateChatMessage(roomId, editingMessageId, editingText);
+    setIsSubmittingEdit(false);
+    setEditingMessageId(null);
+    setEditingText('');
+  };
   
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -154,50 +179,86 @@ export default function PrivateChatPage({ targetUser, onBack }: PrivateChatPageP
                     <p>Mulai percakapan dengan {targetUser.displayName}!</p>
                 </div>
             ) : (
-                messages.map(message => (
-                    <div
-                    key={message.id}
-                    className={cn(
-                        'flex items-end gap-2',
-                        message.senderId === currentAuthUserId ? 'justify-end' : 'justify-start'
-                    )}
-                    >
-                    {message.senderId !== currentAuthUserId && (
-                        <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{targetUser.avatar}</AvatarFallback>
-                        </Avatar>
-                    )}
-                    <div
-                        className={cn(
-                        'max-w-xs rounded-lg p-3 text-sm',
-                        message.senderId === currentAuthUserId
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        )}
-                    >
-                        {message.imageUrl && (
-                            <Image
-                                src={message.imageUrl}
-                                alt="Chat image"
-                                width={200}
-                                height={200}
-                                className="rounded-md mb-2 object-cover"
-                            />
-                        )}
-                        {message.audioUrl && (
-                            <audio controls src={message.audioUrl} className="w-full h-10">
-                                Browser Anda tidak mendukung elemen audio.
-                            </audio>
-                        )}
-                        {message.text && <p>{message.text}</p>}
-                    </div>
-                    {message.senderId === currentAuthUserId && currentUser && (
-                        <Avatar className="h-8 w-8">
-                        <AvatarFallback>{currentUser.avatar}</AvatarFallback>
-                        </Avatar>
-                    )}
-                    </div>
-                ))
+                messages.map(message => {
+                    const isOwner = message.senderId === currentAuthUserId;
+                    const isEditingThisMessage = editingMessageId === message.id;
+                    
+                    return (
+                        <div key={message.id} className={cn(
+                            'flex items-end gap-2',
+                            isOwner ? 'justify-end' : 'justify-start'
+                        )}>
+                            {!isOwner && (
+                                <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{targetUser.avatar}</AvatarFallback>
+                                </Avatar>
+                            )}
+
+                             {isOwner && !isEditingThisMessage && !message.imageUrl && !message.audioUrl && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 self-center">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => handleStartEditing(message)}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            <span>Edit</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
+                            <div className="max-w-xs w-full">
+                               {isEditingThisMessage ? (
+                                    <form onSubmit={handleSaveEdit} className="space-y-2">
+                                        <Textarea 
+                                            value={editingText}
+                                            onChange={e => setEditingText(e.target.value)}
+                                            className="text-sm"
+                                            rows={3}
+                                            disabled={isSubmittingEdit}
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <Button type="button" variant="ghost" size="sm" onClick={handleCancelEditing} disabled={isSubmittingEdit}>Batal</Button>
+                                            <Button type="submit" size="sm" disabled={isSubmittingEdit}>
+                                                {isSubmittingEdit ? <LoaderCircle className="animate-spin" /> : 'Simpan'}
+                                            </Button>
+                                        </div>
+                                    </form>
+                               ) : (
+                                   <div className={cn(
+                                        'rounded-lg p-3 text-sm w-fit',
+                                        isOwner ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'
+                                    )}>
+                                        {message.imageUrl && (
+                                            <Image
+                                                src={message.imageUrl}
+                                                alt="Chat image"
+                                                width={200}
+                                                height={200}
+                                                className="rounded-md mb-2 object-cover"
+                                            />
+                                        )}
+                                        {message.audioUrl && (
+                                            <audio controls src={message.audioUrl} className="w-full h-10">
+                                                Browser Anda tidak mendukung elemen audio.
+                                            </audio>
+                                        )}
+                                        {message.text && <p>{message.text}</p>}
+                                    </div>
+                               )}
+                            </div>
+                            
+                            {isOwner && currentUser && (
+                                <Avatar className="h-8 w-8">
+                                <AvatarFallback>{currentUser.avatar}</AvatarFallback>
+                                </Avatar>
+                            )}
+                        </div>
+                    )
+                })
             )}
             </div>
         </ScrollArea>

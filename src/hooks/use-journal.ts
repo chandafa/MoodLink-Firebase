@@ -1249,6 +1249,23 @@ export function useJournal() {
         await setDoc(chatDocRef, updateData, { merge: true });
     }, [currentAuthUser]);
 
+    const updateChatMessage = useCallback(async (roomId: string, messageId: string, newText: string) => {
+        if (!currentAuthUser) {
+            toast({ title: "Otentikasi Gagal", variant: 'destructive'});
+            return;
+        };
+        const messageRef = doc(db, 'chats', roomId, 'messages', messageId);
+        try {
+            await updateDoc(messageRef, {
+                text: newText,
+            });
+            toast({ title: "Pesan diperbarui" });
+        } catch (error) {
+            console.error("Error updating chat message:", error);
+            toast({ title: 'Gagal memperbarui pesan', variant: 'destructive'});
+        }
+    }, [currentAuthUser, toast]);
+
 
     const analyzeUserForBadges = useCallback(async () => {
         if (!currentUser) {
@@ -1349,7 +1366,7 @@ export function useJournal() {
     }, [currentUser, toast]);
 
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy };
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, updateChatMessage, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy };
 }
 
 
@@ -1524,6 +1541,7 @@ export function useCanvas(entryId: string) {
     
 
     
+
 
 
 
