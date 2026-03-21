@@ -1,14 +1,9 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { db, collection, query, orderBy, onSnapshot, where, getDocs, limit } from '@/lib/firebase';
-import { JournalEntry, PostType, Visibility } from './use-journal';
-
-export type Hashtag = {
-  name: string;
-  count: number;
-  updatedAt: any;
-};
+import type { JournalEntry, Hashtag } from '@/lib/types';
 
 // Hook to get trending hashtags
 export function useTrendingHashtags(countLimit: number = 10) {

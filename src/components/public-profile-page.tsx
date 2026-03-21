@@ -2,7 +2,8 @@
 
 'use client';
 import { useMemo, useState } from 'react';
-import { useJournal, User, JournalEntry, PostType, Visibility } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { User, JournalEntry, PostType, Visibility } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -311,6 +312,3 @@ export default function PublicProfilePage({
     </motion.div>
   );
 }
-
-    
-

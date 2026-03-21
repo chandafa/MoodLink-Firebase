@@ -1,6 +1,8 @@
+
 'use client';
 
-import { useReportedEntries, Report, JournalEntry, User } from '@/hooks/use-journal';
+import { useReportedEntries } from '@/hooks/use-reports';
+import type { Report } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';

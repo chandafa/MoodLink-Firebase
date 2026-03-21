@@ -1,7 +1,9 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useJournal, JournalEntry } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { JournalEntry } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Icons } from './icons';
 import { Hourglass, Lock, Unlock } from 'lucide-react';

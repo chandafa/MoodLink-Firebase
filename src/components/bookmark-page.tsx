@@ -3,7 +3,8 @@
 
 import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useJournal, type JournalEntry, User } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { JournalEntry, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';

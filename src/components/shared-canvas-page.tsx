@@ -2,7 +2,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useCanvas } from '@/hooks/use-journal';
+import { useCanvas } from '@/hooks/use-canvas';
 import { Button } from './ui/button';
 import { ArrowLeft, Save, Trash2, Undo } from 'lucide-react';
 import { cn } from '@/lib/utils';

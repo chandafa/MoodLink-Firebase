@@ -33,7 +33,9 @@ import {
   Paintbrush,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType, useComments, User, Visibility, Comment } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import { useComments } from '@/hooks/use-comments';
+import type { JournalEntry, PostType, User, Visibility, Comment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

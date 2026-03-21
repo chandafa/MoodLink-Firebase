@@ -4,20 +4,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, collection, query, where, orderBy, onSnapshot, writeBatch, getDocs, doc } from '@/lib/firebase';
 import type { Timestamp } from '@/lib/firebase';
+import type { Notification } from '@/lib/types';
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'reply';
-
-export type Notification = {
-  id: string;
-  userId: string;         // The user who receives the notification
-  actorId: string;        // The user who performed the action
-  actorName: string;      // The display name of the actor
-  type: NotificationType;
-  journalId?: string;     // The ID of the journal related to the action
-  journalContent?: string; // A snippet of the journal content
-  isRead: boolean;
-  createdAt: Timestamp;
-};
 
 export function useNotifications(userId: string | null) {
   const [notifications, setNotifications] = useState<Notification[]>([]);

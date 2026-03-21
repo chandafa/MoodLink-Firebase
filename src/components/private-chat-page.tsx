@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -8,7 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { User, useJournal, useChatMessages, ChatMessage } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import { useChatMessages } from '@/hooks/use-chat';
+import type { User, ChatMessage } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';

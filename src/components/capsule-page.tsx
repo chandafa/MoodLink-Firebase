@@ -1,7 +1,9 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useJournal, JournalEntry, PostType } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { JournalEntry, PostType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Icons } from './icons';

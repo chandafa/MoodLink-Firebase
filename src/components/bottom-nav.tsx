@@ -7,7 +7,8 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/language-context';
 import { useNotifications } from '@/hooks/use-notifications';
-import { useJournal, useConversations } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import { useConversations } from '@/hooks/use-chat';
 
 
 export function BottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) {

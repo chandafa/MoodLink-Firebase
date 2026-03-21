@@ -11,7 +11,8 @@ import { MessagesPage } from '@/components/messages-page';
 import ProfilePage from '@/components/profile-page';
 import SettingsPage from '@/components/settings-page';
 import { JournalListPage } from '@/components/journal-list-page';
-import { PostType, User, JournalCollection, useJournal } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { PostType, User, JournalCollection } from '@/lib/types';
 import PublicProfilePage from '@/components/public-profile-page';
 import PrivateChatPage from '@/components/private-chat-page';
 import { NotificationListPage } from '@/components/notification-list-page';
@@ -249,19 +250,19 @@ export default function Home() {
 
     switch (activeTab) {
       case 'Home':
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} searchTerm={searchTerm} />;
       case 'Explore':
-        return <ExplorePage onViewHashtag={handleViewHashtag} />;
+        return <ExplorePage onViewHashtag={onViewHashtag} />;
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Settings':
         return <SettingsPage setActiveTab={setActiveTab} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={onViewHashtag} onViewImage={onViewImage} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       default:
-        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} searchTerm={searchTerm} />;
+        return <JournalListPage onSelectEntry={handleSelectEntry} onViewHashtag={onViewHashtag} onViewImage={onViewImage} searchTerm={searchTerm} />;
     }
   };
 
@@ -362,7 +363,3 @@ export default function Home() {
     </>
   );
 }
-
-    
-
-    

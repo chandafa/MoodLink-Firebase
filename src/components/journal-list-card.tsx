@@ -5,7 +5,8 @@
 import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useJournal, type JournalEntry, PostType, Visibility, User } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { JournalEntry, PostType, Visibility, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MoreVertical, Edit, Flag, Trash2, Bookmark, Vote, BookText, Globe, Lock, Users as UsersIcon, Flame, Wind, Snowflake, BadgeCheck, CheckCircle2, Paintbrush } from 'lucide-react';
@@ -250,5 +251,3 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     </motion.div>
   );
 }
-
-    

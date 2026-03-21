@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from 'react';
@@ -8,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GroupListPage } from './group-list-page';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { useJournal, useConversations, User } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import { useConversations } from '@/hooks/use-chat';
+import type { User } from '@/lib/types';
 import { Separator } from './ui/separator';
 import { Skeleton } from './ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';

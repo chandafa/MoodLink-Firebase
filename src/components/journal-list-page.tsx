@@ -4,7 +4,8 @@
 
 import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useJournal, type JournalEntry, PostType, Visibility } from '@/hooks/use-journal';
+import { useJournal } from '@/hooks/use-journal';
+import type { JournalEntry, PostType, Visibility } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -172,5 +173,3 @@ export function JournalListPage({ onSelectEntry, onViewHashtag, onViewImage, sea
     </div>
   );
 }
-
-    
