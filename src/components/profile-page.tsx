@@ -59,6 +59,7 @@ import { ReportManagementPage } from './report-management-page';
 import { useLanguage } from '@/contexts/language-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useShopItems } from '@/hooks/use-shop';
+import { Label } from '@/components/ui/label';
 
 
 const profileSchema = z.object({
