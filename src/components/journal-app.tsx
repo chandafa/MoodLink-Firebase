@@ -76,6 +76,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import SharedCanvasPage from './shared-canvas-page';
+import { useShopItems } from '@/hooks/use-shop';
 
 // --- START: Threaded Comment Section ---
 
@@ -121,6 +122,7 @@ function getCommentAndReplies(comment: CommentWithReplies): CommentWithReplies[]
 
 function CommentItem({
   comment,
+  author,
   entryId,
   entryOwnerId,
   allComments,
@@ -129,6 +131,7 @@ function CommentItem({
   onViewImage,
 }: {
   comment: Comment;
+  author?: User;
   entryId: string;
   entryOwnerId: string;
   allComments: Comment[];
@@ -137,6 +140,7 @@ function CommentItem({
   onViewImage: (url: string) => void;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
+  const { titleMap } = useShopItems();
   const [replyContent, setReplyContent] = useState('');
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -216,7 +220,8 @@ function CommentItem({
     ? `@${parentAuthorName} ${comment.content}` 
     : comment.content;
     
-  const isVerifiedOwner = comment.authorName === 'cacann_aselii';
+  const isVerifiedOwner = author?.displayName === 'cacann_aselii';
+  const activeTitle = author?.activeTitle && titleMap.get(author.activeTitle);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -249,6 +254,9 @@ function CommentItem({
             <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1">
                   <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
+                   {activeTitle && (
+                        <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                    )}
                   {isVerifiedOwner && <BadgeCheck className="h-4 w-4 text-primary" />}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -391,7 +399,7 @@ function CommentItem({
 }
 
 
-function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile, onViewImage }: { entryId: string, entryOwnerId: string, onViewHashtag: (tag: string) => void, onViewProfile: (userId: string) => void, onViewImage: (url: string) => void }) {
+function CommentSection({ entryId, entryOwnerId, users, onViewHashtag, onViewProfile, onViewImage }: { entryId: string, entryOwnerId: string, users: User[], onViewHashtag: (tag: string) => void, onViewProfile: (userId: string) => void, onViewImage: (url: string) => void }) {
     const { comments, isLoading: isLoadingComments } = useComments(entryId);
     const { currentUser, addComment } = useJournal();
     const [newComment, setNewComment] = useState('');
@@ -495,18 +503,22 @@ function CommentSection({ entryId, entryOwnerId, onViewHashtag, onViewProfile, o
             <div className="space-y-4">
               {isLoadingComments ? (
                  <Skeleton className="h-40 w-full" />
-              ) : flattenedComments.length > 0 ? flattenedComments.map(comment => (
-                    <CommentItem 
-                        key={comment.id} 
-                        comment={comment} 
-                        entryId={entryId} 
-                        entryOwnerId={entryOwnerId} 
-                        allComments={comments}
-                        onViewHashtag={onViewHashtag} 
-                        onViewProfile={onViewProfile}
-                        onViewImage={onViewImage}
-                    />
-                )) : (
+              ) : flattenedComments.length > 0 ? flattenedComments.map(comment => {
+                    const author = users.find(u => u.id === comment.authorId);
+                    return (
+                        <CommentItem 
+                            key={comment.id} 
+                            comment={comment} 
+                            author={author}
+                            entryId={entryId} 
+                            entryOwnerId={entryOwnerId} 
+                            allComments={comments}
+                            onViewHashtag={onViewHashtag} 
+                            onViewProfile={onViewProfile}
+                            onViewImage={onViewImage}
+                        />
+                    );
+                }) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Belum ada komentar. Jadilah yang pertama!</p>
                 )}
             </div>
@@ -614,6 +626,7 @@ type JournalAppProps = {
 
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile, onViewHashtag, onViewImage }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId, getFollowersData } = useJournal();
+  const { titleMap } = useShopItems();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<(File | string)[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -647,8 +660,10 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
       if (!currentUser || !activeEntry) return false;
       return currentUser.following.includes(activeEntry.ownerId);
   }, [currentUser, activeEntry]);
-
-  const isVerifiedOwner = useMemo(() => (isOwner ? currentUser?.displayName : entryOwner?.displayName) === 'cacann_aselii', [isOwner, currentUser, entryOwner]);
+  
+  const authorForDisplay = isOwner ? currentUser : entryOwner;
+  const activeTitle = authorForDisplay?.activeTitle && titleMap.get(authorForDisplay.activeTitle);
+  const isVerifiedOwner = useMemo(() => (authorForDisplay?.displayName) === 'cacann_aselii', [authorForDisplay]);
 
 
   useEffect(() => {
@@ -885,16 +900,19 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
               <div className="flex gap-4 items-start">
                   { (entryOwner || isOwner) && (
                       <Avatar className={cn("h-12 w-12", !isOwner && "cursor-pointer")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
-                          <AvatarFallback className="text-xl">{isOwner ? currentUser?.avatar || 'T' : entryOwner?.avatar}</AvatarFallback>
+                          <AvatarFallback className="text-xl">{authorForDisplay?.avatar || 'T'}</AvatarFallback>
                       </Avatar>
                    )}
                    <div className="flex-1">
                       <div className="flex items-center justify-between text-card-foreground">
                          <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                                <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
-                                {isOwner ? currentUser?.displayName || 'Tamu' : entryOwner?.displayName}
+                                {authorForDisplay?.displayName || 'Tamu'}
                                </p>
+                               {activeTitle && (
+                                   <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                               )}
                                {isVerifiedOwner && <BadgeCheck className="h-5 w-5 text-primary" />}
                             </div>
                             <p className="text-sm text-muted-foreground">
@@ -1185,7 +1203,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                    </div>
               </div>
             </Card>
-            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && activeEntry.postType !== 'shared-canvas' && <CommentSection entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} onViewImage={onViewImage}/>}
+            {selectedEntryId && activeEntry && activeEntry.postType !== 'capsule' && activeEntry.postType !== 'shared-canvas' && <CommentSection users={users} entryId={selectedEntryId} entryOwnerId={activeEntry.ownerId} onViewHashtag={onViewHashtag} onViewProfile={onViewProfile} onViewImage={onViewImage}/>}
             </>
           )}
         </main>

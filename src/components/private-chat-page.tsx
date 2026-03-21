@@ -17,6 +17,7 @@ import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useShopItems } from '@/hooks/use-shop';
 
 
 export default function PrivateChatPage({ targetUser, onBack }: { targetUser: User; onBack: () => void; }) {
@@ -27,6 +28,7 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { titleMap } = useShopItems();
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -38,6 +40,7 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
 
   const roomId = currentAuthUserId ? getChatRoomId(currentAuthUserId, targetUser.id) : '';
   const { messages, isLoading } = useChatMessages(roomId);
+  const activeTitle = targetUser.activeTitle && titleMap.get(targetUser.activeTitle);
 
   useEffect(() => {
     if (roomId && messages) { // Check for messages to ensure it runs on new messages
@@ -158,9 +161,14 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
                 <AvatarFallback className="bg-secondary text-secondary-foreground text-lg">{targetUser.avatar}</AvatarFallback>
             </Avatar>
             <div>
-                <h1 className="text-xl font-bold font-headline text-foreground">
-                    {targetUser.displayName}
-                </h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold font-headline text-foreground">
+                        {targetUser.displayName}
+                    </h1>
+                    {activeTitle && (
+                        <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                    )}
+                </div>
                  <p className="text-xs text-muted-foreground">Level {targetUser.level}</p>
             </div>
            </div>

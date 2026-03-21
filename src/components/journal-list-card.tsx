@@ -20,6 +20,7 @@ import HashtagRenderer from './hashtag-renderer';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { useShopItems } from '@/hooks/use-shop';
 
 type ReactionType = 'fire' | 'wind' | 'snow';
 type Reaction = {
@@ -113,6 +114,7 @@ function VotingSection({ entry, onVote }: { entry: JournalEntry; onVote: (entryI
 
 export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHashtag, onViewImage }: { entry: JournalEntry; author?: User; onSelect: () => void; onDelete: (id: string, reportId?: string) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; }) {
   const { toggleBookmark, voteOnEntry, reportEntry, currentAuthUserId } = useJournal();
+  const { titleMap } = useShopItems();
   
   const isBookmarked = useMemo(() => 
     entry.bookmarkedBy?.includes(currentAuthUserId || '')
@@ -122,6 +124,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   
   const isOwner = entry.ownerId === currentAuthUserId;
   const isVerifiedOwner = author?.displayName === 'cacann_aselii';
+  const activeTitle = author?.activeTitle && titleMap.get(author.activeTitle);
 
 
   const handleReport = (e: React.MouseEvent) => {
@@ -167,8 +170,11 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                             <AvatarFallback>{author?.avatar || 'A'}</AvatarFallback>
                         </Avatar>
                         <div className="text-card-foreground">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
+                              {activeTitle && (
+                                <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                              )}
                               {isVerifiedOwner && <BadgeCheck className="h-4 w-4 text-primary" />}
                             </div>
                             <span className="text-xs text-muted-foreground">{timeAgo}</span>
