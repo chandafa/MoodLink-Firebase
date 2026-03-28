@@ -2,6 +2,7 @@
 
 
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -258,10 +259,10 @@ function CommentItem({
                 <div className="flex items-center gap-1.5">
                   <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
                   {activeTitle && (
-                    <span className="text-xs font-semibold text-primary">{activeTitle.name}</span>
+                    <span className="text-sm font-semibold text-primary">{activeTitle.name}</span>
                   )}
                   {activeBadge && (
-                    <span className="text-sm">{activeBadge.icon}</span>
+                    <span className="text-lg">{activeBadge.icon}</span>
                   )}
                   {isVerifiedOwner && <BadgeCheck className="h-4 w-4 text-primary" />}
                 </div>
