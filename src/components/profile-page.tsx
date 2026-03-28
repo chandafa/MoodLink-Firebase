@@ -1,7 +1,5 @@
 
 
-
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -65,7 +63,7 @@ import { Label } from '@/components/ui/label';
 
 
 const profileSchema = z.object({
-  displayName: z.string().min(2, 'Name must be at least 2 characters.').max(50, 'Name must be at most 50 characters.'),
+  displayName: z.string().min(2, 'Nama pengguna minimal 2 karakter.').max(8, 'Nama pengguna maksimal 8 karakter.'),
   bio: z.string().max(160, 'Bio must be at most 160 characters.').optional(),
   avatar: z.string().max(2, 'Avatar should be a single emoji.').optional(),
 });
