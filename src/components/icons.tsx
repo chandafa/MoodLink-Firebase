@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
-import { BrainCircuit } from 'lucide-react';
+import { Spline } from 'lucide-react';
 
 export const Icons = {
-  logo: (props: SVGProps<SVGSVGElement>) => <BrainCircuit {...props} />,
+  logo: (props: SVGProps<SVGSVGElement>) => <Spline {...props} />,
 };
