@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -73,8 +74,8 @@ const POINTS_PER_LEVEL = 50;
 
 function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePrivacy, onBannerClick }: { currentUser: User | null; onUpdate: (data: ProfileFormValues, bannerFile?: File) => void; onSignOut: () => void; onAnalyze: () => Promise<void>; onTogglePrivacy: () => void; onBannerClick: () => void; }) {
   const { toast } = useToast();
-  const { equipTitle } = useJournal();
-  const { shopItems, titleMap } = useShopItems();
+  const { equipTitle, equipBadge } = useJournal();
+  const { titleMap, badgeMap } = useShopItems();
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t } = useLanguage();
@@ -143,23 +144,10 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePriv
   const pointsToNextLevel = currentUser ? POINTS_PER_LEVEL - (currentUser.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
   const progressToNextLevel = currentUser ? (currentUser.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100 : 0;
   
-  const getBadgeIcon = (badge: string) => {
-    switch (badge) {
-        case 'pioneer': return '🚀';
-        case 'dream_builder': return '☁️';
-        case 'echo_thinker': return '🤔';
-        default: return '🎖️';
-    }
-};
-
-const getBadgeDescription = (badge: string) => {
-    switch (badge) {
-        case 'pioneer': return 'Pionir - Salah satu dari 10 pengguna pertama.';
-        case 'dream_builder': return 'Pembangun Mimpi - Sering menulis hal positif dan ide baru.';
-        case 'echo_thinker': return 'Pemikir Gema - Sering membalas dengan wawasan keren.';
-        default: return 'Lencana Spesial';
-    }
-}
+  const getBadgeDescription = (badgeId: string) => {
+    const badge = badgeMap.get(badgeId);
+    return badge ? `${badge.icon} ${badge.name}` : 'Lencana Spesial';
+  }
 
 
   return (
@@ -196,10 +184,13 @@ const getBadgeDescription = (badge: string) => {
           </div>
           <div className="pt-20 p-6 flex flex-col items-center">
             <div className="flex items-center gap-2">
-             {currentUser?.activeTitle && titleMap.get(currentUser.activeTitle) && (
+              {currentUser?.activeTitle && titleMap.get(currentUser.activeTitle) && (
                 <span className="text-lg font-bold text-primary">{titleMap.get(currentUser.activeTitle)?.icon} {titleMap.get(currentUser.activeTitle)?.name}</span>
-             )}
-             <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
+              )}
+              <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
+              {currentUser?.activeBadge && badgeMap.get(currentUser.activeBadge) && (
+                <span className="text-lg">{badgeMap.get(currentUser.activeBadge)?.icon}</span>
+              )}
             </div>
              <CardDescription className="mt-1 text-center">{currentUser?.bio || 'No bio yet.'}</CardDescription>
              
@@ -213,12 +204,11 @@ const getBadgeDescription = (badge: string) => {
                  </div>
               )}
 
-              {currentUser && currentUser.badges && currentUser.badges.length > 0 && (
+              {currentUser && currentUser.unlockedBadges && currentUser.unlockedBadges.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-2 mt-4">
-                    {currentUser.badges.map(badge => (
-                         <div key={badge} className="flex items-center gap-1.5 bg-accent text-accent-foreground rounded-full px-3 py-1 text-xs font-medium">
-                            <span>{getBadgeIcon(badge)}</span>
-                            <span>{getBadgeDescription(badge).split(' - ')[0]}</span>
+                    {currentUser.unlockedBadges.map(badgeId => (
+                         <div key={badgeId} className="flex items-center gap-1.5 bg-accent text-accent-foreground rounded-full px-3 py-1 text-xs font-medium">
+                            <span>{getBadgeDescription(badgeId)}</span>
                         </div>
                     ))}
                 </div>
@@ -252,27 +242,54 @@ const getBadgeDescription = (badge: string) => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                <h3 className="text-lg font-semibold">{t('editProfile')}</h3>
-               <div className="space-y-2">
-                <Label>Gelar Aktif</Label>
-                <Select
-                    value={currentUser?.activeTitle || 'default'}
-                    onValueChange={(value) => equipTitle(value === 'default' ? null : value)}
-                    disabled={!currentUser}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Pilih gelar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {(currentUser?.unlockedTitles || []).map(titleId => {
-                            const title = titleMap.get(titleId);
-                            return title ? (
-                                <SelectItem key={title.id} value={title.id}>
-                                   {title.icon} {title.name}
-                                </SelectItem>
-                            ) : null;
-                        })}
-                    </SelectContent>
-                </Select>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>Gelar Aktif</Label>
+                    <Select
+                        value={currentUser?.activeTitle || 'default'}
+                        onValueChange={(value) => equipTitle(value === 'default' ? null : value)}
+                        disabled={!currentUser}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Pilih gelar..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {(currentUser?.unlockedTitles || []).map(titleId => {
+                                const title = titleMap.get(titleId);
+                                return title ? (
+                                    <SelectItem key={title.id} value={title.id}>
+                                    {title.icon} {title.name}
+                                    </SelectItem>
+                                ) : null;
+                            })}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label>Lencana Aktif</Label>
+                    <Select
+                        value={currentUser?.activeBadge || 'none'}
+                        onValueChange={(value) => equipBadge(value === 'none' ? null : value)}
+                        disabled={!currentUser}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Pilih lencana..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                             <SelectItem value="none">
+                                Tidak ada
+                            </SelectItem>
+                            {(currentUser?.unlockedBadges || []).map(badgeId => {
+                                const badge = badgeMap.get(badgeId);
+                                return badge ? (
+                                    <SelectItem key={badge.id} value={badge.id}>
+                                    {badge.icon} {badge.name}
+                                    </SelectItem>
+                                ) : null;
+                            })}
+                        </SelectContent>
+                    </Select>
+                </div>
                </div>
               <FormField
                 control={form.control}

@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useJournal } from '@/hooks/use-journal';
@@ -51,7 +52,7 @@ export default function PublicProfilePage({
   onViewImage: (url: string) => void;
 }) {
   const { users, isLoaded, currentUser, toggleFollow, getUserEntries, deleteEntry, blockUser, unblockUser, toggleProfilePrivacy } = useJournal();
-  const { titleMap } = useShopItems();
+  const { titleMap, badgeMap } = useShopItems();
   const { toast } = useToast();
 
   const userProfile = useMemo(() => {
@@ -71,6 +72,7 @@ export default function PublicProfilePage({
   const isVerifiedOwner = userProfile?.displayName === 'cacann_aselii';
   const isAdmin = currentUser?.displayName === 'cacann_aselii';
   const activeTitle = userProfile?.activeTitle && titleMap.get(userProfile.activeTitle);
+  const activeBadge = userProfile?.activeBadge && badgeMap.get(userProfile.activeBadge);
 
 
   const handleFollowToggle = () => {
@@ -178,9 +180,12 @@ export default function PublicProfilePage({
               </div>
               <div className="pt-20 p-6 flex flex-col items-center">
                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    {activeTitle && (
+                      <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                    )}
                     <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
-                     {activeTitle && (
-                        <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                    {activeBadge && (
+                        <span className="text-lg">{activeBadge.icon}</span>
                     )}
                     {isVerifiedOwner && <BadgeCheck className="h-6 w-6 text-primary" />}
                  </div>

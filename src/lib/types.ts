@@ -26,7 +26,8 @@ export type User = {
   points: number;
   level: number;
   bannerUrl?: string;
-  badges: string[];
+  unlockedBadges: string[];
+  activeBadge: string | null;
   notificationsEnabled?: boolean;
   questState?: { [key: string]: boolean | 'claimed' };
   lastQuestReset?: string; // YYYY-MM-DD
@@ -147,6 +148,6 @@ export type ShopItem = {
     name: string;
     description: string;
     price: number;
-    type: 'title' | 'avatar' | 'banner';
+    type: 'title' | 'avatar' | 'banner' | 'badge';
     icon?: string; // For titles or avatars
 };

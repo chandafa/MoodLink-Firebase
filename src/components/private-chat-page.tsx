@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -28,7 +29,7 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { titleMap } = useShopItems();
+  const { titleMap, badgeMap } = useShopItems();
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -41,6 +42,7 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
   const roomId = currentAuthUserId ? getChatRoomId(currentAuthUserId, targetUser.id) : '';
   const { messages, isLoading } = useChatMessages(roomId);
   const activeTitle = targetUser.activeTitle && titleMap.get(targetUser.activeTitle);
+  const activeBadge = targetUser.activeBadge && badgeMap.get(targetUser.activeBadge);
 
   useEffect(() => {
     if (roomId) {
@@ -162,11 +164,14 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
             </Avatar>
             <div>
                 <div className="flex items-center gap-2">
+                    {activeTitle && (
+                      <span className="text-xs font-semibold text-primary">{activeTitle.icon}</span>
+                    )}
                     <h1 className="text-xl font-bold font-headline text-foreground">
                         {targetUser.displayName}
                     </h1>
-                    {activeTitle && (
-                        <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                    {activeBadge && (
+                      <span className="text-lg">{activeBadge.icon}</span>
                     )}
                 </div>
                  <p className="text-xs text-muted-foreground">Level {targetUser.level}</p>

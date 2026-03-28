@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -140,7 +141,7 @@ function CommentItem({
   onViewImage: (url: string) => void;
 }) {
   const { currentUser, addComment, toggleCommentLike, currentAuthUserId, updateComment, deleteComment } = useJournal();
-  const { titleMap } = useShopItems();
+  const { titleMap, badgeMap } = useShopItems();
   const [replyContent, setReplyContent] = useState('');
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -222,6 +223,7 @@ function CommentItem({
     
   const isVerifiedOwner = author?.displayName === 'cacann_aselii';
   const activeTitle = author?.activeTitle && titleMap.get(author.activeTitle);
+  const activeBadge = author?.activeBadge && badgeMap.get(author.activeBadge);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -253,10 +255,13 @@ function CommentItem({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1">
+                  {activeTitle && (
+                    <span className="text-xs font-semibold text-primary">{activeTitle.icon}</span>
+                  )}
                   <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
-                   {activeTitle && (
-                        <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
-                    )}
+                  {activeBadge && (
+                    <span className="text-sm">{activeBadge.icon}</span>
+                  )}
                   {isVerifiedOwner && <BadgeCheck className="h-4 w-4 text-primary" />}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -626,7 +631,7 @@ type JournalAppProps = {
 
 export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPostType, onViewProfile, onViewHashtag, onViewImage }: JournalAppProps) {
   const { entries, users, currentUser, addEntry, updateEntry, deleteEntry, isLoaded, toggleFollow, voteOnEntry, currentAuthUserId, getFollowersData } = useJournal();
-  const { titleMap } = useShopItems();
+  const { titleMap, badgeMap } = useShopItems();
   const [editorContent, setEditorContent] = useState('');
   const [images, setImages] = useState<(File | string)[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -663,6 +668,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
   
   const authorForDisplay = isOwner ? currentUser : entryOwner;
   const activeTitle = authorForDisplay?.activeTitle && titleMap.get(authorForDisplay.activeTitle);
+  const activeBadge = authorForDisplay?.activeBadge && badgeMap.get(authorForDisplay.activeBadge);
   const isVerifiedOwner = useMemo(() => (authorForDisplay?.displayName) === 'cacann_aselii', [authorForDisplay]);
 
 
@@ -907,12 +913,15 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       <div className="flex items-center justify-between text-card-foreground">
                          <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                               <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
-                                {authorForDisplay?.displayName || 'Tamu'}
-                               </p>
                                {activeTitle && (
                                    <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
                                )}
+                               <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
+                                {authorForDisplay?.displayName || 'Tamu'}
+                               </p>
+                                {activeBadge && (
+                                    <span className="text-lg">{activeBadge.icon}</span>
+                                )}
                                {isVerifiedOwner && <BadgeCheck className="h-5 w-5 text-primary" />}
                             </div>
                             <p className="text-sm text-muted-foreground">

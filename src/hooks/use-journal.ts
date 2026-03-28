@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -179,7 +180,8 @@ export function useJournal() {
                     points: 0,
                     level: 1,
                     bannerUrl: user.photoURL || '',
-                    badges: userCount < 10 ? ['pioneer'] : [],
+                    unlockedBadges: userCount < 10 ? ['pioneer'] : [],
+                    activeBadge: null,
                     notificationsEnabled: true,
                     lastQuestReset: todayStr,
                     questState: { login: true },
@@ -1182,7 +1184,7 @@ export function useJournal() {
             userId: currentUser.id,
             recentPosts: posts,
             recentComments: comments,
-            existingBadges: currentUser.badges || [],
+            existingBadges: currentUser.unlockedBadges || [],
         };
         
         try {
@@ -1191,7 +1193,7 @@ export function useJournal() {
             if (result.badgeAwarded && result.badgeId) {
                 const userRef = doc(db, 'users', currentUser.id);
                 await updateDoc(userRef, {
-                    badges: arrayUnion(result.badgeId)
+                    unlockedBadges: arrayUnion(result.badgeId)
                 });
             }
              return result;
@@ -1272,6 +1274,10 @@ export function useJournal() {
                     toast({ title: 'Sudah Dimiliki' });
                     return;
                 }
+                 if (item.type === 'badge' && (userData.unlockedBadges || []).includes(item.id)) {
+                    toast({ title: 'Sudah Dimiliki' });
+                    return;
+                }
                 if (item.type === 'avatar' && (userData.unlockedAvatars || []).includes(item.id)) {
                     toast({ title: 'Sudah Dimiliki' });
                     return;
@@ -1283,6 +1289,11 @@ export function useJournal() {
                     updateData = {
                         points: newPoints,
                         unlockedTitles: arrayUnion(item.id)
+                    };
+                } else if (item.type === 'badge') {
+                     updateData = {
+                        points: newPoints,
+                        unlockedBadges: arrayUnion(item.id)
                     };
                 } else if (item.type === 'avatar') {
                      updateData = {
@@ -1309,7 +1320,16 @@ export function useJournal() {
         toast({ title: 'Gelar Dipasang!' });
     }, [currentAuthUser, toast]);
 
+    const equipBadge = useCallback(async (badgeId: string | null) => {
+        if (!currentAuthUser) return;
+        const userRef = doc(db, 'users', currentAuthUser.uid);
+        await updateDoc(userRef, {
+            activeBadge: badgeId,
+        });
+        toast({ title: 'Lencana Dipasang!' });
+    }, [currentAuthUser, toast]);
 
 
-  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, updateChatMessage, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy, purchaseItem, equipTitle };
+
+  return { entries, users, currentUser, collections, isLoaded, isAnonymous, signOutUser, addEntry, updateEntry, deleteEntry, toggleLike, toggleBookmark, toggleFollow, voteOnEntry, addComment, getUserEntries, currentAuthUserId: currentAuthUser?.uid, getChatRoomId, sendMessage, uploadImageToHosting, getFollowersData, toggleCommentLike, updateComment, deleteComment, signUpWithEmail, signInWithEmail, sendPasswordResetEmail, addCollection, updateCollection, deleteCollection, reportEntry, repostEntry, analyzeUserForBadges, toggleNotifications, markConversationAsRead, updateChatMessage, claimQuestReward, blockUser, unblockUser, toggleProfilePrivacy, purchaseItem, equipTitle, equipBadge };
 }
