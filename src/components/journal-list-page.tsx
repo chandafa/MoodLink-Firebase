@@ -38,16 +38,6 @@ function EmptyState() {
       </div>
     );
   }
-  
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
 
 function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry, getUserForEntry }: { entries: JournalEntry[], onSelectEntry: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void, deleteEntry: (id: string) => void, getUserForEntry: (ownerId: string) => any }) {
     
@@ -56,10 +46,7 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
     }
 
     return (
-        <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
+        <div 
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
             {entries.map(entry => (
@@ -73,7 +60,7 @@ function Feed({ entries, onSelectEntry, onViewHashtag, onViewImage, deleteEntry,
                     onViewImage={onViewImage}
                 />
             ))}
-        </motion.div>
+        </div>
     )
 }
 

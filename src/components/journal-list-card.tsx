@@ -146,18 +146,9 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
     e.stopPropagation();
     toggleBookmark(entry.id);
   }
-  
-  const animationVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 },
-  };
 
   return (
-    <motion.div
-        variants={animationVariants}
-        className="h-full"
-    >
+    <div className="h-full">
         <Card 
             className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden"
             onClick={onSelect}
@@ -254,6 +245,6 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                 <SupportBar entry={entry} onCommentClick={onSelect} />
             </div>
         </Card>
-    </motion.div>
+    </div>
   );
 }
