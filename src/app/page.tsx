@@ -1,7 +1,7 @@
 
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { JournalApp } from '@/components/journal-app';
 import { HelpChatbot } from '@/components/help-chatbot';
@@ -116,6 +116,9 @@ export default function Home() {
   const [bannerClickCount, setBannerClickCount] = useState(0);
   const [showDevTools, setShowDevTools] = useState(false);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef(0);
+
 
   useEffect(() => {
     if (isLoaded) {
@@ -149,6 +152,21 @@ export default function Home() {
     }
   }, [isLoaded, isAnonymous, currentUser]);
 
+  useLayoutEffect(() => {
+    const isMainListView = activeTab === 'Home' && !isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && !isBuildingCollection;
+    
+    if (isMainListView && scrollContainerRef.current) {
+      // Restore scroll position after a short delay to allow the list to render
+      const timer = setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+        }
+      }, 0);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, isEditing, viewingProfileId, chattingWith, viewingHashtag, isBuildingCollection]);
+
   const handleLogin = () => {
     setShowOnboarding(false);
     setActiveTab('Settings');
@@ -158,6 +176,12 @@ export default function Home() {
     const today = new Date().toDateString();
     localStorage.setItem('onboardingLastShown', today);
     setShowOnboarding(false);
+  };
+
+  const saveScrollPosition = () => {
+    if (scrollContainerRef.current) {
+      scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+    }
   };
 
   const resetViews = () => {
@@ -172,6 +196,7 @@ export default function Home() {
   }
 
   const handleSelectEntry = (id: string | null) => {
+    saveScrollPosition();
     resetViews();
     setSelectedEntryId(id);
     setIsEditing(true);
@@ -181,6 +206,7 @@ export default function Home() {
   };
 
   const handleNewPost = (type: PostType) => {
+    saveScrollPosition();
     resetViews();
     setNewPostType(type);
     setSelectedEntryId(null);
@@ -192,16 +218,19 @@ export default function Home() {
   };
   
   const handleViewProfile = (userId: string) => {
+    saveScrollPosition();
     resetViews();
     setViewingProfileId(userId);
   };
 
   const handleStartChat = (user: User) => {
+    saveScrollPosition();
     resetViews();
     setChattingWith(user);
   }
 
   const handleViewHashtag = (tag: string) => {
+    saveScrollPosition();
     resetViews();
     setViewingHashtag(tag);
   }
@@ -211,6 +240,7 @@ export default function Home() {
   }
   
   const handleBuildCollection = (collectionId: string | null) => {
+    saveScrollPosition();
     resetViews();
     setSelectedCollectionId(collectionId);
     setIsBuildingCollection(true);
@@ -239,7 +269,7 @@ export default function Home() {
       return <PublicProfilePage userId={viewingProfileId} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onStartChat={handleStartChat} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
     }
     if (isEditing) {
-      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} />;
+      return <JournalApp selectedEntryId={selectedEntryId} onBack={handleBackToList} setSelectedEntryId={setSelectedEntryId} newPostType={newPostType} onViewProfile={handleViewProfile} onViewHashtag={handleViewHashtag} onViewImage={onViewImage} />;
     }
     if (viewingHashtag) {
         return <HashtagPage hashtag={viewingHashtag} onBack={handleBackToList} onSelectEntry={handleSelectEntry} onViewImage={handleViewImage} />;
@@ -341,7 +371,7 @@ export default function Home() {
               </DialogContent>
             </Dialog>
 
-          <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-20 md:pb-0">
             {renderContent()}
           </div>
           
