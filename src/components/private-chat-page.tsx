@@ -43,10 +43,10 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
   const activeTitle = targetUser.activeTitle && titleMap.get(targetUser.activeTitle);
 
   useEffect(() => {
-    if (roomId && messages) { // Check for messages to ensure it runs on new messages
+    if (roomId) {
         markConversationAsRead(roomId);
     }
-  }, [roomId, markConversationAsRead, messages]); // Add messages to dependency array
+  }, [roomId, markConversationAsRead, messages.length]);
 
 
   useEffect(() => {
