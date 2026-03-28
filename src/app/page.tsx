@@ -155,14 +155,7 @@ export default function Home() {
     const isMainListView = activeTab === 'Home' && !isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && !isBuildingCollection;
     
     if (isMainListView && scrollContainerRef.current) {
-      // Restore scroll position after a short delay to allow the list to render
-      const timer = setTimeout(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = scrollPositionRef.current;
-        }
-      }, 100);
-      
-      return () => clearTimeout(timer);
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
     }
   }, [activeTab, isEditing, viewingProfileId, chattingWith, viewingHashtag, isBuildingCollection]);
 
@@ -339,7 +332,7 @@ export default function Home() {
           {viewingImageUrl && <ImageViewer imageUrl={viewingImageUrl} onClose={() => setViewingImageUrl(null)} />}
           
           {!isEditing && !viewingProfileId && !chattingWith && !viewingHashtag && (
-            <header className="sticky top-0 z-10 flex items-center justify-between py-2 px-4 bg-background/80 backdrop-blur-sm border-b">
+            <header className="sticky top-0 z-10 flex items-center justify-between py-3 px-4 bg-background/80 backdrop-blur-sm border-b">
                 <div className="flex items-center gap-3 w-1/3">
                     {currentUser && <Avatar className="h-8 w-8 cursor-pointer" onClick={() => setIsSidebarOpen(true)}><AvatarFallback>{currentUser.avatar}</AvatarFallback></Avatar>}
                 </div>

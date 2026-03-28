@@ -3,6 +3,7 @@
 
 
 
+
 'use client'
 
 import { useState, useMemo } from 'react';
@@ -154,7 +155,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
   return (
     <div className="h-full">
         <Card 
-            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden"
+            className="p-5 cursor-pointer hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col relative overflow-hidden"
             onClick={onSelect}
             data-theme={entry.cardColor || 'default'}
         >
@@ -248,7 +249,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
 
             </div>
             
-            <div className="mt-2 pt-2 border-t -ml-4 -mr-4 border-border/20">
+            <div className="mt-2 pt-2 border-t -ml-5 -mr-5 border-border/20">
                 <SupportBar entry={entry} onCommentClick={onSelect} />
             </div>
         </Card>
