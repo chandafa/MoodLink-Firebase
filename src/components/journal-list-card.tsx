@@ -164,10 +164,10 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                         </Avatar>
                         <div className="text-card-foreground">
                             <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
                               {activeTitle && (
                                 <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
                               )}
-                              <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
                                {activeBadge && (
                                 <span className="text-sm">{activeBadge.icon}</span>
                               )}

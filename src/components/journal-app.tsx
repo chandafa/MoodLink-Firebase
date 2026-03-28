@@ -255,10 +255,10 @@ function CommentItem({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1">
+                  <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
                   {activeTitle && (
                     <span className="text-xs font-semibold text-primary">{activeTitle.icon}</span>
                   )}
-                  <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(comment.authorId)}>{comment.authorName}</p>
                   {activeBadge && (
                     <span className="text-sm">{activeBadge.icon}</span>
                   )}
@@ -806,7 +806,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
          setIsEditingMode(false);
       }
     } else {
-       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex, canvasPreview);
+       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUserIds, cardColor, fontFamily, correctAnswerIndex, canvasPreview);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
         setIsEditingMode(false);
@@ -913,12 +913,12 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
                       <div className="flex items-center justify-between text-card-foreground">
                          <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                               {activeTitle && (
-                                   <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
-                               )}
                                <p className={cn("font-bold", !isOwner && "cursor-pointer hover:underline")} onClick={() => entryOwner && handleProfileClick(entryOwner!.id)}>
                                 {authorForDisplay?.displayName || 'Tamu'}
                                </p>
+                               {activeTitle && (
+                                   <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                               )}
                                 {activeBadge && (
                                     <span className="text-lg">{activeBadge.icon}</span>
                                 )}

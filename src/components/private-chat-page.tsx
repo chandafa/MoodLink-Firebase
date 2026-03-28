@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -164,12 +165,12 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
             </Avatar>
             <div>
                 <div className="flex items-center gap-2">
-                    {activeTitle && (
-                      <span className="text-xs font-semibold text-primary">{activeTitle.icon}</span>
-                    )}
                     <h1 className="text-xl font-bold font-headline text-foreground">
                         {targetUser.displayName}
                     </h1>
+                    {activeTitle && (
+                      <span className="text-xs font-semibold text-primary">{activeTitle.icon}</span>
+                    )}
                     {activeBadge && (
                       <span className="text-lg">{activeBadge.icon}</span>
                     )}

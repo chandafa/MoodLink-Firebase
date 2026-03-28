@@ -180,10 +180,10 @@ export default function PublicProfilePage({
               </div>
               <div className="pt-20 p-6 flex flex-col items-center">
                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
                     {activeTitle && (
                       <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
                     )}
-                    <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
                     {activeBadge && (
                         <span className="text-lg">{activeBadge.icon}</span>
                     )}
