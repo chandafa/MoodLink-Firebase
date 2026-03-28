@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
-import { Spline } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 
 export const Icons = {
-  logo: (props: SVGProps<SVGSVGElement>) => <Spline {...props} />,
+  logo: (props: SVGProps<SVGSVGElement>) => <GraduationCap {...props} />,
 };
