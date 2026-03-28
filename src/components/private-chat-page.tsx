@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -169,7 +170,7 @@ export default function PrivateChatPage({ targetUser, onBack }: { targetUser: Us
                         {targetUser.displayName}
                     </h1>
                     {activeTitle && (
-                      <span className="text-xs font-semibold text-primary">{activeTitle.icon}</span>
+                      <span className="text-xs font-semibold text-primary">{activeTitle.name}</span>
                     )}
                     {activeBadge && (
                       <span className="text-lg">{activeBadge.icon}</span>

@@ -1,6 +1,7 @@
 
 
 
+
 'use client'
 
 import { useState, useMemo } from 'react';
@@ -166,7 +167,7 @@ export function JournalEntryCard({ entry, author, onSelect, onDelete, onViewHash
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-bold leading-tight">{author?.displayName || 'Anonim'}</p>
                               {activeTitle && (
-                                <span className="text-xs font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                                <span className="text-xs font-semibold text-primary">{activeTitle.name}</span>
                               )}
                                {activeBadge && (
                                 <span className="text-sm">{activeBadge.icon}</span>

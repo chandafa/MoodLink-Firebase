@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -177,7 +178,7 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePriv
             <div className="flex items-center gap-2">
               <CardTitle className="text-2xl">{currentUser?.displayName || 'Anonymous User'}</CardTitle>
               {currentUser?.activeTitle && titleMap.get(currentUser.activeTitle) && (
-                <span className="text-lg font-bold text-primary">{titleMap.get(currentUser.activeTitle)?.icon} {titleMap.get(currentUser.activeTitle)?.name}</span>
+                <span className="text-lg font-bold text-primary">{titleMap.get(currentUser.activeTitle)?.name}</span>
               )}
               {currentUser?.activeBadge && badgeMap.get(currentUser.activeBadge) && (
                 <span className="text-lg">{badgeMap.get(currentUser.activeBadge)?.icon}</span>
@@ -249,7 +250,7 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePriv
                                 const title = titleMap.get(titleId);
                                 return title ? (
                                     <SelectItem key={title.id} value={title.id}>
-                                    {title.icon} {title.name}
+                                    {title.name}
                                     </SelectItem>
                                 ) : null;
                             })}

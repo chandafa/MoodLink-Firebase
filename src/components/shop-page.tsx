@@ -45,7 +45,7 @@ export function ShopPage() {
             <CardContent>
                 {isLoading ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+                        {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -55,20 +55,27 @@ export function ShopPage() {
                             const isPurchasing = purchasingId === item.id;
 
                             return (
-                                <Card key={item.id} className={cn("flex flex-col text-center items-center justify-center p-4", isOwned && "bg-accent/50")}>
-                                    <h3 className="text-lg font-bold">{item.icon} {item.name}</h3>
-                                    <p className="text-sm text-muted-foreground my-2">{item.description}</p>
-                                    <div className="flex items-center gap-2 font-bold text-primary my-2">
-                                        <Gem className="h-4 w-4" />
-                                        <span>{item.price}</span>
-                                    </div>
-                                    <Button 
-                                        onClick={() => handlePurchase(item)}
-                                        disabled={isOwned || !canAfford || isPurchasing} 
-                                        className="w-full mt-auto"
-                                    >
-                                        {isPurchasing ? <LoaderCircle className="animate-spin" /> : isOwned ? 'Dimiliki' : 'Beli'}
-                                    </Button>
+                                <Card key={item.id} className={cn("flex flex-col", isOwned && "bg-accent/50")}>
+                                    <CardHeader className="items-center text-center">
+                                        {item.type === 'badge' && item.icon && <span className="text-4xl mb-2">{item.icon}</span>}
+                                        <CardTitle className="text-base">{item.name}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="flex-1 text-center px-4">
+                                        <p className="text-xs text-muted-foreground mb-4 h-10">{item.description}</p>
+                                        <div className="flex items-center justify-center gap-2 font-bold text-primary">
+                                            <Gem className="h-4 w-4" />
+                                            <span>{item.price}</span>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="p-4">
+                                        <Button
+                                            onClick={() => handlePurchase(item)}
+                                            disabled={isOwned || !canAfford || isPurchasing}
+                                            className="w-full"
+                                        >
+                                            {isPurchasing ? <LoaderCircle className="animate-spin" /> : isOwned ? 'Dimiliki' : 'Beli'}
+                                        </Button>
+                                    </CardFooter>
                                 </Card>
                             );
                         })}

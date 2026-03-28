@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useJournal } from '@/hooks/use-journal';
@@ -182,7 +183,7 @@ export default function PublicProfilePage({
                  <div className="flex items-center gap-2 flex-wrap justify-center">
                     <CardTitle className="text-2xl">{userProfile.displayName}</CardTitle>
                     {activeTitle && (
-                      <span className="text-sm font-semibold text-primary">{activeTitle.icon} {activeTitle.name}</span>
+                      <span className="text-sm font-semibold text-primary">{activeTitle.name}</span>
                     )}
                     {activeBadge && (
                         <span className="text-lg">{activeBadge.icon}</span>
