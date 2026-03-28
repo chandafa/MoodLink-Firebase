@@ -159,7 +159,7 @@ export default function Home() {
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTop = scrollPositionRef.current;
         }
-      }, 50);
+      }, 100);
       
       return () => clearTimeout(timer);
     }

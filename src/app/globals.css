@@ -9,7 +9,7 @@ body {
 
 @layer base {
   html {
-    font-size: 15px;
+    font-size: 14px;
   }
   :root {
     --background: 220 100% 97%; /* soft blue-white */
