@@ -48,15 +48,6 @@ const handleFontChange = (value: string) => {
     console.log("Font changed to:", value);
 };
 
-const handleResetData = () => {
-    localStorage.clear();
-    toast({
-      title: 'Data Dihapus',
-      description: 'Semua data lokal Anda telah dihapus. Aplikasi akan dimuat ulang.',
-    });
-    setTimeout(() => window.location.reload(), 1500);
-  };
-
 
   return (
     <div className="space-y-6">
@@ -156,26 +147,6 @@ const handleResetData = () => {
                     disabled={isAnonymous}
                   />
                 </div>
-                 <div className="flex items-center justify-between py-3">
-                    <Label htmlFor="reset-data" className="flex items-center gap-3"><Trash2 /> {t('deleteLocalData')}</Label>
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">{t('delete')}</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                {t('deleteLocalDataConfirm')}
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleResetData} className="bg-destructive hover:bg-destructive/90">{t('yesDeleteData')}</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
             </CardContent>
         </Card>
       
@@ -186,3 +157,5 @@ const handleResetData = () => {
     </div>
   );
 }
+
+    

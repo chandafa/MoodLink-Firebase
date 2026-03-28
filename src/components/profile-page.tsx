@@ -1,6 +1,5 @@
 
 
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -130,15 +129,6 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePriv
       setIsAnalyzing(false);
   }
 
-  const handleResetData = () => {
-    localStorage.clear();
-    toast({
-      title: 'Data Dihapus',
-      description: 'Semua data lokal Anda telah dihapus. Aplikasi akan dimuat ulang.',
-    });
-    setTimeout(() => window.location.reload(), 1500);
-  };
-  
   const avatarDisplay = form.watch('avatar') || '👤';
 
   const pointsToNextLevel = currentUser ? POINTS_PER_LEVEL - (currentUser.points % POINTS_PER_LEVEL) : POINTS_PER_LEVEL;
@@ -399,25 +389,6 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePriv
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> {t('deleteLocalData')}</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t('deleteLocalDataConfirm')}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleResetData} className="bg-destructive hover:bg-destructive/90">
-                    {t('yesDeleteData')}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
         </CardFooter>
       </Card>
   );
@@ -677,5 +648,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
     </div>
   );
 }
+
+    
 
     
