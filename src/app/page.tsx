@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -257,6 +258,11 @@ export default function Home() {
       setBannerClickCount(0);
     }
   };
+  
+  const handleTabChange = (tab: string) => {
+    resetViews();
+    setActiveTab(tab);
+  };
 
 
   const renderContent = () => {
@@ -284,7 +290,7 @@ export default function Home() {
       case 'Pesan':
         return <MessagesPage onStartChat={handleStartChat} />;
       case 'Settings':
-        return <SettingsPage setActiveTab={setActiveTab} />;
+        return <SettingsPage setActiveTab={handleTabChange} />;
       case 'Profile':
         return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} onBannerClick={handleBannerClick} />;
       case 'Notifikasi':
@@ -383,10 +389,12 @@ export default function Home() {
           )}
 
           {activeTab !== 'Pesan' && !isEditing && !viewingProfileId && !chattingWith && <HelpChatbot />}
-          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+          <BottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
         </motion.div>
       )}
       </AnimatePresence>
     </>
   );
 }
+
+    
