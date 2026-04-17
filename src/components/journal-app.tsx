@@ -1,8 +1,4 @@
 
-
-
-
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -808,7 +804,7 @@ export function JournalApp({ selectedEntryId, onBack, setSelectedEntryId, newPos
          setIsEditingMode(false);
       }
     } else {
-       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUserIds, cardColor, fontFamily, correctAnswerIndex, canvasPreview);
+       const newEntry = await addEntry(editorContent, images, musicFile, postType, optionsForEntry, visibility, allowedUsers, cardColor, fontFamily, correctAnswerIndex, canvasPreview);
       if(newEntry) {
         setSelectedEntryId(newEntry.id);
         setIsEditingMode(false);
