@@ -370,26 +370,6 @@ function ProfileForm({ currentUser, onUpdate, onSignOut, onAnalyze, onTogglePriv
             </CardContent>
             </>
         )}
-
-        <CardFooter className="flex-col sm:flex-row gap-2 justify-end bg-muted/50 p-4 border-t mt-6">
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="outline"><LogOut className="mr-2 h-4 w-4" /> {t('signOut')}</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('signOutConfirmTitle')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t('signOutConfirmDescription')}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={onSignOut}>{t('yesSignOut')}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </CardFooter>
       </Card>
   );
 }
@@ -550,7 +530,7 @@ function GuestProfileView() {
     )
 }
 
-export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage, onBannerClick }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; onBannerClick: () => void; }) {
+export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHashtag, onViewImage, onBannerClick, activeTab = 'profile' }: { onSelectEntry: (id: string | null) => void; onBuildCollection: (id: string | null) => void; onViewHashtag: (tag: string) => void; onViewImage: (url: string) => void; onBannerClick: () => void; activeTab?: string; }) {
   const { currentUser, isLoaded, isAnonymous, uploadImageToHosting, signOutUser, analyzeUserForBadges, deleteEntry, toggleProfilePrivacy } = useJournal();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -597,7 +577,7 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
           {t('profileAndActivity')}
         </h1>
       </header>
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs key={activeTab} defaultValue={activeTab} className="w-full">
           <TabsList className={cn("grid w-full", isUserAdmin ? "grid-cols-6" : "grid-cols-5")}>
             <TabsTrigger value="profile">
                 <UserIcon className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t('profile')}</span>
@@ -650,5 +630,8 @@ export default function ProfilePage({ onSelectEntry, onBuildCollection, onViewHa
 }
 
     
+
+    
+
 
     

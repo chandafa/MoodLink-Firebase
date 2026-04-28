@@ -99,6 +99,7 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Home');
+  const [activeProfileTab, setActiveProfileTab] = useState('profile');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [newPostType, setNewPostType] = useState<PostType>('journal');
   const [isEditing, setIsEditing] = useState(false);
@@ -239,8 +240,14 @@ export default function Home() {
   };
 
   const handleSidebarNavigate = (tabName: string) => {
-      resetViews();
-      setActiveTab(tabName);
+      const profileSubTabs = ['profile', 'collections', 'capsules', 'bookmarks', 'leaderboard', 'reports'];
+      if (profileSubTabs.includes(tabName)) {
+        setActiveTab('Profile');
+        setActiveProfileTab(tabName);
+      } else {
+        setActiveTab(tabName);
+      }
+      setIsSidebarOpen(false);
   }
 
   const handleBannerClick = () => {
@@ -255,6 +262,10 @@ export default function Home() {
   const handleTabChange = (tab: string) => {
     resetViews();
     setActiveTab(tab);
+    // Reset to default profile tab when switching main tabs
+    if(tab !== 'Profile') {
+        setActiveProfileTab('profile');
+    }
   };
 
 
@@ -285,7 +296,7 @@ export default function Home() {
       case 'Settings':
         return <SettingsPage setActiveTab={handleTabChange} />;
       case 'Profile':
-        return <ProfilePage onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} onBannerClick={handleBannerClick} />;
+        return <ProfilePage activeTab={activeProfileTab} onSelectEntry={handleSelectEntry} onBuildCollection={handleBuildCollection} onViewHashtag={handleViewHashtag} onViewImage={handleViewImage} onBannerClick={handleBannerClick} />;
       case 'Notifikasi':
         return <NotificationListPage onSelectEntry={handleSelectEntry} />;
       default:
@@ -389,5 +400,7 @@ export default function Home() {
     </>
   );
 }
+
+    
 
     

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -6,7 +7,7 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { User, LogOut, X, User as UserIcon, BookCopy, Hourglass, Bookmark, Trophy } from 'lucide-react';
 
-export function Sidebar({ user, onClose, onNavigate, onSignOut, onAvatarClick }) {
+export function Sidebar({ user, onClose, onNavigate, onSignOut }) {
   if (!user) return null;
 
   const handleNavigation = (tabName) => {
@@ -34,7 +35,7 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut, onAvatarClick })
       >
         <div className="p-6 border-b">
           <div className="flex justify-between items-center">
-             <Avatar className="h-12 w-12 cursor-pointer" onClick={() => { handleNavigation('Profile'); onAvatarClick(); }}>
+             <Avatar className="h-12 w-12 cursor-pointer" onClick={() => handleNavigation('profile')}>
                 <AvatarFallback className="text-2xl">{user.avatar}</AvatarFallback>
              </Avatar>
              <Button variant="ghost" size="icon" onClick={onClose}><X/></Button>
@@ -47,19 +48,19 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut, onAvatarClick })
         </div>
 
         <nav className="flex-1 p-6 space-y-2">
-            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('Profile')}>
+            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('profile')}>
                 <UserIcon className="mr-4 h-6 w-6"/> Profil & Aktivitas
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('Profile')}>
+            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('collections')}>
                 <BookCopy className="mr-4 h-6 w-6"/> Koleksi
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('Profile')}>
+            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('capsules')}>
                 <Hourglass className="mr-4 h-6 w-6"/> Kapsul Waktu
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('Profile')}>
+            <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('bookmarks')}>
                 <Bookmark className="mr-4 h-6 w-6"/> Tersimpan
             </Button>
-             <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('Profile')}>
+             <Button variant="ghost" className="w-full justify-start text-lg" onClick={() => handleNavigation('leaderboard')}>
                 <Trophy className="mr-4 h-6 w-6"/> Papan Peringkat
             </Button>
         </nav>
@@ -74,5 +75,7 @@ export function Sidebar({ user, onClose, onNavigate, onSignOut, onAvatarClick })
     </AnimatePresence>
   );
 }
+
+    
 
     
